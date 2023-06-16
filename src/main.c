@@ -1,4 +1,5 @@
 #include "../inc/helpers.h"
+#include "../inc/file_proc.h"
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -10,23 +11,10 @@ int main(int argc, char **argv) {
     file_ptr = fopen(file_dest, "r");
     CHECK_NULL(file_ptr, "Unable to open file");
 
-    if (fseek(file_ptr, 0, SEEK_SET) < 0)
-        print_error("Unable to access file");
-
-    if (fseek(file_ptr, 0, SEEK_END) < 0)
-        print_error("Unable to access file");
-
-    long file_sz = ftell(file_ptr);
-
-    if (fseek(file_ptr, 0, SEEK_SET) < 0)
-        print_error("Unable to access file");
-
-    if (file_sz < 0)
-        print_error("Unable to get file size");
-
-    printf("The file size is : %ld\n", file_sz);
+    long file_sz = calculate_file_size(file_ptr);
 
     char *file_data = NULL;
+
     file_data = (char *)malloc((file_sz + 1) * sizeof(char));
     CHECK_NULL(file_data, "Unable to allocate memory");
 
