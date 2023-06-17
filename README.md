@@ -1,6 +1,6 @@
-# CComp
+# CLomp
 
-**CComp** is a compiler for a C like language, written in *C*.
+**CLomp** is a compiler written in C, for a C like language.
 
 I will be developing this project by following the
 [`Lens_r's`](https://www.youtube.com/playlist?list=PLysa8wRFCssxGKj_RxBWr3rwmjEYlJIpa)
