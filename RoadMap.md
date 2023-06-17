@@ -11,8 +11,9 @@ a basic compiler.
   stuff like, variable declarations, assignments, function definitions,
   return types, etc. Decide, what your delimiters, and expression terminators
   will be.
-- The delimiters can be a whitespace, carriage return, newline character,
-  colons, commas, parenthesis, etc.
+- The delimiters are generally whitespace, carriage returns (if you are on
+  Windows) and newline characters, but they can be anything based on your
+  choice and taste.
 - Start writing the compiler in **C** (Obviously !!).
 - Begin, by getting the path to the file, that needs to be compiled as an
   argument. This would generally happen in the main function.
