@@ -5,8 +5,6 @@
 
 long calculate_file_size(FILE *file_ptr);
 
-/// TODO:
-/// - [ ] Add a parser and lexer function here that reads from the file and
-/// tokenizes it.
+void lex_file(char *file_dest);
 
 #endif
