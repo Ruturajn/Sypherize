@@ -23,7 +23,7 @@ a basic compiler.
 
 ### PARSER and AST
 
-- *This part is going to be tricky*. Now, that the tokens are created 
+- ***This part is going to be tricky***. Now, that the tokens are created 
   they need to be conceptualized.
 - A list of identifiers that have been seen previously needs to be
   maintained, so that we can deal with something like:
@@ -36,6 +36,27 @@ a basic compiler.
   a = 0;
   ```
   where `a` has been defined without assigning a *type* to it.
+- Support *Scoped identifier definitions*, which will allow
+  for something like this:
+  ```
+  int a = 0;
+
+  def_func foo(int a, int b) -> int {
+        // Do something with `a` here,
+        // which refers to the `a` passed
+        // to this function.
+  }
+  ```
+  Now, to do this, an *AST* (**A**bstract **S**yntax **T**ree) is required.
+  For this, there needs to be way to represent *expressions* as control
+  flow diagrams, which can be constructed with binary trees.
+  Possible expressions can be:
+    - `if` statements, with a condition, if-body and an else-body.
+    - Loops, both `for` and `while`, which have a terminating condition, an
+      upper bound and a increment factor in the case of a `for` loop.
+    - Variable assignments.
+    - Statements with the ternary operator.
+    - And many more.
 
 ## References
 

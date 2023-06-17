@@ -1,4 +1,5 @@
 #include "../inc/lexer.h"
+#include <string.h>
 
 long calculate_file_size(FILE *file_ptr) {
 
@@ -44,14 +45,26 @@ void lex_file(char *file_dest) {
     printf("---\n%s\n---\n", file_data);
 
     /// Tokenizing;
-    char delims[20] = " :=;\r\n->(){}#";
+    char delims[20] = " :=,;~()\r\n";
+    char whitespace[5] = " \r\n";
 
-    char *token = NULL;
-    token = strtok(file_data, delims);
+    int begin = 0;
+    int end = 0;
+    char *temp_file_data = file_data;
+    begin = strspn(temp_file_data, whitespace);
+    temp_file_data += begin;
 
-    while (token != NULL) {
-        printf("%s\n", token);
-        token = strtok(NULL, delims);
+    while (*temp_file_data != '\0') {
+        begin = strcspn(temp_file_data, delims);
+        if (begin < 1) {
+            if (*temp_file_data != ' ')
+                printf("%.*s\n", (int)(1), temp_file_data);
+            temp_file_data +=1 ;
+        }
+        else
+            printf("%.*s\n", begin, temp_file_data);
+        end = strspn(temp_file_data, whitespace);
+        temp_file_data += (begin + end);
     }
 
     free(file_data);
