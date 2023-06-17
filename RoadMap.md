@@ -58,6 +58,15 @@ a basic compiler.
     - Variable assignments.
     - Statements with the ternary operator.
     - And many more.
+- The AST, will have a Environment
+                                  |- Parent (Environment)
+                                  `- Binding
+                                            |-next (Binding)
+                                            |-identifier
+                                            `-id Value (Node)
+                                                  |- type
+                                                  |- value
+                                                  `- children (Node)
 
 ## References
 
