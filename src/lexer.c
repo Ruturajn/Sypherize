@@ -1,6 +1,6 @@
 #include "../inc/lexer.h"
 
-lexed_tokens *root_node = NULL;
+lexed_tokens *root_token = NULL;
 
 long calculate_file_size(FILE *file_ptr) {
 
@@ -23,36 +23,38 @@ long calculate_file_size(FILE *file_ptr) {
     return file_sz;
 }
 
-void add_token_to_ll(int token_length, lexed_tokens **root_node,
+void add_token_to_ll(int token_length, lexed_tokens **root_token,
                      char *data) {
     lexed_tokens *new_token = (lexed_tokens *) calloc(1, sizeof(lexed_tokens));
+    CHECK_NULL(new_token, "Unable to allocate memory");
     new_token->token_length = token_length;
     new_token->token_name = (char *) calloc(new_token->token_length + 1, 
                                             sizeof(char));
+    CHECK_NULL(new_token->token_name, "Unable to allocate memory");
     memcpy(new_token->token_name, data, token_length);
     new_token->token_name[token_length] = '\0';
     new_token->next_token = NULL;
 
-    if (*root_node == NULL)
-        *root_node = new_token;
+    if (*root_token == NULL)
+        *root_token = new_token;
     else {
-        lexed_tokens *temp = *root_node;
+        lexed_tokens *temp = *root_token;
         while (temp->next_token != NULL)
             temp = temp->next_token;
         temp->next_token = new_token;
     }
 }
 
-void print_lexed_tokens_ll(lexed_tokens *root_node) {
-    lexed_tokens *temp = root_node;
+void print_lexed_tokens_ll(lexed_tokens *root_token) {
+    lexed_tokens *temp = root_token;
     while (temp != NULL) {
-        printf("%s\n", temp->token_name);
+        printf("Token : %s\n", temp->token_name);
         temp = temp->next_token;
     }
 }
 
-void free_lexed_tokens_ll(lexed_tokens **root_node) {
-    lexed_tokens *temp = *root_node;
+void free_lexed_tokens_ll(lexed_tokens **root_token) {
+    lexed_tokens *temp = *root_token;
     lexed_tokens *temp_next = NULL;
     while (temp != NULL) {
         temp_next = temp->next_token;
@@ -82,8 +84,6 @@ void lex_file(char *file_dest) {
 
     file_data[file_sz] = '\0';
 
-    /* printf("---\n%s\n---\n", file_data); */
-
     /// Tokenizing;
     char delims[20] = " :=,;~()\r\n";
     char whitespace[5] = " \r\n";
@@ -98,22 +98,41 @@ void lex_file(char *file_dest) {
         begin = strcspn(temp_file_data, delims);
         if (begin < 1) {
             if (*temp_file_data != ' ' && *temp_file_data != '\n') {
-                /* printf("%.*s\n", (int)(1), temp_file_data); */
-                add_token_to_ll(1, &root_node, temp_file_data);
+                add_token_to_ll(1, &root_token, temp_file_data);
             }
             temp_file_data +=1 ;
         }
         else {
-            /* printf("%.*s\n", begin, temp_file_data); */
-            add_token_to_ll(begin, &root_node, temp_file_data);
+            add_token_to_ll(begin, &root_token, temp_file_data);
         }
         end = strspn(temp_file_data, whitespace);
         temp_file_data += (begin + end);
     }
 
-    print_lexed_tokens_ll(root_node);
+    print_lexed_tokens_ll(root_token);
 
-    free_lexed_tokens_ll(&root_node);
+    lexed_tokens *temp_token = root_token;
+    while (temp_token) {
+        if (strcmp(temp_token->token_name, ":") == 0) {
+            if (temp_token->next_token != NULL &&
+                    strcmp(temp_token->next_token->token_name, "=") == 0)
+                printf("Found variable assignment\n");
+            else
+                printf("Found Function parameter\n");
+        }
+        // TODO: Make sure, that an identifer is present after the type name and
+        // that it is a valid variable declaration.
+        if (strcmp(temp_token->token_name, "int") == 0) {
+            if (temp_token->next_token != NULL ) {
+                if (strcmp(temp_token->next_token->token_name, ":") != 0 &&
+                    strcmp(temp_token->next_token->token_name, "{") != 0)
+                    printf("Found a variable declaration\n");
+            }
+        }
+        temp_token = temp_token->next_token;
+    }
+
+    free_lexed_tokens_ll(&root_token);
     free(file_data);
     fclose(file_ptr);
 }
