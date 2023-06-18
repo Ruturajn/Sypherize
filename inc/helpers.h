@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define CHECK_NULL(ptr, msg) {\
     if (ptr == NULL) { \

@@ -3,7 +3,7 @@
 
 CC=gcc
 CFLAGS=-g -Wall -Werror
-TARGET=ccomp
+TARGET=clomp
 
 SRCS=$(wildcard ./src/*.c)
 INCS=./inc
