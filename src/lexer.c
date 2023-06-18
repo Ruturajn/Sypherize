@@ -28,11 +28,8 @@ void add_token_to_ll(int token_length, lexed_tokens **root_token,
     lexed_tokens *new_token = (lexed_tokens *) calloc(1, sizeof(lexed_tokens));
     CHECK_NULL(new_token, "Unable to allocate memory");
     new_token->token_length = token_length;
-    new_token->token_name = (char *) calloc(new_token->token_length + 1, 
-                                            sizeof(char));
-    CHECK_NULL(new_token->token_name, "Unable to allocate memory");
-    memcpy(new_token->token_name, data, token_length);
-    new_token->token_name[token_length] = '\0';
+
+    new_token->token_start = data;
     new_token->next_token = NULL;
 
     if (*root_token == NULL)
@@ -48,7 +45,7 @@ void add_token_to_ll(int token_length, lexed_tokens **root_token,
 void print_lexed_tokens_ll(lexed_tokens *root_token) {
     lexed_tokens *temp = root_token;
     while (temp != NULL) {
-        printf("Token : %s\n", temp->token_name);
+        printf("Token : %.*s\n", temp->token_length, temp->token_start);
         temp = temp->next_token;
     }
 }
@@ -58,7 +55,6 @@ void free_lexed_tokens_ll(lexed_tokens **root_token) {
     lexed_tokens *temp_next = NULL;
     while (temp != NULL) {
         temp_next = temp->next_token;
-        free(temp->token_name);
         free(temp);
         temp = temp_next;
     }
@@ -110,27 +106,6 @@ void lex_file(char *file_dest) {
     }
 
     print_lexed_tokens_ll(root_token);
-
-    lexed_tokens *temp_token = root_token;
-    while (temp_token) {
-        if (strcmp(temp_token->token_name, ":") == 0) {
-            if (temp_token->next_token != NULL &&
-                    strcmp(temp_token->next_token->token_name, "=") == 0)
-                printf("Found variable assignment\n");
-            else
-                printf("Found Function parameter\n");
-        }
-        // TODO: Make sure, that an identifer is present after the type name and
-        // that it is a valid variable declaration.
-        if (strcmp(temp_token->token_name, "int") == 0) {
-            if (temp_token->next_token != NULL ) {
-                if (strcmp(temp_token->next_token->token_name, ":") != 0 &&
-                    strcmp(temp_token->next_token->token_name, "{") != 0)
-                    printf("Found a variable declaration\n");
-            }
-        }
-        temp_token = temp_token->next_token;
-    }
 
     free_lexed_tokens_ll(&root_token);
     free(file_data);

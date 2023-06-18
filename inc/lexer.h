@@ -4,7 +4,7 @@
 #include "../inc/helpers.h"
 
 typedef struct lexed_tokens {
-    char* token_name;
+    char* token_start;
     int token_length;
     struct lexed_tokens *next_token;
 } lexed_tokens;
