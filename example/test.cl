@@ -1,4 +1,4 @@
-int a := 0;
+int a := 340;
 int new_val;
 new_val := 100;
 
