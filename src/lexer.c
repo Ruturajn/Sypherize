@@ -117,12 +117,12 @@ void lex_file(char *file_dest) {
     lexed_tokens *root_token = NULL;
     lexed_tokens *curr_token = root_token;
 
-    ast_nodes *root_node = calloc(1, sizeof(ast_nodes));
+    ast_node *root_node = calloc(1, sizeof(ast_node));
     root_node->type = TYPE_ROOT;
     root_node->child = NULL;
     root_node->next_child = NULL;
 
-    ast_nodes curr_node = *root_node;
+    ast_node curr_node = *root_node;
 
     while (*temp_file_data != '\0') {
         temp_file_data = lex_token(&temp_file_data, &curr_token);

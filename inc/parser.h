@@ -7,23 +7,32 @@
 extern "C" {
 #endif
 
-typedef struct ast_nodes {
+typedef struct ast_node {
     enum node_type {
         TYPE_NULL = 0,
         TYPE_INT,
         TYPE_ROOT,
     } type;
     int_cl node_val;
-    struct ast_nodes *child;
-    struct ast_nodes *next_child;
-} ast_nodes;
+    struct ast_node *child;
+    struct ast_node *next_child;
+} ast_node;
 
-void print_ast_nodes_type(ast_nodes *curr_node);
+typedef struct identifier_bind {
+    ast_node identifier;
+    ast_node id_val;
+    struct identifier_bind *next_id_bind;
+} identifier_bind;
 
-void print_ast_nodes(ast_nodes *root_node, int indent);
+typedef struct env {
+    identifier_bind *binding;
+    struct env *parent_env;
+} env;
 
-int parse_int(lexed_tokens *token, ast_nodes *node);
+void print_ast_node(ast_node *root_node, int indent);
 
-void parse_tokens(lexed_tokens *curr_token, ast_nodes curr_node);
+int parse_int(lexed_tokens *token, ast_node *node);
+
+void parse_tokens(lexed_tokens *curr_token, ast_node curr_node);
 
 #endif
