@@ -1,6 +1,10 @@
 #ifndef __HELPERS_H__
 #define __HELPERS_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

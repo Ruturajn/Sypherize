@@ -1,4 +1,5 @@
 #include "../inc/lexer.h"
+#include "../inc/parser.h"
 
 long calculate_file_size(FILE *file_ptr) {
     if (file_ptr == NULL) { return 0; }
@@ -67,22 +68,6 @@ int strncmp_lexed_tokens(lexed_tokens *curr_token, char *str_to_cmp) {
     return 1;
 }
 
-int parse_int(lexed_tokens *token, ast_nodes *node) {
-    if (token == NULL || node == NULL) { return 0; }
-    if (token->token_length == 0 && *(token->token_start) == '0') {
-        node->type = TYPE_INT;
-        node->node_val = 0;
-    } else {
-        long temp = strtol(token->token_start, NULL, 10);
-        if (temp != 0) {
-            node->type = TYPE_INT;
-            node->node_val = temp;
-        }
-        else { return 0; }
-    }
-    return 1;
-}
-
 lexed_tokens* create_token(int token_length, char *data) {
     lexed_tokens *curr_token = (lexed_tokens *) calloc(1, sizeof(lexed_tokens));
     CHECK_NULL(curr_token, "Unable to allocate memory");
@@ -132,35 +117,27 @@ void lex_file(char *file_dest) {
     lexed_tokens *root_token = NULL;
     lexed_tokens *curr_token = root_token;
 
+    ast_nodes *root_node = calloc(1, sizeof(ast_nodes));
+    root_node->type = TYPE_ROOT;
+    root_node->child = NULL;
+    root_node->next_child = NULL;
+
+    ast_nodes curr_node = *root_node;
+
     while (*temp_file_data != '\0') {
         temp_file_data = lex_token(&temp_file_data, &curr_token);
-        add_token_to_ll(curr_token, &root_token);
+        parse_tokens(curr_token, curr_node);
+
+        curr_node.type = TYPE_NULL;
+        curr_node.child = NULL;
+        curr_node.next_child = NULL;
+
         total_tokens += 1;
     }
 
-    print_lexed_tokens_ll(root_token);
+    // print_lexed_tokens_ll(root_token);
 
-    // lexed_tokens *temp_token = root_token;
-    // while (temp_token) {
-    //     if (strncmp_lexed_tokens(temp_token, ":") == 1) {
-    //         if (temp_token->next_token != NULL &&
-    //                 strncmp_lexed_tokens(temp_token->next_token, "=") == 1)
-    //             printf("Found variable assignment\n");
-    //         else
-    //             printf("Found Function parameter\n");
-    //     }
-    //     // TODO: Make sure, that an identifer is present after the type name and
-    //     // that it is a valid variable declaration.
-    //     if (strncmp_lexed_tokens(temp_token, "int") == 1) {
-    //         if (temp_token->next_token != NULL ) {
-    //             if (strncmp_lexed_tokens(temp_token->next_token, ":") != 1 &&
-    //                 strncmp_lexed_tokens(temp_token->next_token, "{") != 1)
-    //                 printf("Found a variable declaration\n");
-    //         }
-    //     }
-    // }
-
-    free_lexed_tokens_ll(&root_token);
+    // free_lexed_tokens_ll(&root_token);
     free(file_data);
     fclose(file_ptr);
 }
