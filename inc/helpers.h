@@ -13,6 +13,9 @@ extern "C" {
     if (ptr == NULL) { \
         print_error(msg); exit(EXIT_FAILURE); } }
 
+#define MEM_ERR       "Could not allocate memory"
+#define FILE_OPEN_ERR "Could not access file"
+
 void print_error(char *msg);
 
 #endif

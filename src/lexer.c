@@ -18,43 +18,15 @@ long calculate_file_size(FILE *file_ptr) {
     if (file_sz < 0)
         print_error("Unable to get file size");
 
-    printf("The file size is : %ld\n", file_sz);
-
     return file_sz;
 }
 
-void add_token_to_ll(lexed_tokens *new_token, lexed_tokens **root_token){
-    if (*root_token == NULL)
-        *root_token = new_token;
-    else {
-        lexed_tokens *temp = *root_token;
-        while (temp->next_token != NULL)
-            temp = temp->next_token;
-        temp->next_token = new_token;
-    }
+void print_lexed_token(lexed_token *curr_token) {
+    if (curr_token == NULL) { return; }
+    printf("Token : %.*s\n", curr_token->token_length, curr_token->token_start);
 }
 
-void print_lexed_tokens_ll(lexed_tokens *root_token) {
-    if (root_token == NULL) { return; }
-    lexed_tokens *temp = root_token;
-    while (temp != NULL) {
-        printf("Token : %.*s\n", temp->token_length, temp->token_start);
-        temp = temp->next_token;
-    }
-}
-
-void free_lexed_tokens_ll(lexed_tokens **root_token) {
-    if (root_token == NULL) { return; }
-    lexed_tokens *temp = *root_token;
-    lexed_tokens *temp_next = NULL;
-    while (temp != NULL) {
-        temp_next = temp->next_token;
-        free(temp);
-        temp = temp_next;
-    }
-}
-
-int strncmp_lexed_tokens(lexed_tokens *curr_token, char *str_to_cmp) {
+int strncmp_lexed_token(lexed_token *curr_token, char *str_to_cmp) {
     if (curr_token == NULL || str_to_cmp == NULL) { return 0; }
     int len = curr_token->token_length;
     char *temp = curr_token->token_start;
@@ -68,17 +40,16 @@ int strncmp_lexed_tokens(lexed_tokens *curr_token, char *str_to_cmp) {
     return 1;
 }
 
-lexed_tokens* create_token(int token_length, char *data) {
-    lexed_tokens *curr_token = (lexed_tokens *) calloc(1, sizeof(lexed_tokens));
-    CHECK_NULL(curr_token, "Unable to allocate memory");
+lexed_token* create_token(int token_length, char *data) {
+    lexed_token *curr_token = (lexed_token *) calloc(1, sizeof(lexed_token));
+    CHECK_NULL(curr_token, MEM_ERR);
     curr_token->token_length = token_length;
     curr_token->token_start = data;
-    curr_token->next_token = NULL;
 
     return curr_token;
 }
 
-char* lex_token(char **file_data, lexed_tokens **curr_token) {
+char* lex_token(char **file_data, lexed_token **curr_token) {
     /// Tokenizing;
     int begin = 0;
     begin = strcspn(*file_data, DELIMS);
@@ -101,12 +72,12 @@ void lex_file(char *file_dest) {
     char *file_data = NULL;
 
     file_data = (char *)malloc((file_sz + 1) * sizeof(char));
-    CHECK_NULL(file_data, "Unable to allocate memory");
+    CHECK_NULL(file_data, MEM_ERR);
 
     size_t bytes_read = fread(file_data, 1, file_sz, file_ptr);
 
     if (bytes_read != file_sz)
-        print_error("Unable to read from file");
+        print_error(FILE_OPEN_ERR);
 
     file_data[file_sz] = '\0';
 
@@ -114,8 +85,8 @@ void lex_file(char *file_dest) {
     temp_file_data += strspn(temp_file_data, WHITESPACE);
     size_t total_tokens = 0;
 
-    lexed_tokens *root_token = NULL;
-    lexed_tokens *curr_token = root_token;
+    lexed_token *root_token = NULL;
+    lexed_token *curr_token = root_token;
 
     ast_node *root_node = calloc(1, sizeof(ast_node));
     root_node->type = TYPE_ROOT;
@@ -125,8 +96,7 @@ void lex_file(char *file_dest) {
     ast_node curr_node = *root_node;
 
     while (*temp_file_data != '\0') {
-        temp_file_data = lex_token(&temp_file_data, &curr_token);
-        parse_tokens(curr_token, curr_node);
+        temp_file_data = parse_tokens(&temp_file_data, curr_token, &curr_node);
 
         curr_node.type = TYPE_NULL;
         curr_node.child = NULL;
@@ -135,9 +105,6 @@ void lex_file(char *file_dest) {
         total_tokens += 1;
     }
 
-    // print_lexed_tokens_ll(root_token);
-
-    // free_lexed_tokens_ll(&root_token);
     free(file_data);
     fclose(file_ptr);
 }

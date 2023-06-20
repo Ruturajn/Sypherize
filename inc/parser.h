@@ -10,10 +10,17 @@ extern "C" {
 typedef struct ast_node {
     enum node_type {
         TYPE_NULL = 0,
-        TYPE_INT,
         TYPE_ROOT,
+        TYPE_INT,
+        TYPE_BINARY_OPERATOR,
+        TYPE_VAR_DECLARATION,
+        TYPE_VAR_INIT,
+        TYPE_SYM,
     } type;
-    int_cl node_val;
+    union node_val {
+        long val;
+        char *node_symbol;
+    } ast_val;
     struct ast_node *child;
     struct ast_node *next_child;
 } ast_node;
@@ -31,8 +38,9 @@ typedef struct env {
 
 void print_ast_node(ast_node *root_node, int indent);
 
-int parse_int(lexed_tokens *token, ast_node *node);
+int parse_int(lexed_token *token, ast_node *node);
 
-void parse_tokens(lexed_tokens *curr_token, ast_node curr_node);
+char* parse_tokens(char **temp_file_data, lexed_token *curr_token,
+                  ast_node *curr_node);
 
 #endif
