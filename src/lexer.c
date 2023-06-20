@@ -5,18 +5,18 @@ long calculate_file_size(FILE *file_ptr) {
     if (file_ptr == NULL) { return 0; }
 
     if (fseek(file_ptr, 0, SEEK_SET) < 0)
-        print_error("Unable to access file");
+        print_error(FILE_OPEN_ERR);
 
     if (fseek(file_ptr, 0, SEEK_END) < 0)
-        print_error("Unable to access file");
+        print_error(FILE_OPEN_ERR);
 
     long file_sz = ftell(file_ptr);
 
     if (fseek(file_ptr, 0, SEEK_SET) < 0)
-        print_error("Unable to access file");
+        print_error(FILE_OPEN_ERR);
 
     if (file_sz < 0)
-        print_error("Unable to get file size");
+        print_error(FILE_SIZE_ERR);
 
     return file_sz;
 }
