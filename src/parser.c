@@ -8,6 +8,9 @@ void print_ast_node(ast_node *root_node, int indent) {
         case TYPE_NULL:
             printf("NULL");
             break;
+        case TYPE_PROGRAM:
+            printf("PROGRAM");
+            break;
         case TYPE_ROOT:
             printf("ROOT");
             break;
@@ -119,8 +122,7 @@ ast_node get_env(env env_to_get, ast_node identifier) {
 void add_ast_node_child(ast_node *parent_node, ast_node *child_to_add) {
     if (parent_node == NULL || child_to_add == NULL) { return; }
 
-    ast_node *new_child = (ast_node *)calloc(1, sizeof(ast_node));
-    CHECK_NULL(new_child, MEM_ERR);
+    ast_node *new_child = node_alloc();
     *new_child = *child_to_add;
     if (parent_node->child == NULL) {
         parent_node->child = new_child;
@@ -130,6 +132,35 @@ void add_ast_node_child(ast_node *parent_node, ast_node *child_to_add) {
             temp_child = temp_child->next_child;
         temp_child->next_child = new_child;
     }
+}
+
+parsing_context *create_parsing_context() {
+    parsing_context *new_context = NULL;
+    new_context = (parsing_context *) calloc(1, sizeof(parsing_context));
+    CHECK_NULL(new_context, MEM_ERR);
+    new_context->vars = create_env(NULL);
+    new_context->env_type = create_env(NULL);
+    return new_context;
+}
+
+ast_node *node_alloc() {
+    ast_node *new_node = (ast_node *) calloc(1, sizeof(ast_node));
+    CHECK_NULL(new_node, MEM_ERR);
+    new_node->type = TYPE_NULL;
+    new_node->child = NULL;
+    new_node->next_child = NULL;
+    new_node->ast_val.val = 0;
+    new_node->ast_val.node_symbol = NULL;
+
+    return new_node;
+}
+
+ast_node *node_symbol_create(char *symbol_str) {
+    ast_node *sym_node = node_alloc();
+    sym_node->type = TYPE_INT;
+    strcpy(sym_node->ast_val.node_symbol, symbol_str);
+
+    return sym_node;
 }
 
 char* parse_tokens(char **temp_file_data, lexed_token *curr_token,
