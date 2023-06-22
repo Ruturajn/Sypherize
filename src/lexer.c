@@ -88,26 +88,23 @@ void lex_file(char *file_dest) {
     lexed_token *root_token = NULL;
     lexed_token *curr_token = root_token;
 
-    ast_node *root_node = calloc(1, sizeof(ast_node));
-    root_node->type = TYPE_ROOT;
-    root_node->child = NULL;
-    root_node->next_child = NULL;
-
     // The whole program will be tokenized and parsed into an
     // AST which will be created from the curr_node.
-    ast_node curr_node = *root_node;
+    ast_node *curr_node = node_alloc();
 
-    // ast_node *program = node_alloc();
-    // program->type = TYPE_PROGRAM;
+    ast_node *program = node_alloc();
+    program->type = TYPE_PROGRAM;
+    add_ast_node_child(program, curr_node);
+
+    // parsing_context *curr_context = create_parsing_context();
 
     while (*temp_file_data != '\0') {
-        // parsing_context *curr_context = create_parsing_context();
 
-        temp_file_data = parse_tokens(&temp_file_data, curr_token, &curr_node);
+        temp_file_data = parse_tokens(&temp_file_data, curr_token, curr_node);
 
-        curr_node.type = TYPE_NULL;
-        curr_node.child = NULL;
-        curr_node.next_child = NULL;
+        curr_node->type = TYPE_NULL;
+        curr_node->child = NULL;
+        curr_node->next_child = NULL;
 
         total_tokens += 1;
     }
