@@ -66,7 +66,7 @@ env* create_env(env *parent_env) {
 }
 
 int set_env(env *env_to_set, ast_node *identifier_node, ast_node *id_val) {
-    if (env_to_set == NULL || identifier_node == NULL || id_val == NULL) 
+    if (env_to_set == NULL || identifier_node == NULL || id_val == NULL)
         return 0;
 
     identifier_bind *temp = env_to_set->binding;
@@ -145,14 +145,17 @@ int node_cmp(ast_node *node1, ast_node *node2) {
     return 0;
 }
 
-ast_node *get_env(env *env_to_get, ast_node *identifier) {
+ast_node *get_env(env *env_to_get, ast_node *identifier, int* stat) {
     identifier_bind *curr_bind = env_to_get->binding;
     while (curr_bind != NULL) {
-        if (node_cmp(curr_bind->identifier, identifier))
+        if (node_cmp(curr_bind->identifier, identifier)) {
+            *stat = 1;
             return curr_bind->id_val;
+        }
         curr_bind = curr_bind->next_id_bind;
     }
     ast_node *val = node_alloc();
+    *stat = 0;
     return val;
 }
 
@@ -177,7 +180,8 @@ parsing_context *create_parsing_context() {
     CHECK_NULL(new_context, MEM_ERR);
     new_context->vars = create_env(NULL);
     new_context->env_type = create_env(NULL);
-    if (!set_env(new_context->env_type, node_symbol_create("int"), node_int_create(49)))
+    ast_node *sym_node = node_symbol_create("int");
+    if (!set_env(new_context->env_type, sym_node, node_int_create(49)))
         print_error("Failed to set environment");
     return new_context;
 }
@@ -212,32 +216,38 @@ ast_node *node_int_create(long val) {
     return int_node;
 }
 
-// void free_node(ast_node *node_to_free) {
-//     ast_node *temp = node_to_free;
-//     while (temp->child != NULL) {
-//
-//     }
-//     free(temp->ast_val.node_symbol);
-//     free(temp);
-// }
+void free_node(ast_node *node_to_free) {
+    if (node_to_free == NULL) { return; }
+    ast_node *temp = node_to_free->child;
+    ast_node *temps_child = NULL;
+    while (temp != NULL) {
+        temps_child = temp->next_child;
+        free_node(temp);
+        temp = temps_child;
+    }
+    if (node_to_free != NULL && node_to_free->type == TYPE_SYM &&
+            node_to_free->ast_val.node_symbol != NULL)
+        free(node_to_free->ast_val.node_symbol);
+    free(node_to_free);
+}
 
-ast_node *node_symbol_from_token_create(enum node_type type, lexed_token *token) {
+ast_node *node_symbol_from_token_create(lexed_token *token) {
 
     if (token == NULL) { return NULL; }
 
     ast_node *node = node_alloc();
-    node->type = type;
     char *symbol_str = (char *) calloc(token->token_length + 1,
                                                    sizeof(char));
     CHECK_NULL(symbol_str, MEM_ERR);
     memcpy(symbol_str, token->token_start, token->token_length);
     symbol_str[token->token_length] = '\0';
     node->ast_val.node_symbol = symbol_str;
+    node->type = TYPE_SYM;
     return node;
 }
 
 char* parse_tokens(char **temp_file_data, lexed_token *curr_token,
-                  ast_node *curr_node) {
+                  ast_node *curr_node, parsing_context *context) {
 
     *temp_file_data = lex_token(temp_file_data, &curr_token);
     if (parse_int(curr_token, curr_node)) {
@@ -255,6 +265,16 @@ char* parse_tokens(char **temp_file_data, lexed_token *curr_token,
         //        `-- VARIABLE_INITIALIZED
         //            `-- INT (420) -> SYMBOL (a)
 
+        ast_node *int_node = node_symbol_from_token_create(curr_token);
+        int status = -1;
+        int_node = get_env(context->env_type, int_node, &status);
+        if (status == 0)
+            print_error("Invalid TYPE");
+        else {
+        printf("HERE\n");
+        print_ast_node(int_node, 0);
+        }
+
         if (strncmp_lexed_token(curr_token, "int")) {
 
             printf("Found variable declaration\n");
@@ -262,21 +282,23 @@ char* parse_tokens(char **temp_file_data, lexed_token *curr_token,
             ast_node *curr_var_decl = node_alloc();
             curr_var_decl->type = TYPE_VAR_DECLARATION;
 
-            ast_node *curr_type = node_symbol_from_token_create(TYPE_SYM,
-                                                          curr_token);
+            ast_node *curr_type = node_symbol_from_token_create(curr_token);
+            curr_type->type = TYPE_SYM;
 
             // Lex again to look forward.
             *temp_file_data = lex_token(temp_file_data, &curr_token);
             if (strncmp_lexed_token(curr_token, ":")) {
 
                 *temp_file_data = lex_token(temp_file_data, &curr_token);
-                ast_node *curr_sym = node_symbol_from_token_create(TYPE_SYM,
-                                                                   curr_token);
+                ast_node *curr_sym = node_symbol_from_token_create(curr_token);
+                curr_sym->type = TYPE_SYM;
 
                 curr_node = curr_var_decl;
 
                 add_ast_node_child(curr_node, curr_type);
                 add_ast_node_child(curr_node, curr_sym);
+
+                free(curr_var_decl);
             }
         }
     }

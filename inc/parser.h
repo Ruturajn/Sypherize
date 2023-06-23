@@ -46,16 +46,13 @@ void print_ast_node(ast_node *root_node, int indent);
 
 int parse_int(lexed_token *token, ast_node *node);
 
-char* parse_tokens(char **temp_file_data, lexed_token *curr_token,
-                  ast_node *curr_node);
-
 env* create_env(env *parent_env);
 
 int set_env(env *env_to_set, ast_node *identifier_node, ast_node *id_val);
 
 int node_cmp(ast_node *node1, ast_node *node2);
 
-ast_node *get_env(env *env_to_get, ast_node *identifier);
+ast_node *get_env(env *env_to_get, ast_node *identifier, int *stat);
 
 void add_ast_node_child(ast_node *parent_node, ast_node *child_to_add);
 
@@ -67,9 +64,11 @@ ast_node *node_symbol_create(char *symbol_str);
 
 ast_node *node_int_create(long val);
 
-ast_node *node_symbol_from_token_create(enum node_type type, lexed_token *token);
+void free_node(ast_node *node_to_free);
 
-char* parse_tokens(char **temp_file_data, lexed_token *curr_token, 
-                   ast_node *curr_node);
+ast_node *node_symbol_from_token_create(lexed_token *token);
+
+char* parse_tokens(char **temp_file_data, lexed_token *curr_token,
+                   ast_node *curr_node, parsing_context *context);
 
 #endif

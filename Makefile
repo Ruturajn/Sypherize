@@ -29,7 +29,7 @@ compile_msg:
 
 $(TARGET): $(SRCS) $(BUILD_DIR) $(BIN_DIR) $(OBJS)
 	@echo "\033[1;32m[ * ] Linking into executable ...\033[1;37m"
-	$(CC) $(CFLAGS) $(wildcard ./$(BUILD_DIR)/*.o) -I $(INCS) -o ./$(BIN_DIR)/$(TARGET)
+	$(CC) $(CFLAGS) $(addprefix ./$(BUILD_DIR)/,$(OBJS)) -I $(INCS) -o ./$(BIN_DIR)/$(TARGET)
 
 clean:
 	@echo "\033[1;33m[ * ] Cleaning generated build files ...\033[1;37m"

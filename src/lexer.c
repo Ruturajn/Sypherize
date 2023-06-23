@@ -96,11 +96,11 @@ void lex_file(char *file_dest) {
     program->type = TYPE_PROGRAM;
     add_ast_node_child(program, curr_node);
 
-    // parsing_context *curr_context = create_parsing_context();
+    parsing_context *curr_context = create_parsing_context();
 
     while (*temp_file_data != '\0') {
 
-        temp_file_data = parse_tokens(&temp_file_data, curr_token, curr_node);
+        temp_file_data = parse_tokens(&temp_file_data, curr_token, curr_node, curr_context);
 
         curr_node->type = TYPE_NULL;
         curr_node->child = NULL;
