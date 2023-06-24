@@ -21,12 +21,12 @@ long calculate_file_size(FILE *file_ptr) {
     return file_sz;
 }
 
-void print_lexed_token(lexed_token *curr_token) {
+void print_lexed_token(LexedToken *curr_token) {
     if (curr_token == NULL) { return; }
     printf("Token : %.*s\n", curr_token->token_length, curr_token->token_start);
 }
 
-int strncmp_lexed_token(lexed_token *curr_token, char *str_to_cmp) {
+int strncmp_lexed_token(LexedToken *curr_token, char *str_to_cmp) {
     if (curr_token == NULL || str_to_cmp == NULL) { return 0; }
     int len = curr_token->token_length;
     char *temp = curr_token->token_start;
@@ -40,8 +40,8 @@ int strncmp_lexed_token(lexed_token *curr_token, char *str_to_cmp) {
     return 1;
 }
 
-lexed_token* create_token(int token_length, char *data) {
-    lexed_token *curr_token = (lexed_token *) calloc(1, sizeof(lexed_token));
+LexedToken* create_token(int token_length, char *data) {
+    LexedToken *curr_token = (LexedToken *) calloc(1, sizeof(LexedToken));
     CHECK_NULL(curr_token, MEM_ERR);
     curr_token->token_length = token_length;
     curr_token->token_start = data;
@@ -49,7 +49,7 @@ lexed_token* create_token(int token_length, char *data) {
     return curr_token;
 }
 
-char* lex_token(char **file_data, lexed_token **curr_token) {
+char* lex_token(char **file_data, LexedToken **curr_token) {
     /// Tokenizing;
     int begin = 0;
     begin = strcspn(*file_data, DELIMS);
@@ -85,18 +85,18 @@ void lex_file(char *file_dest) {
     temp_file_data += strspn(temp_file_data, WHITESPACE);
     size_t total_tokens = 0;
 
-    lexed_token *root_token = NULL;
-    lexed_token *curr_token = root_token;
+    LexedToken *root_token = NULL;
+    LexedToken *curr_token = root_token;
 
     // The whole program will be tokenized and parsed into an
     // AST which will be created from the curr_node.
-    ast_node *curr_node = node_alloc();
+    AstNode *curr_node = node_alloc();
 
-    ast_node *program = node_alloc();
+    AstNode *program = node_alloc();
     program->type = TYPE_PROGRAM;
     add_ast_node_child(program, curr_node);
 
-    parsing_context *curr_context = create_parsing_context();
+    ParsingContext *curr_context = create_parsing_context();
 
     while (*temp_file_data != '\0') {
 

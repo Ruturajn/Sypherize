@@ -7,8 +7,8 @@
 extern "C" {
 #endif
 
-typedef struct ast_node {
-    enum node_type {
+typedef struct AstNode {
+    enum NodeType {
         TYPE_NULL = 0,
         TYPE_PROGRAM,
         TYPE_ROOT,
@@ -18,57 +18,57 @@ typedef struct ast_node {
         TYPE_VAR_INIT,
         TYPE_SYM,
     } type;
-    union node_val {
+    union NodeVal {
         long val;
         char *node_symbol;
     } ast_val;
-    struct ast_node *child;
-    struct ast_node *next_child;
-} ast_node;
+    struct AstNode *child;
+    struct AstNode *next_child;
+} AstNode;
 
-typedef struct identifier_bind {
-    ast_node *identifier;
-    ast_node *id_val;
-    struct identifier_bind *next_id_bind;
-} identifier_bind;
+typedef struct IdentifierBind {
+    AstNode *identifier;
+    AstNode *id_val;
+    struct IdentifierBind *next_id_bind;
+} IdentifierBind;
 
-typedef struct env {
-    identifier_bind *binding;
-    struct env *parent_env;
-} env;
+typedef struct Env {
+    IdentifierBind *binding;
+    struct Env *parent_env;
+} Env;
 
-typedef struct parsing_context {
-    env *env_type;
-    env *vars;
-} parsing_context;
+typedef struct ParsingContext {
+    Env *env_type;
+    Env *vars;
+} ParsingContext;
 
-void print_ast_node(ast_node *root_node, int indent);
+void print_ast_node(AstNode *root_node, int indent);
 
-int parse_int(lexed_token *token, ast_node *node);
+int parse_int(LexedToken *token, AstNode *node);
 
-env* create_env(env *parent_env);
+Env* create_env(Env *parent_Env);
 
-int set_env(env *env_to_set, ast_node *identifier_node, ast_node *id_val);
+int set_env(Env *Env_to_set, AstNode *identifier_node, AstNode *id_val);
 
-int node_cmp(ast_node *node1, ast_node *node2);
+int node_cmp(AstNode *node1, AstNode *node2);
 
-ast_node *get_env(env *env_to_get, ast_node *identifier, int *stat);
+AstNode *get_env(Env *Env_to_get, AstNode *identifier, int *stat);
 
-void add_ast_node_child(ast_node *parent_node, ast_node *child_to_add);
+void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add);
 
-parsing_context *create_parsing_context();
+ParsingContext *create_parsing_context();
 
-ast_node *node_alloc();
+AstNode *node_alloc();
 
-ast_node *node_symbol_create(char *symbol_str);
+AstNode *node_symbol_create(char *symbol_str);
 
-ast_node *node_int_create(long val);
+AstNode *node_int_create(long val);
 
-void free_node(ast_node *node_to_free);
+void free_node(AstNode *node_to_free);
 
-ast_node *node_symbol_from_token_create(lexed_token *token);
+AstNode *node_symbol_from_token_create(LexedToken *token);
 
-char* parse_tokens(char **temp_file_data, lexed_token *curr_token,
-                   ast_node *curr_node, parsing_context *context);
+char* parse_tokens(char **temp_file_data, LexedToken *curr_token,
+                   AstNode *curr_node, ParsingContext *context);
 
 #endif /* __PARSER_H__ */
