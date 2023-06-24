@@ -71,4 +71,4 @@ ast_node *node_symbol_from_token_create(lexed_token *token);
 char* parse_tokens(char **temp_file_data, lexed_token *curr_token,
                    ast_node *curr_node, parsing_context *context);
 
-#endif
+#endif /* __PARSER_H__ */

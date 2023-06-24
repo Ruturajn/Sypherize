@@ -29,4 +29,4 @@ char* lex_token(char **file_data, lexed_token **curr_token);
 
 void lex_file(char *file_dest);
 
-#endif
+#endif /* __FILE_PROC_H__ */

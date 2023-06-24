@@ -5,18 +5,18 @@ long calculate_file_size(FILE *file_ptr) {
     if (file_ptr == NULL) { return 0; }
 
     if (fseek(file_ptr, 0, SEEK_SET) < 0)
-        print_error(FILE_OPEN_ERR);
+        print_error(FILE_OPEN_ERR, 1);
 
     if (fseek(file_ptr, 0, SEEK_END) < 0)
-        print_error(FILE_OPEN_ERR);
+        print_error(FILE_OPEN_ERR, 1);
 
     long file_sz = ftell(file_ptr);
 
     if (fseek(file_ptr, 0, SEEK_SET) < 0)
-        print_error(FILE_OPEN_ERR);
+        print_error(FILE_OPEN_ERR, 1);
 
     if (file_sz < 0)
-        print_error(FILE_SIZE_ERR);
+        print_error(FILE_SIZE_ERR, 1);
 
     return file_sz;
 }
@@ -77,7 +77,7 @@ void lex_file(char *file_dest) {
     size_t bytes_read = fread(file_data, 1, file_sz, file_ptr);
 
     if (bytes_read != file_sz)
-        print_error(FILE_OPEN_ERR);
+        print_error(FILE_OPEN_ERR, 1);
 
     file_data[file_sz] = '\0';
 

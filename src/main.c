@@ -3,7 +3,7 @@
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        print_error("Invalid number of arguments");
+        print_error("Invalid number of arguments", 1);
     }
 
     char *file_dest = argv[1];

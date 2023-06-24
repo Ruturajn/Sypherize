@@ -182,7 +182,7 @@ parsing_context *create_parsing_context() {
     new_context->env_type = create_env(NULL);
     ast_node *sym_node = node_symbol_create("int");
     if (!set_env(new_context->env_type, sym_node, node_int_create(49)))
-        print_error("Failed to set environment");
+        print_error("Failed to set environment", 0);
     return new_context;
 }
 
@@ -269,10 +269,10 @@ char* parse_tokens(char **temp_file_data, lexed_token *curr_token,
         int status = -1;
         int_node = get_env(context->env_type, int_node, &status);
         if (status == 0)
-            print_error("Invalid TYPE");
+            print_error("Invalid TYPE", 0);
         else {
-        printf("HERE\n");
-        print_ast_node(int_node, 0);
+            printf("HERE\n");
+            print_ast_node(int_node, 0);
         }
 
         if (strncmp_lexed_token(curr_token, "int")) {
