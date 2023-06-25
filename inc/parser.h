@@ -15,14 +15,14 @@ typedef struct AstNode {
      * @brief Enumeration that defines a type for the `AstNode`.
      */
     enum NodeType {
-        TYPE_NULL = 0,
-        TYPE_PROGRAM,
-        TYPE_ROOT,
-        TYPE_INT,
-        TYPE_BINARY_OPERATOR,
-        TYPE_VAR_DECLARATION,
-        TYPE_VAR_INIT,
-        TYPE_SYM,
+        TYPE_NULL = 0, ///< NULL type node.
+        TYPE_PROGRAM, ///< Node for the whole program.
+        TYPE_ROOT, ///< Node for the root of the program.
+        TYPE_INT, ///< Node of type integer.
+        TYPE_BINARY_OPERATOR, ///< Node that represents a binary operator.
+        TYPE_VAR_DECLARATION, ///< Node that represents a variable declaration.
+        TYPE_VAR_INIT, ///< Node that represents variable initialization.
+        TYPE_SYM, ///< Node for a symbol.
     } type;
     /**
      * @brief Union defining a collection for the value and the symbol (string).

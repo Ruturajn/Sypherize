@@ -12,11 +12,12 @@ OBJS=$(notdir $(SRCS:.c=.o))
 
 BUILD_DIR=build
 BIN_DIR=bin
+DOCS_DIR=docs
 
 %.o:./src/%.c compile_msg
 	$(CC) -c $(CFLAGS) $< -o ./$(BUILD_DIR)/$@
 
-.PHONY: all clean build_and_bin_dir compile_msg run
+.PHONY: all clean build_and_bin_dir compile_msg run docs
 
 all: build_and_bin_dir $(TARGET)
 
@@ -33,6 +34,11 @@ $(TARGET): $(SRCS) $(BUILD_DIR) $(BIN_DIR) $(OBJS)
 
 clean:
 	@echo "\033[1;33m[+] Cleaning generated build files ...\033[1;37m"
-	rm -rf $(BUILD_DIR) $(BIN_DIR)
+	rm -rf $(BUILD_DIR) $(BIN_DIR) $(DOCS_DIR)
+
+docs:
+	rm -rf $(DOCS_DIR)
+	mkdir -p $(DOCS_DIR)
+	doxygen Doxyfile
 
 rebuild: clean all

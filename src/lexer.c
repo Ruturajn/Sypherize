@@ -97,21 +97,14 @@ void lex_file(char *file_dest) {
     ParsingContext *curr_context = create_parsing_context();
 
     while (*temp_file_data != '\0') {
-
         curr_expr = node_alloc();
 
         temp_file_data = parse_tokens(&temp_file_data, curr_token, &curr_expr, curr_context);
-        add_ast_node_child(program, curr_expr);
-        print_ast_node(program, 0);
-        // printf("%s\n", temp_file_data);
-
-        // curr_node->type = TYPE_NULL;
-        // curr_node->child = NULL;
-        // curr_node->next_child = NULL;
+        if (curr_expr->type != TYPE_NULL)
+            add_ast_node_child(program, curr_expr);
         free_node(curr_expr);
-
-        // total_tokens += 1;
     }
+    print_ast_node(program, 0);
 
     free(file_data);
     fclose(file_ptr);
