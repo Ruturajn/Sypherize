@@ -17,17 +17,17 @@ steps, that outline the whole design.
 ## Build Instructions
 
 Dependencies:
-    - `GCC`
-    - `Make`
+- `GCC`
+- `Make`
 
 Compiling this project:
 
-    - Clone the repository.
-    ```
-    $ git clone https://github.com/Ruturajn/Sypherize.git
-    ```
-    - Navigate to the `Sypherize` directory and call make.
-    ```
-    $ make
-    ```
-    - Use `$ make help` to look at available targets.
+- Clone the repository.
+  ```
+  $ git clone https://github.com/Ruturajn/Sypherize.git
+  ```
+- Navigate to the `Sypherize` directory and call make.
+  ```
+  $ make
+  ```
+- Use `$ make help` to look at available targets.
