@@ -1,7 +1,16 @@
+! This is a variable declaration, with initialization.
 int: a := 340;
+
+` This is a variable declaration
 int: new_val;
+
+! Assigning value to a variable.
 new_val := 100;
 
+` This is a function call.
 def_func add_int(int: a, int: b) ~ int {
-
+    ! Do something here.
 }
+
+! Function call.
+add_int(a, new_val);

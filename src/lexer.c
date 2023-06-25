@@ -71,7 +71,6 @@ char* lex_token(char **file_data, LexedToken **curr_token) {
     begin = strcspn(*file_data, DELIMS);
     begin = (begin == 0 ? 1 : begin);
     *curr_token = create_token(begin, *file_data);
-    print_lexed_token(*curr_token);
     *file_data += begin;
     *file_data += (strspn(*file_data, WHITESPACE));
 

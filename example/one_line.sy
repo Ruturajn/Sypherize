@@ -1,4 +1,6 @@
 ! This is a comment, don't lex this.
+
+! This is a variable declaration.
 int: a := 340; ` this is also a comment.
 
 ` How about this.
