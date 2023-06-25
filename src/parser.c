@@ -1,37 +1,39 @@
 #include "../inc/parser.h"
 
 void print_ast_node(AstNode *root_node, int indent) {
-    if (root_node == NULL) { return; }
-    for (int i=0; i < indent; i++)
+    if (root_node == NULL) {
+        return;
+    }
+    for (int i = 0; i < indent; i++)
         putchar(' ');
-    switch(root_node->type) {
-        case TYPE_NULL:
-            printf("NULL");
-            break;
-        case TYPE_PROGRAM:
-            printf("PROGRAM");
-            break;
-        case TYPE_ROOT:
-            printf("ROOT");
-            break;
-        case TYPE_INT:
-            printf("INT : %ld", root_node->ast_val.val);
-            break;
-        case TYPE_BINARY_OPERATOR:
-            printf("BINARY OP : %s", root_node->ast_val.node_symbol);
-            break;
-        case TYPE_VAR_DECLARATION:
-            printf("VAR DECL");
-            break;
-        case TYPE_VAR_INIT:
-            printf("VAR INIT");
-            break;
-        case TYPE_SYM:
-            printf("SYM : %s", root_node->ast_val.node_symbol);
-            break;
-        default:
-            printf("Unknown TYPE");
-            break;
+    switch (root_node->type) {
+    case TYPE_NULL:
+        printf("NULL");
+        break;
+    case TYPE_PROGRAM:
+        printf("PROGRAM");
+        break;
+    case TYPE_ROOT:
+        printf("ROOT");
+        break;
+    case TYPE_INT:
+        printf("INT : %ld", root_node->ast_val.val);
+        break;
+    case TYPE_BINARY_OPERATOR:
+        printf("BINARY OP : %s", root_node->ast_val.node_symbol);
+        break;
+    case TYPE_VAR_DECLARATION:
+        printf("VAR DECL");
+        break;
+    case TYPE_VAR_INIT:
+        printf("VAR INIT");
+        break;
+    case TYPE_SYM:
+        printf("SYM : %s", root_node->ast_val.node_symbol);
+        break;
+    default:
+        printf("Unknown TYPE");
+        break;
     }
     putchar('\n');
     AstNode *child_node = root_node->child;
@@ -42,7 +44,9 @@ void print_ast_node(AstNode *root_node, int indent) {
 }
 
 int parse_int(LexedToken *token, AstNode *node) {
-    if (token == NULL || node == NULL) { return 2; }
+    if (token == NULL || node == NULL) {
+        return 2;
+    }
     if (token->token_length == 0 && *(token->token_start) == '0') {
         node->type = TYPE_INT;
         node->ast_val.val = 0;
@@ -51,13 +55,14 @@ int parse_int(LexedToken *token, AstNode *node) {
         if (temp != 0) {
             node->type = TYPE_INT;
             node->ast_val.val = temp;
+        } else {
+            return 0;
         }
-        else { return 0; }
     }
     return 1;
 }
 
-Env* create_env(Env *parent_env) {
+Env *create_env(Env *parent_env) {
     Env *new_env = calloc(1, sizeof(Env));
     CHECK_NULL(new_env, MEM_ERR);
     new_env->parent_env = parent_env;
@@ -92,60 +97,62 @@ int set_env(Env *env_to_set, AstNode *identifier_node, AstNode *id_val) {
 int node_cmp(AstNode *node1, AstNode *node2) {
     if (node1 == NULL && node2 == NULL)
         return 1;
-    if ((node1 == NULL && node2 != NULL) ||
-         (node1 != NULL && node2 == NULL ))
+    if ((node1 == NULL && node2 != NULL) || (node1 != NULL && node2 == NULL))
         return 0;
 
-    if (node1->type != node2->type) { return 0; }
+    if (node1->type != node2->type) {
+        return 0;
+    }
 
-    switch(node1->type) {
-        case TYPE_NULL:
-            if (node2->type == TYPE_NULL)
-                return 1;
-            break;
-        case TYPE_PROGRAM:
-            if (node2->type == TYPE_PROGRAM)
-                return 1;
-            break;
-        case TYPE_ROOT:
-            printf("Compare Programs : Not implemented\n");
-            break;
-        case TYPE_INT:
-            if (node1->ast_val.val == node2->ast_val.val)
-                return 1;
-            break;
-        case TYPE_BINARY_OPERATOR:
-            if (node2->type == TYPE_BINARY_OPERATOR) {
-                printf("TODO : BINARY OPERATOR!\n");
-                return 1;
-            }
-            break;
-        case TYPE_VAR_DECLARATION:
-            if (node2->type == TYPE_VAR_DECLARATION) {
-                printf("TODO : VAR DECLARATION!\n");
-                return 1;
-            }
-        case TYPE_VAR_INIT:
-            if (node2->type == TYPE_VAR_INIT) {
-                printf("TODO : VAR INIT!\n");
-                return 1;
-            }
-        case TYPE_SYM:
-            if (node1->ast_val.node_symbol != NULL &&
-                node2->ast_val.node_symbol != NULL &&
-                (strcmp(node1->ast_val.node_symbol, node2->ast_val.node_symbol) == 0))
-                return 1;
-            else if (node1->ast_val.node_symbol == NULL &&
-                     node2->ast_val.node_symbol == NULL)
-                return 1;
-        default:
-            break;
+    switch (node1->type) {
+    case TYPE_NULL:
+        if (node2->type == TYPE_NULL)
+            return 1;
+        break;
+    case TYPE_PROGRAM:
+        if (node2->type == TYPE_PROGRAM)
+            return 1;
+        break;
+    case TYPE_ROOT:
+        printf("Compare Programs : Not implemented\n");
+        break;
+    case TYPE_INT:
+        if (node1->ast_val.val == node2->ast_val.val)
+            return 1;
+        break;
+    case TYPE_BINARY_OPERATOR:
+        if (node2->type == TYPE_BINARY_OPERATOR) {
+            printf("TODO : BINARY OPERATOR!\n");
+            return 1;
+        }
+        break;
+    case TYPE_VAR_DECLARATION:
+        if (node2->type == TYPE_VAR_DECLARATION) {
+            printf("TODO : VAR DECLARATION!\n");
+            return 1;
+        }
+    case TYPE_VAR_INIT:
+        if (node2->type == TYPE_VAR_INIT) {
+            printf("TODO : VAR INIT!\n");
+            return 1;
+        }
+    case TYPE_SYM:
+        if (node1->ast_val.node_symbol != NULL &&
+            node2->ast_val.node_symbol != NULL &&
+            (strcmp(node1->ast_val.node_symbol, node2->ast_val.node_symbol) ==
+             0))
+            return 1;
+        else if (node1->ast_val.node_symbol == NULL &&
+                 node2->ast_val.node_symbol == NULL)
+            return 1;
+    default:
+        break;
     }
 
     return 0;
 }
 
-AstNode *get_env(Env *env_to_get, AstNode *identifier, int* stat) {
+AstNode *get_env(Env *env_to_get, AstNode *identifier, int *stat) {
     IdentifierBind *curr_bind = env_to_get->binding;
     while (curr_bind != NULL) {
         if (node_cmp(curr_bind->identifier, identifier)) {
@@ -160,7 +167,9 @@ AstNode *get_env(Env *env_to_get, AstNode *identifier, int* stat) {
 }
 
 void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add) {
-    if (parent_node == NULL || child_to_add == NULL) { return; }
+    if (parent_node == NULL || child_to_add == NULL) {
+        return;
+    }
     if (parent_node->child == NULL) {
         AstNode *new_node = node_alloc();
         *new_node = *child_to_add;
@@ -179,7 +188,7 @@ void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add) {
 
 ParsingContext *create_parsing_context() {
     ParsingContext *new_context = NULL;
-    new_context = (ParsingContext *) calloc(1, sizeof(ParsingContext));
+    new_context = (ParsingContext *)calloc(1, sizeof(ParsingContext));
     CHECK_NULL(new_context, MEM_ERR);
     new_context->vars = create_env(NULL);
     new_context->env_type = create_env(NULL);
@@ -190,7 +199,7 @@ ParsingContext *create_parsing_context() {
 }
 
 AstNode *node_alloc() {
-    AstNode *new_node = (AstNode *) calloc(1, sizeof(AstNode));
+    AstNode *new_node = (AstNode *)calloc(1, sizeof(AstNode));
     CHECK_NULL(new_node, MEM_ERR);
     new_node->type = TYPE_NULL;
     new_node->child = NULL;
@@ -204,8 +213,8 @@ AstNode *node_alloc() {
 AstNode *node_symbol_create(char *symbol_str) {
     AstNode *sym_node = node_alloc();
     sym_node->type = TYPE_SYM;
-    sym_node->ast_val.node_symbol = (char *)calloc(strlen(symbol_str),
-                                                   sizeof(char));
+    sym_node->ast_val.node_symbol =
+        (char *)calloc(strlen(symbol_str), sizeof(char));
     strcpy(sym_node->ast_val.node_symbol, symbol_str);
 
     return sym_node;
@@ -220,7 +229,9 @@ AstNode *node_int_create(long val) {
 }
 
 void free_node(AstNode *node_to_free) {
-    if (node_to_free == NULL) { return; }
+    if (node_to_free == NULL) {
+        return;
+    }
     AstNode *temp = node_to_free->child;
     while (temp != NULL) {
         free_node(temp);
@@ -230,8 +241,7 @@ void free_node(AstNode *node_to_free) {
     AstNode *temp1 = NULL;
     while (temp != NULL) {
         temp1 = temp->next_child;
-        if (temp->type == TYPE_SYM &&
-            temp->ast_val.node_symbol != NULL)
+        if (temp->type == TYPE_SYM && temp->ast_val.node_symbol != NULL)
             free(temp->ast_val.node_symbol);
         free(temp);
         temp = temp1;
@@ -240,11 +250,12 @@ void free_node(AstNode *node_to_free) {
 
 AstNode *node_symbol_from_token_create(LexedToken *token) {
 
-    if (token == NULL) { return NULL; }
+    if (token == NULL) {
+        return NULL;
+    }
 
     AstNode *node = node_alloc();
-    char *symbol_str = (char *) calloc(token->token_length + 1,
-                                                   sizeof(char));
+    char *symbol_str = (char *)calloc(token->token_length + 1, sizeof(char));
     CHECK_NULL(symbol_str, MEM_ERR);
     memcpy(symbol_str, token->token_start, token->token_length);
     symbol_str[token->token_length] = '\0';
@@ -253,8 +264,8 @@ AstNode *node_symbol_from_token_create(LexedToken *token) {
     return node;
 }
 
-char* parse_tokens(char **temp_file_data, LexedToken *curr_token,
-                  AstNode **curr_expr, ParsingContext *context) {
+char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
+                   AstNode **curr_expr, ParsingContext *context) {
 
     *temp_file_data = lex_token(temp_file_data, &curr_token);
 
@@ -315,9 +326,8 @@ char* parse_tokens(char **temp_file_data, LexedToken *curr_token,
 
                 if (strncmp_lexed_token(curr_token, "=")) {
                     AstNode *new_expr = node_alloc();
-                    *temp_file_data = parse_tokens(temp_file_data,
-                                                   curr_token, &new_expr,
-                                                   context);
+                    *temp_file_data = parse_tokens(temp_file_data, curr_token,
+                                                   &new_expr, context);
                     add_ast_node_child(curr_var_decl, new_expr);
 
                     if (new_expr->type != sym_node->type)
@@ -346,9 +356,8 @@ char* parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 *temp_file_data = lex_token(temp_file_data, &curr_token);
                 if (strncmp_lexed_token(curr_token, "=")) {
                     AstNode *new_expr = node_alloc();
-                    *temp_file_data = parse_tokens(temp_file_data,
-                                                   curr_token, &new_expr,
-                                                   context);
+                    *temp_file_data = parse_tokens(temp_file_data, curr_token,
+                                                   &new_expr, context);
                     if (new_expr->type != var_bind->child->type)
                         print_error("Mismatched TYPE", 0);
 

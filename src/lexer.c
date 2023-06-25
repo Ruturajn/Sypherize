@@ -2,7 +2,9 @@
 #include "../inc/parser.h"
 
 long calculate_file_size(FILE *file_ptr) {
-    if (file_ptr == NULL) { return 0; }
+    if (file_ptr == NULL) {
+        return 0;
+    }
 
     if (fseek(file_ptr, 0, SEEK_SET) < 0)
         print_error(FILE_OPEN_ERR, 1);
@@ -22,12 +24,16 @@ long calculate_file_size(FILE *file_ptr) {
 }
 
 void print_lexed_token(LexedToken *curr_token) {
-    if (curr_token == NULL) { return; }
+    if (curr_token == NULL) {
+        return;
+    }
     printf("Token : %.*s\n", curr_token->token_length, curr_token->token_start);
 }
 
 int strncmp_lexed_token(LexedToken *curr_token, char *str_to_cmp) {
-    if (curr_token == NULL || str_to_cmp == NULL) { return 0; }
+    if (curr_token == NULL || str_to_cmp == NULL) {
+        return 0;
+    }
     int len = curr_token->token_length;
     char *temp = curr_token->token_start;
     while (len != 0) {
@@ -40,8 +46,8 @@ int strncmp_lexed_token(LexedToken *curr_token, char *str_to_cmp) {
     return 1;
 }
 
-LexedToken* create_token(int token_length, char *data) {
-    LexedToken *curr_token = (LexedToken *) calloc(1, sizeof(LexedToken));
+LexedToken *create_token(int token_length, char *data) {
+    LexedToken *curr_token = (LexedToken *)calloc(1, sizeof(LexedToken));
     CHECK_NULL(curr_token, MEM_ERR);
     curr_token->token_length = token_length;
     curr_token->token_start = data;
@@ -59,7 +65,7 @@ int check_comment(char *file_data) {
     return 0;
 }
 
-char* lex_token(char **file_data, LexedToken **curr_token) {
+char *lex_token(char **file_data, LexedToken **curr_token) {
     /// Tokenizing;
     int begin = 0;
     while (check_comment(*file_data)) {
@@ -115,7 +121,8 @@ void lex_file(char *file_dest) {
     while (*temp_file_data != '\0') {
         curr_expr = node_alloc();
 
-        temp_file_data = parse_tokens(&temp_file_data, curr_token, &curr_expr, curr_context);
+        temp_file_data =
+            parse_tokens(&temp_file_data, curr_token, &curr_expr, curr_context);
         if (curr_expr->type != TYPE_NULL)
             add_ast_node_child(program, curr_expr);
         free_node(curr_expr);

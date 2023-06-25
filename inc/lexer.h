@@ -29,8 +29,8 @@ extern "C" {
  * @brief Structure defining a token.
  */
 typedef struct LexedToken {
-    char* token_start; ///< Pointer to the beginning of the token.
-    int token_length; ///< Length of the token from the beginning.
+    char *token_start; ///< Pointer to the beginning of the token.
+    int token_length;  ///< Length of the token from the beginning.
 } LexedToken;
 
 typedef long int_cl;
@@ -68,7 +68,7 @@ int strncmp_lexed_token(LexedToken *curr_token, char *str_to_cmp);
  *                      lexed.
  * @return LexedToken*  Pointer to the newly created token.
  */
-LexedToken* create_token(int token_length, char *data);
+LexedToken *create_token(int token_length, char *data);
 
 /**
  * @brief Check whether a line is a comment.
@@ -84,7 +84,7 @@ int check_comment(char *file_data);
  *                    needs to be stored.
  * @return char*      Pointer to the data stream, after the current token.
  */
-char* lex_token(char **file_data, LexedToken **curr_token);
+char *lex_token(char **file_data, LexedToken **curr_token);
 
 /**
  * @brief Lexes and parses a complete file.
