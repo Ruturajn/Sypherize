@@ -258,6 +258,9 @@ char* parse_tokens(char **temp_file_data, LexedToken *curr_token,
 
     *temp_file_data = lex_token(temp_file_data, &curr_token);
 
+    if (curr_token == NULL)
+        return *temp_file_data;
+
     if (strncmp_lexed_token(curr_token, ";"))
         return *temp_file_data;
 
@@ -266,101 +269,99 @@ char* parse_tokens(char **temp_file_data, LexedToken *curr_token,
         // If this is an integer, look for a valid operator.
         printf("Found integer\n");
         return *temp_file_data;
-    } else {
-        // If the token was not an integer, check if it is
-        // variable declaration, assignment, etc.
+    }
+    // If the token was not an integer, check if it is
+    // variable declaration, assignment, etc.
 
-        // Parser High level design.
-        //
-        // int a := 340;
-        //
-        // PROGRAM
-        //        `-- VARIABLE_INITIALIZED
-        //            `-- INT (420) -> SYMBOL (a)
+    // Parser High level design.
+    //
+    // int a := 340;
+    //
+    // PROGRAM
+    //        `-- VARIABLE_INITIALIZED
+    //            `-- INT (420) -> SYMBOL (a)
 
-        AstNode *sym_node = node_symbol_from_token_create(curr_token);
-        int status = -1;
-        sym_node = get_env(context->env_type, sym_node, &status);
-        if (status == 0)
-            print_error("Invalid TYPE", 0);
+    AstNode *sym_node = node_symbol_from_token_create(curr_token);
+    int status = -1;
+    sym_node = get_env(context->env_type, sym_node, &status);
+    if (status == 0)
+        print_error("Invalid TYPE", 0);
 
-        if (strncmp_lexed_token(curr_token, "int")) {
+    if (strncmp_lexed_token(curr_token, "int")) {
 
-            printf("Found variable declaration\n");
+        printf("Found variable declaration\n");
 
-            AstNode *curr_var_decl = node_alloc();
-            curr_var_decl->type = TYPE_VAR_DECLARATION;
+        AstNode *curr_var_decl = node_alloc();
+        curr_var_decl->type = TYPE_VAR_DECLARATION;
 
-            AstNode *curr_type = node_symbol_from_token_create(curr_token);
-            curr_type->type = TYPE_SYM;
+        AstNode *curr_type = node_symbol_from_token_create(curr_token);
+        curr_type->type = TYPE_SYM;
+
+        // Lex again to look forward.
+        *temp_file_data = lex_token(temp_file_data, &curr_token);
+        if (strncmp_lexed_token(curr_token, ":")) {
+
+            *temp_file_data = lex_token(temp_file_data, &curr_token);
+            AstNode *curr_sym = node_symbol_from_token_create(curr_token);
+            curr_sym->type = TYPE_SYM;
+
+            add_ast_node_child(curr_var_decl, curr_type);
+            add_ast_node_child(curr_var_decl, curr_sym);
 
             // Lex again to look forward.
             *temp_file_data = lex_token(temp_file_data, &curr_token);
             if (strncmp_lexed_token(curr_token, ":")) {
-
                 *temp_file_data = lex_token(temp_file_data, &curr_token);
-                AstNode *curr_sym = node_symbol_from_token_create(curr_token);
-                curr_sym->type = TYPE_SYM;
 
-                add_ast_node_child(curr_var_decl, curr_type);
-                add_ast_node_child(curr_var_decl, curr_sym);
+                if (strncmp_lexed_token(curr_token, "=")) {
+                    AstNode *new_expr = node_alloc();
+                    *temp_file_data = parse_tokens(temp_file_data,
+                                                   curr_token, &new_expr,
+                                                   context);
+                    add_ast_node_child(curr_var_decl, new_expr);
+
+                    if (new_expr->type != sym_node->type)
+                        print_error("Mismatched TYPE: ", 0);
+
+                    curr_type->ast_val.val = new_expr->ast_val.val;
+
+                    *curr_expr = curr_var_decl;
+
+                    return *temp_file_data;
+                }
+            }
+        }
+    } else {
+        // Lex again to look forward.
+        *temp_file_data = lex_token(temp_file_data, &curr_token);
+        if (strncmp_lexed_token(curr_token, ":")) {
+
+            AstNode *var_bind = node_alloc();
+            var_bind = get_env(context->vars, sym_node, &status);
+            if (status && var_bind != NULL) {
+                // re-assignment or redefinition (which is an error),
+                // otherwise invalid syntax error.
 
                 // Lex again to look forward.
                 *temp_file_data = lex_token(temp_file_data, &curr_token);
-                if (strncmp_lexed_token(curr_token, ":")) {
-                    *temp_file_data = lex_token(temp_file_data, &curr_token);
+                if (strncmp_lexed_token(curr_token, "=")) {
+                    AstNode *new_expr = node_alloc();
+                    *temp_file_data = parse_tokens(temp_file_data,
+                                                   curr_token, &new_expr,
+                                                   context);
+                    if (new_expr->type != var_bind->child->type)
+                        print_error("Mismatched TYPE", 0);
 
-                    if (strncmp_lexed_token(curr_token, "=")) {
-                        AstNode *new_expr = node_alloc();
-                        *temp_file_data = parse_tokens(temp_file_data,
-                                                       curr_token, &new_expr,
-                                                       context);
-                        add_ast_node_child(curr_var_decl, new_expr);
+                    *curr_expr = new_expr;
 
-                        if (new_expr->type != sym_node->type)
-                            print_error("Mismatched TYPE: ", 0);
+                    var_bind->child->ast_val.val = new_expr->ast_val.val;
 
-                        curr_type->ast_val.val = new_expr->ast_val.val;
-
-                        *curr_expr = curr_var_decl;
-
-                        return *temp_file_data;
-                    }
+                    return *temp_file_data;
                 }
+                print_error("UKNOWN", 0);
             }
-        } else {
-            // Lex again to look forward.
-            *temp_file_data = lex_token(temp_file_data, &curr_token);
-            if (strncmp_lexed_token(curr_token, ":")) {
-
-                AstNode *var_bind = node_alloc();
-                var_bind = get_env(context->vars, sym_node, &status);
-                if (status && var_bind != NULL) {
-                    // re-assignment or redefinition (which is an error),
-                    // otherwise invalid syntax error.
-
-                    // Lex again to look forward.
-                    *temp_file_data = lex_token(temp_file_data, &curr_token);
-                    if (strncmp_lexed_token(curr_token, "=")) {
-                        AstNode *new_expr = node_alloc();
-                        *temp_file_data = parse_tokens(temp_file_data,
-                                                       curr_token, &new_expr,
-                                                       context);
-                        if (new_expr->type != var_bind->child->type)
-                            print_error("Mismatched TYPE", 0);
-
-                        *curr_expr = new_expr;
-
-                        var_bind->child->ast_val.val = new_expr->ast_val.val;
-
-                        return *temp_file_data;
-                    }
-                    print_error("UKNOWN", 0);
-                }
-            }
-            print_error("Redefinition of a variable", 0);
         }
+        print_error("Redefinition of a variable", 0);
     }
-
     return *temp_file_data;
 }
