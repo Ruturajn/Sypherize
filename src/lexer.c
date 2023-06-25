@@ -83,33 +83,35 @@ void lex_file(char *file_dest) {
 
     char *temp_file_data = file_data;
     temp_file_data += strspn(temp_file_data, WHITESPACE);
-    size_t total_tokens = 0;
 
     LexedToken *root_token = NULL;
     LexedToken *curr_token = root_token;
 
     // The whole program will be tokenized and parsed into an
     // AST which will be created from the curr_node.
-    AstNode *curr_node = node_alloc();
+    AstNode *curr_expr;
 
     AstNode *program = node_alloc();
     program->type = TYPE_PROGRAM;
-    add_ast_node_child(program, curr_node);
 
     ParsingContext *curr_context = create_parsing_context();
 
     while (*temp_file_data != '\0') {
 
-        temp_file_data = parse_tokens(&temp_file_data, curr_token, curr_node, curr_context);
+        curr_expr = node_alloc();
 
-        curr_node->type = TYPE_NULL;
-        curr_node->child = NULL;
-        curr_node->next_child = NULL;
+        temp_file_data = parse_tokens(&temp_file_data, curr_token, &curr_expr, curr_context);
+        add_ast_node_child(program, curr_expr);
+        print_ast_node(program, 0);
+        // printf("%s\n", temp_file_data);
 
-        total_tokens += 1;
+        // curr_node->type = TYPE_NULL;
+        // curr_node->child = NULL;
+        // curr_node->next_child = NULL;
+        free_node(curr_expr);
+
+        // total_tokens += 1;
     }
-
-    // add_ast_node_child(program, curr_node);
 
     free(file_data);
     fclose(file_ptr);

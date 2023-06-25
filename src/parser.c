@@ -161,16 +161,19 @@ AstNode *get_env(Env *env_to_get, AstNode *identifier, int* stat) {
 
 void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add) {
     if (parent_node == NULL || child_to_add == NULL) { return; }
-
-    // ast_node *new_child = node_alloc();
-    // *new_child = *child_to_add;
     if (parent_node->child == NULL) {
-        parent_node->child = child_to_add;
+        AstNode *new_node = node_alloc();
+        *new_node = *child_to_add;
+        parent_node->child = new_node;
     } else {
         AstNode *temp_child = parent_node->child;
+        while (temp_child->child != NULL)
+            temp_child = temp_child->child;
         while (temp_child->next_child != NULL)
             temp_child = temp_child->next_child;
-        temp_child->next_child = child_to_add;
+        AstNode *new_node = node_alloc();
+        *new_node = *child_to_add;
+        temp_child->next_child = new_node;
     }
 }
 
@@ -219,16 +222,20 @@ AstNode *node_int_create(long val) {
 void free_node(AstNode *node_to_free) {
     if (node_to_free == NULL) { return; }
     AstNode *temp = node_to_free->child;
-    AstNode *temps_child = NULL;
     while (temp != NULL) {
-        temps_child = temp->next_child;
         free_node(temp);
-        temp = temps_child;
+        temp = temp->child;
     }
-    if (node_to_free != NULL && node_to_free->type == TYPE_SYM &&
-            node_to_free->ast_val.node_symbol != NULL)
-        free(node_to_free->ast_val.node_symbol);
-    free(node_to_free);
+
+    AstNode *temp1 = NULL;
+    while (temp != NULL) {
+        temp1 = temp->next_child;
+        if (temp->type == TYPE_SYM &&
+            temp->ast_val.node_symbol != NULL)
+            free(temp->ast_val.node_symbol);
+        free(temp);
+        temp = temp1;
+    }
 }
 
 AstNode *node_symbol_from_token_create(LexedToken *token) {
@@ -247,10 +254,10 @@ AstNode *node_symbol_from_token_create(LexedToken *token) {
 }
 
 char* parse_tokens(char **temp_file_data, LexedToken *curr_token,
-                  AstNode *curr_node, ParsingContext *context) {
+                  AstNode **curr_expr, ParsingContext *context) {
 
     *temp_file_data = lex_token(temp_file_data, &curr_token);
-    if (parse_int(curr_token, curr_node)) {
+    if (parse_int(curr_token, *curr_expr)) {
         // If this is an integer, look for a valid operator.
         printf("Found integer\n");
     } else {
@@ -270,10 +277,6 @@ char* parse_tokens(char **temp_file_data, LexedToken *curr_token,
         int_node = get_env(context->env_type, int_node, &status);
         if (status == 0)
             print_error("Invalid TYPE", 0);
-        else {
-            printf("HERE\n");
-            print_ast_node(int_node, 0);
-        }
 
         if (strncmp_lexed_token(curr_token, "int")) {
 
@@ -293,18 +296,25 @@ char* parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 AstNode *curr_sym = node_symbol_from_token_create(curr_token);
                 curr_sym->type = TYPE_SYM;
 
-                curr_node = curr_var_decl;
+                add_ast_node_child(curr_var_decl, curr_type);
+                add_ast_node_child(curr_var_decl, curr_sym);
 
-                add_ast_node_child(curr_node, curr_type);
-                add_ast_node_child(curr_node, curr_sym);
+                *curr_expr = curr_var_decl;
 
-                free(curr_var_decl);
+                // Lex again to look forward.
+                *temp_file_data = lex_token(temp_file_data, &curr_token);
+                if (strncmp_lexed_token(curr_token, ":")) {
+                    *temp_file_data = lex_token(temp_file_data, &curr_token);
+
+                    if (strncmp_lexed_token(curr_token, "=")) {
+                        printf("Here\n");
+                    }
+                }
             }
         }
     }
 
-    // add_token_to_ll(curr_token, &root_token);
-    print_ast_node(curr_node, 0);
+    // print_ast_node(*curr_expr, 0);
 
     return *temp_file_data;
 }
