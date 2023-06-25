@@ -1,1 +1,8 @@
-int: a := 340;
+! This is a comment, don't lex this.
+int: a := 340; ` this is also a comment.
+
+` How about this.
+!And this.
+
+
+!!! This is again a comment. Probably too much XD.

@@ -49,12 +49,29 @@ LexedToken* create_token(int token_length, char *data) {
     return curr_token;
 }
 
+int check_comment(char *file_data) {
+    char *temp = COMMENTS_DELIMS;
+    while (*temp != '\0') {
+        if (*file_data == *temp)
+            return 1;
+        temp++;
+    }
+    return 0;
+}
+
 char* lex_token(char **file_data, LexedToken **curr_token) {
     /// Tokenizing;
     int begin = 0;
+    while (check_comment(*file_data)) {
+        *file_data = strpbrk(*file_data, "\n");
+        *file_data += (strspn(*file_data, WHITESPACE));
+    }
+    if (**file_data == '\0')
+        return *file_data;
     begin = strcspn(*file_data, DELIMS);
     begin = (begin == 0 ? 1 : begin);
     *curr_token = create_token(begin, *file_data);
+    print_lexed_token(*curr_token);
     *file_data += begin;
     *file_data += (strspn(*file_data, WHITESPACE));
 

@@ -20,6 +20,12 @@ extern "C" {
 #define WHITESPACE " \r\n"
 
 /**
+ * @brief String containing all the comment delimeters used
+ *        for tokenizing.
+ */
+#define COMMENTS_DELIMS "`!"
+
+/**
  * @brief Structure defining a token.
  */
 typedef struct LexedToken {
@@ -63,6 +69,13 @@ int strncmp_lexed_token(LexedToken *curr_token, char *str_to_cmp);
  * @return LexedToken*  Pointer to the newly created token.
  */
 LexedToken* create_token(int token_length, char *data);
+
+/**
+ * @brief Check whether a line is a comment.
+ * @param file_data   [`char *`] Pointer to the file data stream.
+ * @return int        `1` for success and `0` for failure.
+ */
+int check_comment(char *file_data);
 
 /**
  * @brief Create a new token from the file data stream.
