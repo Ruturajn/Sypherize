@@ -265,6 +265,7 @@ char* parse_tokens(char **temp_file_data, LexedToken *curr_token,
     if (parse_int(curr_token, *curr_expr)) {
         // If this is an integer, look for a valid operator.
         printf("Found integer\n");
+        return *temp_file_data;
     } else {
         // If the token was not an integer, check if it is
         // variable declaration, assignment, etc.

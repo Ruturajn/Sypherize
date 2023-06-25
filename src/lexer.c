@@ -122,6 +122,8 @@ void lex_file(char *file_dest) {
     }
     print_ast_node(program, 0);
 
+    free_node(program);
+
     free(file_data);
     fclose(file_ptr);
 }
