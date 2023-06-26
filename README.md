@@ -20,6 +20,10 @@ Dependencies:
 - `GCC`
 - `Make`
 
+Optional Dependencies for building docs:
+- `Doxygen`
+- `Latex`
+
 Compiling this project:
 
 - Clone the repository.

@@ -44,6 +44,7 @@ docs:
 	rm -rf $(DOCS_DIR)
 	mkdir -p $(DOCS_DIR)
 	doxygen Doxyfile
+	$(MAKE) -C ./docs/latex/
 
 run: clean all
 	@echo "\033[1;33m[+] Running the executable ...\033[1;37m"
