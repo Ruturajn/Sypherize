@@ -134,5 +134,3 @@ void lex_file(char *file_dest) {
     free(file_data);
     fclose(file_ptr);
 }
-
-
