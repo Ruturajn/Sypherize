@@ -31,6 +31,9 @@ void print_ast_node(AstNode *root_node, int indent) {
     case TYPE_SYM:
         printf("SYM : %s", root_node->ast_val.node_symbol);
         break;
+    case TYPE_VAR_REASSIGNMENT:
+        printf("VAR REASSIGNMENT");
+        break;
     default:
         printf("Unknown TYPE");
         break;
@@ -145,6 +148,11 @@ int node_cmp(AstNode *node1, AstNode *node2) {
         else if (node1->ast_val.node_symbol == NULL &&
                  node2->ast_val.node_symbol == NULL)
             return 1;
+    case TYPE_VAR_REASSIGNMENT:
+        if (node2->type == TYPE_VAR_REASSIGNMENT) {
+            printf("TODO : VAR REASSIGNMENT!\n");
+            return 1;
+        }
     default:
         break;
     }
@@ -264,6 +272,51 @@ AstNode *node_symbol_from_token_create(LexedToken *token) {
     return node;
 }
 
+int copy_node(AstNode *dst_node, AstNode *src_node) {
+    if (src_node == NULL || dst_node == NULL) {
+        return 0;
+    }
+
+    dst_node->type = src_node->type;
+    dst_node->ast_val.val = src_node->ast_val.val;
+
+    if (src_node->type == TYPE_SYM)
+        dst_node->ast_val.node_symbol = strdup(src_node->ast_val.node_symbol);
+    else
+        dst_node->ast_val.node_symbol = NULL;
+
+    AstNode *temp_child = src_node->child;
+    AstNode *temp_dst_child = NULL;
+    while (temp_child != NULL) {
+        // Allocate memory for a new child node.
+        AstNode *new_child = node_alloc();
+
+        /**
+         *  If temp_dst_child is NULL, it means we
+         *  are copying the first child, in which case
+         *  the dst_node's child is new_child, and we
+         *  can set temp_dst_child to new_child.
+         *  On the other hand, when temp_dst_child is not
+         *  NULL, we can set it's next child to be the new_child,
+         *  and move temp_dst_child forward, by setting it to
+         *  its next child.
+         */
+        if (temp_dst_child != NULL) {
+            temp_dst_child->next_child = new_child;
+            // temp_dst_child = temp_dst_child->next_child;
+        } else {
+            dst_node->child = new_child;
+            // temp_dst_child = new_child;
+        }
+        temp_dst_child = new_child;
+
+        copy_node(temp_dst_child, temp_child);
+        temp_child = temp_child->next_child;
+    }
+
+    return 0;
+}
+
 char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                    AstNode **curr_expr, ParsingContext *context) {
 
@@ -284,13 +337,15 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
     // If the token was not an integer, check if it is
     // variable declaration, assignment, etc.
 
-    // Parser High level design.
-    //
-    // int a := 340;
-    //
-    // PROGRAM
-    //        `-- VARIABLE_INITIALIZED
-    //            `-- INT (420) -> SYMBOL (a)
+    /**
+     * Parser High level design.
+     *
+     * int a := 340;
+     *
+     * PROGRAM
+     *        `-- VARIABLE_INITIALIZED
+     *            `-- INT (420) -> SYMBOL (a)
+     */
 
     AstNode *sym_node = node_symbol_from_token_create(curr_token);
     int status = -1;
@@ -316,7 +371,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
             AstNode *curr_sym = node_symbol_from_token_create(curr_token);
             curr_sym->type = TYPE_SYM;
 
-            add_ast_node_child(curr_var_decl, curr_type);
             add_ast_node_child(curr_var_decl, curr_sym);
 
             // Lex again to look forward.
@@ -336,6 +390,14 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                     curr_type->ast_val.val = new_expr->ast_val.val;
 
                     *curr_expr = curr_var_decl;
+
+                    AstNode *sym_node = node_alloc();
+                    copy_node(sym_node, curr_sym);
+                    if (!set_env(context->vars, sym_node, curr_type)) {
+                        print_error(
+                            "Unable to set environment binding for variable",
+                            0);
+                    }
 
                     return *temp_file_data;
                 }
@@ -361,9 +423,15 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                     if (new_expr->type != var_bind->child->type)
                         print_error("Mismatched TYPE", 0);
 
-                    *curr_expr = new_expr;
+                    AstNode *node_reassign = node_alloc();
+                    node_reassign->type = TYPE_VAR_REASSIGNMENT;
+                    add_ast_node_child(node_reassign, new_expr);
 
-                    var_bind->child->ast_val.val = new_expr->ast_val.val;
+                    *curr_expr = node_reassign;
+
+                    // new_expr->next_child = var_bind->child->next_child;
+                    // set_env(context->vars, sym_node, new_expr);
+                    // var_bind->child = new_expr;
 
                     return *temp_file_data;
                 }

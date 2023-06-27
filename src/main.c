@@ -6,8 +6,7 @@ int main(int argc, char **argv) {
         print_error("Invalid number of arguments", 1);
     }
 
-    char *file_dest = argv[1];
-    lex_file(file_dest);
+    lex_file(argv[1]);
 
     exit(EXIT_SUCCESS);
 }

@@ -23,6 +23,7 @@ typedef struct AstNode {
         TYPE_VAR_DECLARATION, ///< Node that represents a variable declaration.
         TYPE_VAR_INIT,        ///< Node that represents variable initialization.
         TYPE_SYM,             ///< Node for a symbol.
+        TYPE_VAR_REASSIGNMENT, ///< Node for variable reassignment.
     } type;
     /**
      * @brief Union defining a collection for the value and the symbol (string).
@@ -102,7 +103,7 @@ Env *create_env(Env *parent_Env);
  *                        and the value.
  * @param identifier_node [`AstNode *`] Pointer to the identifier node.
  * @param id_val          [`AstNode *`] Pointer to the value node.
- * @return int
+ * @return int            `1` for success, and `0` for failure.
  */
 int set_env(Env *Env_to_set, AstNode *identifier_node, AstNode *id_val);
 
@@ -181,6 +182,16 @@ void free_node(AstNode *node_to_free);
  * @return AstNode* Pointer to the newly created node.
  */
 AstNode *node_symbol_from_token_create(LexedToken *token);
+
+/**
+ * @brief Deep copies the content from the source node into
+ *        the destination node.
+ * @param dst_node [`AstNode *`] Pointer to the destination
+ *                 node.
+ * @param src_node [`AstNode *`] Pointer to the source node.
+ * @return         `1` for success, and `0` for failure.
+ */
+int copy_node(AstNode *dst_node, AstNode *src_node);
 
 /**
  * @brief Parses tokens (TODO!!), and advances the pointer that

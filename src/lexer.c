@@ -125,12 +125,13 @@ void lex_file(char *file_dest) {
             parse_tokens(&temp_file_data, curr_token, &curr_expr, curr_context);
         if (curr_expr->type != TYPE_NULL)
             add_ast_node_child(program, curr_expr);
+
         free_node(curr_expr);
     }
+
     print_ast_node(program, 0);
 
     free_node(program);
-
     free(file_data);
     fclose(file_ptr);
 }
