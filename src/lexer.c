@@ -24,9 +24,8 @@ long calculate_file_size(FILE *file_ptr) {
 }
 
 void print_lexed_token(LexedToken *curr_token) {
-    if (curr_token == NULL) {
+    if (curr_token == NULL)
         return;
-    }
     printf("Token : %.*s\n", curr_token->token_length, curr_token->token_start);
 }
 

@@ -14,7 +14,7 @@ BUILD_DIR=build
 BIN_DIR=bin
 DOCS_DIR=docs
 
-FILE_PATH=./example/one_line.sy
+FILE_PATH=./example/simple.sy
 
 %.o:./src/%.c compile_msg
 	$(CC) -c $(CFLAGS) $< -o ./$(BUILD_DIR)/$@

@@ -1,6 +1,8 @@
 ! This is a variable declaration, with initialization.
 int: a := 340;
 
+a:= 10;
+
 ` This is a variable declaration
 int: new_val;
 

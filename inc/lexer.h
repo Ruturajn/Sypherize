@@ -36,10 +36,10 @@ typedef struct LexedToken {
 typedef long int_cl;
 
 /**
- * @brief Calculates the size of the file, pointed by `file_ptr`.
- * @param file_ptr  [`FILE *`] pointer to the file, for which the
- *                  size needs to be calculated.
- * @return long     The size of the file.
+ * @brief  Calculates the size of the file, pointed by `file_ptr`.
+ * @param  file_ptr  [`FILE *`] pointer to the file, for which the
+ *                   size needs to be calculated.
+ * @return long      The size of the file.
  */
 long calculate_file_size(FILE *file_ptr);
 
@@ -51,37 +51,37 @@ long calculate_file_size(FILE *file_ptr);
 void print_lexed_token(LexedToken *curr_token);
 
 /**
- * @brief Compare the string present in a token, with another one.
- * @param curr_token  [`LexedToken *`] pointer to the token that needs
- *                    to be compared.
- * @param str_to_cmp  [`char *`] pointer to the string that needs
- *                    to be compared.
- * @return int        `1` for success and `0` for failure.
+ * @brief  Compare the string present in a token, with another one.
+ * @param  curr_token  [`LexedToken *`] pointer to the token that needs
+ *                     to be compared.
+ * @param  str_to_cmp  [`char *`] pointer to the string that needs
+ *                     to be compared.
+ * @return int         `1` for success and `0` for failure.
  */
 int strncmp_lexed_token(LexedToken *curr_token, char *str_to_cmp);
 
 /**
- * @brief Allocate a new token, with `token_length` and `data`.
- * @param token_length  [`int`] Length of the token from the `data`
- *                      pointer.
- * @param data          [`char *`] pointer to the data that is being
- *                      lexed.
- * @return LexedToken*  Pointer to the newly created token.
+ * @brief  Allocate a new token, with `token_length` and `data`.
+ * @param  token_length  [`int`] Length of the token from the `data`
+ *                       pointer.
+ * @param  data          [`char *`] pointer to the data that is being
+ *                       lexed.
+ * @return LexedToken*   Pointer to the newly created token.
  */
 LexedToken *create_token(int token_length, char *data);
 
 /**
- * @brief Check whether a line is a comment.
- * @param file_data   [`char *`] Pointer to the file data stream.
+ * @brief  Check whether a line is a comment.
+ * @param  file_data   [`char *`] Pointer to the file data stream.
  * @return int        `1` for success and `0` for failure.
  */
 int check_comment(char *file_data);
 
 /**
- * @brief Create a new token from the file data stream.
- * @param file_data   [`char **`] double-pointer to the data stream.
- * @param curr_token  [`LexedToken *`] pointer in which the new token
- *                    needs to be stored.
+ * @brief  Create a new token from the file data stream.
+ * @param  file_data   [`char **`] double-pointer to the data stream.
+ * @param  curr_token  [`LexedToken *`] pointer in which the new token
+ *                     needs to be stored.
  * @return char*      Pointer to the data stream, after the current token.
  */
 char *lex_token(char **file_data, LexedToken **curr_token);

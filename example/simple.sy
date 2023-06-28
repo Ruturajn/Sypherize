@@ -6,5 +6,7 @@ int: a := 340; ` this is also a comment.
 ` How about this.
 !And this.
 
+a := 10;
+
 
 !!! This is again a comment. Probably too much XD.

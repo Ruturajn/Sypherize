@@ -87,43 +87,43 @@ void print_ast_node(AstNode *root_node, int indent);
 int parse_int(LexedToken *token, AstNode *node);
 
 /**
- * @brief Creates a new environment.
+ * @brief  Creates a new environment.
  *
- * @param parent_Env [`Env *`] Ponter to the parent environment
- *                   to which the new environment must be associated to.
- * @return Env*      Pointer to the newly created environment.
+ * @param  parent_Env [`Env *`] Ponter to the parent environment
+ *                    to which the new environment must be associated to.
+ * @return Env*       Pointer to the newly created environment.
  */
 Env *create_env(Env *parent_Env);
 
 /**
- * @brief Sets the environment with a identifier and its value.
+ * @brief  Sets the environment with a identifier and its value.
  *
- * @param Env_to_set      [`Env *`] Pointer to the environment that
- *                        should contain the binding, for the identifier
- *                        and the value.
- * @param identifier_node [`AstNode *`] Pointer to the identifier node.
- * @param id_val          [`AstNode *`] Pointer to the value node.
- * @return int            `1` for success, and `0` for failure.
+ * @param  Env_to_set      [`Env *`] Pointer to the environment that
+ *                         should contain the binding, for the identifier
+ *                         and the value.
+ * @param  identifier_node [`AstNode *`] Pointer to the identifier node.
+ * @param  id_val          [`AstNode *`] Pointer to the value node.
+ * @return int             `1` for success, and `0` for failure.
  */
 int set_env(Env *Env_to_set, AstNode *identifier_node, AstNode *id_val);
 
 /**
- * @brief Compares two nodes.
+ * @brief  Compares two nodes.
  *
- * @param node1 [`AstNode *`] Pointer to the first node.
- * @param node2 [`AstNode *`] Pointer to the second node.
- * @return int  `1` to denote equality and `0` otherwise.
+ * @param  node1 [`AstNode *`] Pointer to the first node.
+ * @param  node2 [`AstNode *`] Pointer to the second node.
+ * @return int   `1` to denote equality and `0` otherwise.
  */
 int node_cmp(AstNode *node1, AstNode *node2);
 
 /**
- * @brief Gets the value node based on the identifier node.
+ * @brief  Gets the value node based on the identifier node.
  *
- * @param Env_to_get [`Env *`] Pointer to the environment which
- *                   must be looked at.
- * @param identifier [`AstNode *`] Pointer to the identifier node.
- * @param stat       [`int`] Status of the function execution.
- * @return AstNode*  Pointer to the value node.
+ * @param  Env_to_get [`Env *`] Pointer to the environment which
+ *                    must be looked at.
+ * @param  identifier [`AstNode *`] Pointer to the identifier node.
+ * @param  stat       [`int`] Status of the function execution.
+ * @return AstNode*   Pointer to the value node.
  */
 AstNode *get_env(Env *Env_to_get, AstNode *identifier, int *stat);
 
@@ -137,33 +137,33 @@ AstNode *get_env(Env *Env_to_get, AstNode *identifier, int *stat);
 void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add);
 
 /**
- * @brief Creates a parsing context.
+ * @brief  Creates a parsing context.
  *
  * @return ParsingContext* Pointer to the newly created parsing context.
  */
 ParsingContext *create_parsing_context();
 
 /**
- * @brief Allocates memory for a new node, and initialize its
- *        members.
+ * @brief  Allocates memory for a new node, and initialize its
+ *         members.
  *
  * @return AstNode* Pointer to newly allocated node.
  */
 AstNode *node_alloc();
 
 /**
- * @brief Creates a new node of type symbol from a string.
+ * @brief  Creates a new node of type symbol from a string.
  *
- * @param symbol_str [`char *`] Pointer to the symbol string.
- * @return AstNode*  Pointer to the newly created node.
+ * @param  symbol_str [`char *`] Pointer to the symbol string.
+ * @return AstNode*   Pointer to the newly created node.
  */
 AstNode *node_symbol_create(char *symbol_str);
 
 /**
- * @brief Creates a new node of type int from a value.
+ * @brief  Creates a new node of type int from a value.
  *
- * @param val       [`long`] Value for the node.
- * @return AstNode* Pointer to the newly created node.
+ * @param  val       [`long`] Value for the node.
+ * @return AstNode*  Pointer to the newly created node.
  */
 AstNode *node_int_create(long val);
 
@@ -176,22 +176,33 @@ AstNode *node_int_create(long val);
 void free_node(AstNode *node_to_free);
 
 /**
- * @brief Creates a node of type symbol from a token.
+ * @brief  Creates a node of type symbol from a token.
  *
- * @param token     [`LexedToken *`] Pointer to the token.
- * @return AstNode* Pointer to the newly created node.
+ * @param  token     [`LexedToken *`] Pointer to the token.
+ * @return AstNode*  Pointer to the newly created node.
  */
 AstNode *node_symbol_from_token_create(LexedToken *token);
 
 /**
- * @brief Deep copies the content from the source node into
- *        the destination node.
- * @param dst_node [`AstNode *`] Pointer to the destination
- *                 node.
- * @param src_node [`AstNode *`] Pointer to the source node.
- * @return         `1` for success, and `0` for failure.
+ * @brief  Deep copies the content from the source node into
+ *         the destination node.
+ * @param  dst_node [`AstNode *`] Pointer to the destination
+ *                  node.
+ * @param  src_node [`AstNode *`] Pointer to the source node.
+ * @return int      `1` for success, and `0` for failure.
  */
 int copy_node(AstNode *dst_node, AstNode *src_node);
+
+/**
+ * @brief  Checks if the token is a known type, i.e. int,
+ *         float, etc. (As of now only int is supported).
+ * @param  token [`LexedToken *`] Pointer to the token, that needs
+ *               to be checked.
+ * @param  type  [`int *`] Pointer to a integer that stores the
+ *               type of the token, if it is recognized.
+ * @return int   `1` for success, and `0` for failure.
+ */
+int is_known_type(LexedToken *token, int *type);
 
 /**
  * @brief Parses tokens (TODO!!), and advances the pointer that
