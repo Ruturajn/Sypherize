@@ -8,6 +8,14 @@ extern "C" {
 #endif
 
 /**
+ * @brief Structure defining the value for an AST Node.
+ */
+typedef struct NodeVal {
+    long val;          ///< Value for the node.
+    char *node_symbol; ///< String representing the node (Identifier).
+} NodeVal;
+
+/**
  * @brief Structure defining a node in the AST (Abstract Syntax Tree).
  */
 typedef struct AstNode {
@@ -28,10 +36,7 @@ typedef struct AstNode {
     /**
      * @brief Union defining a collection for the value and the symbol (string).
      */
-    union NodeVal {
-        long val;          ///< Value for the node.
-        char *node_symbol; ///< String representing the node (Identifier).
-    } ast_val;
+    NodeVal ast_val;
     struct AstNode *child;      ///< Child node for this node.
     struct AstNode *next_child; ///< Next child for this node.
 } AstNode;
@@ -98,14 +103,14 @@ Env *create_env(Env *parent_Env);
 /**
  * @brief  Sets the environment with a identifier and its value.
  *
- * @param  Env_to_set      [`Env *`] Pointer to the environment that
+ * @param  Env_to_set      [`Env **`] Double pointer to the environment that
  *                         should contain the binding, for the identifier
  *                         and the value.
  * @param  identifier_node [`AstNode *`] Pointer to the identifier node.
  * @param  id_val          [`AstNode *`] Pointer to the value node.
  * @return int             `1` for success, and `0` for failure.
  */
-int set_env(Env *Env_to_set, AstNode *identifier_node, AstNode *id_val);
+int set_env(Env **Env_to_set, AstNode *identifier_node, AstNode *id_val);
 
 /**
  * @brief  Compares two nodes.
@@ -205,6 +210,21 @@ int copy_node(AstNode *dst_node, AstNode *src_node);
 int is_known_type(LexedToken *token, int *type);
 
 /**
+ * @brief  Lexes the next token, and checks whether it's equal to the
+ *         string that is expected next. If it's not, the data stream
+ *         is reset to it's previous state..
+ * @param  string_to_cmp  [`char *`] Pointer to the string, that needs
+ *                        to be compared.
+ * @param  temp_file_data [`char **`] Double pointer to the file data
+ *                        stream.
+ * @param  token          [`LexedToken *`] Pointer to a token, that
+ *                        stores the next token.
+ * @return int            `1` for success, and `0` for failure.
+ */
+int check_next_token(char *string_to_cmp, char **temp_file_data,
+                     LexedToken **token);
+
+/**
  * @brief Parses tokens (TODO!!), and advances the pointer that
  *        points to the file data stream.
  *
@@ -214,11 +234,11 @@ int is_known_type(LexedToken *token, int *type);
  *                       token is stored.
  * @param curr_expr      [`AstNode **`] Pointer to the node which
  *                       stores the current expression.
- * @param context        [`ParsingContext *`] Pointer to the current
- *                       context.
+ * @param context        [`ParsingContext **`] Double pointer to
+ *                       the current context.
  * @return char*         Pointer to the file data stream.
  */
 char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
-                   AstNode **curr_expr, ParsingContext *context);
+                   AstNode **curr_expr, ParsingContext **context);
 
 #endif /* __PARSER_H__ */

@@ -87,6 +87,17 @@ int check_comment(char *file_data);
 char *lex_token(char **file_data, LexedToken **curr_token);
 
 /**
+ * @brief This functions takes in the error message, and prints it out, in
+ *        a specific format.
+ * @param msg      [char *] Message to be printed.
+ * @param is_exit  [int] `1` for exit, `0` to just print the message and
+ *                 continue.
+ * @param token    [`LexedToken *`] Pointer to the token if it needs to be
+ *                 printed out.
+ */
+void print_error(char *msg, int is_exit, LexedToken *token);
+
+/**
  * @brief Lexes and parses a complete file.
  * @param file_data   [`char *`] pointer to the data stream.
  */

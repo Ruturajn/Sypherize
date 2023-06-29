@@ -73,26 +73,39 @@ Env *create_env(Env *parent_env) {
     return new_env;
 }
 
-int set_env(Env *env_to_set, AstNode *identifier_node, AstNode *id_val) {
+int set_env(Env **env_to_set, AstNode *identifier_node, AstNode *id_val) {
     if (env_to_set == NULL || identifier_node == NULL || id_val == NULL)
         return 0;
 
-    IdentifierBind *temp = env_to_set->binding;
+    IdentifierBind *temp = (*env_to_set)->binding;
+
+    IdentifierBind *binds = calloc(1, sizeof(IdentifierBind));
+    CHECK_NULL(binds, MEM_ERR);
+    // binds->identifier = identifier_node;
+    binds->identifier = node_alloc();
+    copy_node(binds->identifier, identifier_node);
+    // binds->id_val = id_val;
+    binds->id_val = node_alloc();
+    copy_node(binds->id_val, id_val);
+
+    if (temp == NULL) {
+        (*env_to_set)->binding = binds;
+        return 1;
+    }
 
     while (temp != NULL) {
         if (node_cmp(temp->identifier, identifier_node)) {
-            temp->id_val = id_val;
+            // temp->id_val = id_val;
+            copy_node(temp->id_val, id_val);
             return 1;
         }
         temp = temp->next_id_bind;
     }
 
-    IdentifierBind *binds = calloc(1, sizeof(IdentifierBind));
-    CHECK_NULL(binds, MEM_ERR);
-    binds->identifier = identifier_node;
-    binds->id_val = id_val;
-    binds->next_id_bind = env_to_set->binding;
-    env_to_set->binding = binds;
+    // temp->next_id_bind = binds;
+
+    binds->next_id_bind = (*env_to_set)->binding;
+    (*env_to_set)->binding = binds;
     return 1;
 }
 
@@ -198,8 +211,8 @@ ParsingContext *create_parsing_context() {
     new_context->vars = create_env(NULL);
     new_context->env_type = create_env(NULL);
     AstNode *sym_node = node_symbol_create("int");
-    if (!set_env(new_context->env_type, sym_node, node_int_create(49)))
-        print_error("Failed to set environment", 0);
+    if (!set_env(&(new_context->env_type), sym_node, node_int_create(49)))
+        print_error("Failed to set environment", 0, NULL);
     return new_context;
 }
 
@@ -327,8 +340,25 @@ int is_known_type(LexedToken *token, int *type) {
     return 0;
 }
 
+int check_next_token(char *string_to_cmp, char **temp_file_data,
+                     LexedToken **token) {
+    if (string_to_cmp == NULL || *temp_file_data == NULL || token == NULL) {
+        print_error("NULL pointer passed to check_next_token()", 0, NULL);
+        return 0;
+    }
+    char *prev_file_data = *temp_file_data;
+    LexedToken *temp_token = *token;
+    prev_file_data = lex_token(&prev_file_data, &temp_token);
+    if (strncmp_lexed_token(temp_token, string_to_cmp)) {
+        *token = temp_token;
+        *temp_file_data = prev_file_data;
+        return 1;
+    }
+    return 0;
+}
+
 char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
-                   AstNode **curr_expr, ParsingContext *context) {
+                   AstNode **curr_expr, ParsingContext **context) {
 
     *temp_file_data = lex_token(temp_file_data, &curr_token);
 
@@ -367,43 +397,46 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
         curr_type->type = token_type;
 
         // Lex again to look forward.
-        *temp_file_data = lex_token(temp_file_data, &curr_token);
-        if (strncmp_lexed_token(curr_token, ":")) {
+        if (check_next_token(":", temp_file_data, &curr_token)) {
+
+            CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
 
             *temp_file_data = lex_token(temp_file_data, &curr_token);
 
             AstNode *curr_sym = node_symbol_from_token_create(curr_token);
             curr_sym->type = TYPE_SYM;
 
-            get_env(context->vars, curr_sym, &status);
+            get_env((*context)->vars, curr_sym, &status);
             if (status)
-                print_error("Redefinition of a variable", 1);
+                print_error("Redefinition of a variable", 1, curr_token);
 
             add_ast_node_child(curr_var_decl, curr_sym);
 
             // Lex again to look forward.
-            *temp_file_data = lex_token(temp_file_data, &curr_token);
-            if (strncmp_lexed_token(curr_token, ":")) {
-                *temp_file_data = lex_token(temp_file_data, &curr_token);
+            if (check_next_token(":", temp_file_data, &curr_token)) {
+                CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
+                if (check_next_token("=", temp_file_data, &curr_token)) {
+                    CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
 
-                if (strncmp_lexed_token(curr_token, "=")) {
                     AstNode *new_expr = node_alloc();
                     *temp_file_data = parse_tokens(temp_file_data, curr_token,
                                                    &new_expr, context);
                     add_ast_node_child(curr_var_decl, new_expr);
 
                     if (new_expr->type != curr_type->type)
-                        print_error("Mismatched TYPE", 0);
+                        print_error("Mismatched TYPE", 1, curr_token);
 
                     // *curr_expr = curr_var_decl;
 
                     AstNode *sym_name = node_alloc();
                     copy_node(sym_name, curr_sym);
-                    if (!set_env(context->vars, sym_name, new_expr)) {
+                    if (!set_env(&((*context)->vars), sym_name, new_expr)) {
                         print_error(
-                            "Unable to set environment binding for variable",
-                            0);
+                            "Unable to set environment binding for variable", 0,
+                            NULL);
                     }
+                    *curr_expr = curr_var_decl;
+                    return *temp_file_data;
                 }
             }
             // If the control flow is here, it means that it is a variable
@@ -416,32 +449,37 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
 
             AstNode *init_val = node_alloc();
             init_val->type = token_type;
-            if (!set_env(context->vars, sym_name_node, init_val)) {
-                print_error("Unable to set environment binding for variable",
-                            0);
+            if (!set_env(&((*context)->vars), sym_name_node, init_val)) {
+                print_error("Unable to set environment binding for variable", 0,
+                            NULL);
             }
-        } else
-            print_error("Syntax Error", 0);
+        } else {
+            *temp_file_data = lex_token(temp_file_data, &curr_token);
+            print_error(SYNTAX_ERR, 1, 0);
+            print_lexed_token(curr_token);
+        }
         return *temp_file_data;
     }
 
     // Lex again to look forward.
-    *temp_file_data = lex_token(temp_file_data, &curr_token);
-    if (strncmp_lexed_token(curr_token, ":")) {
+    if (check_next_token(":", temp_file_data, &curr_token)) {
+        CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
+
         AstNode *var_bind = node_alloc();
-        var_bind = get_env(context->vars, sym_node, &status);
+        var_bind = get_env((*context)->vars, sym_node, &status);
         if (status) {
             // re-assignment or redefinition (which is an error),
             // otherwise invalid syntax error.
 
             // Lex again to look forward.
-            *temp_file_data = lex_token(temp_file_data, &curr_token);
-            if (strncmp_lexed_token(curr_token, "=")) {
+            if (check_next_token("=", temp_file_data, &curr_token)) {
+                CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
+
                 AstNode *new_expr = node_alloc();
                 *temp_file_data = parse_tokens(temp_file_data, curr_token,
                                                &new_expr, context);
                 if (new_expr->type != var_bind->type)
-                    print_error("Mismatched TYPE", 0);
+                    print_error("Mismatched TYPE", 0, NULL);
 
                 AstNode *node_reassign = node_alloc();
                 node_reassign->type = TYPE_VAR_REASSIGNMENT;
@@ -450,12 +488,22 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 add_ast_node_child(node_reassign, new_expr);
 
                 *curr_expr = node_reassign;
-            } else
-                print_error("UKNOWN", 0);
+                if (!set_env(&((*context)->vars), sym_node, new_expr)) {
+                    print_error(
+                        "Unable to set environment binding for variable", 0,
+                        NULL);
+                }
+            } else {
+                *temp_file_data = lex_token(temp_file_data, &curr_token);
+                print_error("UKNOWN : ", 1, curr_token);
+            }
         } else
-            print_error("Undefined Symbol", 0);
-        free(var_bind);
+            print_error("Undefined Symbol", 1, curr_token);
+        // free(var_bind);
         return *temp_file_data;
+    } else {
+        *temp_file_data = lex_token(temp_file_data, &curr_token);
+        print_error(SYNTAX_ERR, 1, curr_token);
     }
     return *temp_file_data;
 }

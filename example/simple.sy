@@ -8,5 +8,14 @@ int: a := 340; ` this is also a comment.
 
 a := 10;
 
+a := 93;
+` This is a variable declaration
+
+! Assigning value to a variable.
+int: new_val;
+
+new_val := 11;
+
+a := 20;
 
 !!! This is again a comment. Probably too much XD.

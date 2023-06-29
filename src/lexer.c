@@ -7,18 +7,18 @@ long calculate_file_size(FILE *file_ptr) {
     }
 
     if (fseek(file_ptr, 0, SEEK_SET) < 0)
-        print_error(FILE_OPEN_ERR, 1);
+        print_error(FILE_OPEN_ERR, 1, NULL);
 
     if (fseek(file_ptr, 0, SEEK_END) < 0)
-        print_error(FILE_OPEN_ERR, 1);
+        print_error(FILE_OPEN_ERR, 1, NULL);
 
     long file_sz = ftell(file_ptr);
 
     if (fseek(file_ptr, 0, SEEK_SET) < 0)
-        print_error(FILE_OPEN_ERR, 1);
+        print_error(FILE_OPEN_ERR, 1, NULL);
 
     if (file_sz < 0)
-        print_error(FILE_SIZE_ERR, 1);
+        print_error(FILE_SIZE_ERR, 1, NULL);
 
     return file_sz;
 }
@@ -26,7 +26,7 @@ long calculate_file_size(FILE *file_ptr) {
 void print_lexed_token(LexedToken *curr_token) {
     if (curr_token == NULL)
         return;
-    printf("Token : %.*s\n", curr_token->token_length, curr_token->token_start);
+    printf("%.*s", curr_token->token_length, curr_token->token_start);
 }
 
 int strncmp_lexed_token(LexedToken *curr_token, char *str_to_cmp) {
@@ -82,6 +82,18 @@ char *lex_token(char **file_data, LexedToken **curr_token) {
     return *file_data;
 }
 
+void print_error(char *msg, int is_exit, LexedToken *token) {
+    printf("\033[1;31m[ERROR] %s", msg);
+    if (token != NULL) {
+        printf(": `");
+        print_lexed_token(token);
+        putchar('`');
+    }
+    printf("!\n\033[1;37m");
+    if (is_exit)
+        exit(EXIT_FAILURE);
+}
+
 void lex_file(char *file_dest) {
 
     FILE *file_ptr = NULL;
@@ -98,7 +110,7 @@ void lex_file(char *file_dest) {
     size_t bytes_read = fread(file_data, 1, file_sz, file_ptr);
 
     if (bytes_read != file_sz)
-        print_error(FILE_OPEN_ERR, 1);
+        print_error(FILE_OPEN_ERR, 1, NULL);
 
     file_data[file_sz] = '\0';
 
@@ -120,8 +132,8 @@ void lex_file(char *file_dest) {
     while (*temp_file_data != '\0') {
         curr_expr = node_alloc();
 
-        temp_file_data =
-            parse_tokens(&temp_file_data, curr_token, &curr_expr, curr_context);
+        temp_file_data = parse_tokens(&temp_file_data, curr_token, &curr_expr,
+                                      &curr_context);
         if (curr_expr->type != TYPE_NULL)
             add_ast_node_child(program, curr_expr);
 
