@@ -81,10 +81,8 @@ int set_env(Env **env_to_set, AstNode *identifier_node, AstNode *id_val) {
 
     IdentifierBind *binds = calloc(1, sizeof(IdentifierBind));
     CHECK_NULL(binds, MEM_ERR);
-    // binds->identifier = identifier_node;
     binds->identifier = node_alloc();
     copy_node(binds->identifier, identifier_node);
-    // binds->id_val = id_val;
     binds->id_val = node_alloc();
     copy_node(binds->id_val, id_val);
 
@@ -95,14 +93,11 @@ int set_env(Env **env_to_set, AstNode *identifier_node, AstNode *id_val) {
 
     while (temp != NULL) {
         if (node_cmp(temp->identifier, identifier_node)) {
-            // temp->id_val = id_val;
             copy_node(temp->id_val, id_val);
             return 1;
         }
         temp = temp->next_id_bind;
     }
-
-    // temp->next_id_bind = binds;
 
     binds->next_id_bind = (*env_to_set)->binding;
     (*env_to_set)->binding = binds;
@@ -174,14 +169,15 @@ int node_cmp(AstNode *node1, AstNode *node2) {
 
 AstNode *get_env(Env *env_to_get, AstNode *identifier, int *stat) {
     IdentifierBind *curr_bind = env_to_get->binding;
+    AstNode *val = node_alloc();
     while (curr_bind != NULL) {
         if (node_cmp(curr_bind->identifier, identifier)) {
             *stat = 1;
-            return curr_bind->id_val;
+            copy_node(val, curr_bind->id_val);
+            return val;
         }
         curr_bind = curr_bind->next_id_bind;
     }
-    AstNode *val = node_alloc();
     *stat = 0;
     return val;
 }
@@ -426,8 +422,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                     if (new_expr->type != curr_type->type)
                         print_error("Mismatched TYPE", 1, curr_token);
 
-                    // *curr_expr = curr_var_decl;
-
                     AstNode *sym_name = node_alloc();
                     copy_node(sym_name, curr_sym);
                     if (!set_env(&((*context)->vars), sym_name, new_expr)) {
@@ -499,7 +493,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
             }
         } else
             print_error("Undefined Symbol", 1, curr_token);
-        // free(var_bind);
+        free(var_bind);
         return *temp_file_data;
     } else {
         *temp_file_data = lex_token(temp_file_data, &curr_token);
