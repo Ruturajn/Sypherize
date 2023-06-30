@@ -227,9 +227,9 @@ int check_next_token(char *string_to_cmp, char **temp_file_data,
 /**
  * @brief Adds a new type with a binding to the types environment.
  * @param env_type  [`Env **`] Double-pointer to the environment.
- * @param node_type [`NodeType`] Enum value for the node type.
+ * @param node_type [`int`] Enum value for the node type.
  * @param sym       [`AstNode *`] Symbol for the new type.
- * @param byte_size [`long long`] Size in bytes of the new type.
+ * @param byte_size [`long`] Size in bytes of the new type.
  */
 void ast_add_type_node(Env **env_type, int node_type, AstNode *sym,
                        long byte_size);
