@@ -141,11 +141,13 @@ int node_cmp(AstNode *node1, AstNode *node2) {
             printf("TODO : VAR DECLARATION!\n");
             return 1;
         }
+        break;
     case TYPE_VAR_INIT:
         if (node2->type == TYPE_VAR_INIT) {
             printf("TODO : VAR INIT!\n");
             return 1;
         }
+        break;
     case TYPE_SYM:
         if (node1->ast_val.node_symbol != NULL &&
             node2->ast_val.node_symbol != NULL &&
@@ -155,11 +157,13 @@ int node_cmp(AstNode *node1, AstNode *node2) {
         else if (node1->ast_val.node_symbol == NULL &&
                  node2->ast_val.node_symbol == NULL)
             return 1;
+        break;
     case TYPE_VAR_REASSIGNMENT:
         if (node2->type == TYPE_VAR_REASSIGNMENT) {
             printf("TODO : VAR REASSIGNMENT!\n");
             return 1;
         }
+        break;
     default:
         break;
     }
@@ -207,8 +211,9 @@ ParsingContext *create_parsing_context() {
     new_context->vars = create_env(NULL);
     new_context->env_type = create_env(NULL);
     AstNode *sym_node = node_symbol_create("int");
-    if (!set_env(&(new_context->env_type), sym_node, node_int_create(49)))
-        print_error("Failed to set environment", 0, NULL);
+    ast_add_type_node(&new_context->env_type, TYPE_INT, sym_node, sizeof(long));
+    // if (!set_env(&(new_context->env_type), sym_node, node_int_create(49)))
+    //     print_error("Failed to set environment", 0, NULL);
     return new_context;
 }
 
@@ -353,6 +358,26 @@ int check_next_token(char *string_to_cmp, char **temp_file_data,
     return 0;
 }
 
+void ast_add_type_node(Env **env_type, int node_type, AstNode *sym,
+                       long byte_size) {
+    if (sym == NULL || byte_size <= 0)
+        print_error("Unable to add a new type to the types environment", 1,
+                    NULL);
+
+    AstNode *sz_node = node_alloc();
+    sz_node->type = TYPE_INT;
+    sz_node->ast_val.val = byte_size;
+
+    AstNode *new_type_node = node_alloc();
+    new_type_node->type = node_type;
+    new_type_node->child = sz_node;
+
+    if (!set_env(env_type, sym, new_type_node)) {
+        printf("Type redefinition : `%s`\n", sym->ast_val.node_symbol);
+        print_error("Unable to redefine type", 1, NULL);
+    }
+}
+
 char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                    AstNode **curr_expr, ParsingContext **context) {
 
@@ -383,14 +408,14 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
      */
 
     AstNode *sym_node = node_symbol_from_token_create(curr_token);
-    int token_type = -1;
     int status = -1;
-    if (is_known_type(curr_token, &token_type)) {
+    AstNode *res = get_env((*context)->env_type, sym_node, &status);
+    if (status) {
         AstNode *curr_var_decl = node_alloc();
         curr_var_decl->type = TYPE_VAR_DECLARATION;
 
         AstNode *curr_type = node_symbol_from_token_create(curr_token);
-        curr_type->type = token_type;
+        curr_type->type = res->type;
 
         // Lex again to look forward.
         if (check_next_token(":", temp_file_data, &curr_token)) {
@@ -442,7 +467,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
             copy_node(sym_name_node, curr_sym);
 
             AstNode *init_val = node_alloc();
-            init_val->type = token_type;
+            init_val->type = res->type;
             if (!set_env(&((*context)->vars), sym_name_node, init_val)) {
                 print_error("Unable to set environment binding for variable", 0,
                             NULL);
@@ -454,13 +479,13 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
         }
         return *temp_file_data;
     }
+    free_node(res);
 
     // Lex again to look forward.
     if (check_next_token(":", temp_file_data, &curr_token)) {
         CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
 
-        AstNode *var_bind = node_alloc();
-        var_bind = get_env((*context)->vars, sym_node, &status);
+        AstNode *var_bind = get_env((*context)->vars, sym_node, &status);
         if (status) {
             // re-assignment or redefinition (which is an error),
             // otherwise invalid syntax error.
@@ -493,7 +518,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
             }
         } else
             print_error("Undefined Symbol", 1, curr_token);
-        free(var_bind);
+        free_node(var_bind);
         return *temp_file_data;
     } else {
         *temp_file_data = lex_token(temp_file_data, &curr_token);

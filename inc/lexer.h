@@ -89,6 +89,7 @@ char *lex_token(char **file_data, LexedToken **curr_token);
 /**
  * @brief This functions takes in the error message, and prints it out, in
  *        a specific format.
+ *        TODO: Add `perror` type error handling.
  * @param msg      [char *] Message to be printed.
  * @param is_exit  [int] `1` for exit, `0` to just print the message and
  *                 continue.

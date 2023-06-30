@@ -8,6 +8,21 @@ extern "C" {
 #endif
 
 /**
+ * @brief Enumeration that defines a type for the `AstNode`.
+ */
+typedef enum NodeType {
+    TYPE_NULL = 0,         ///< NULL type node.
+    TYPE_PROGRAM,          ///< Node for the whole program.
+    TYPE_ROOT,             ///< Node for the root of the program.
+    TYPE_INT,              ///< Node of type integer.
+    TYPE_BINARY_OPERATOR,  ///< Node that represents a binary operator.
+    TYPE_VAR_DECLARATION,  ///< Node that represents a variable declaration.
+    TYPE_VAR_INIT,         ///< Node that represents variable initialization.
+    TYPE_SYM,              ///< Node for a symbol.
+    TYPE_VAR_REASSIGNMENT, ///< Node for variable reassignment.
+} NodeType;
+
+/**
  * @brief Structure defining the value for an AST Node.
  */
 typedef struct NodeVal {
@@ -19,24 +34,9 @@ typedef struct NodeVal {
  * @brief Structure defining a node in the AST (Abstract Syntax Tree).
  */
 typedef struct AstNode {
-    /**
-     * @brief Enumeration that defines a type for the `AstNode`.
-     */
-    enum NodeType {
-        TYPE_NULL = 0,        ///< NULL type node.
-        TYPE_PROGRAM,         ///< Node for the whole program.
-        TYPE_ROOT,            ///< Node for the root of the program.
-        TYPE_INT,             ///< Node of type integer.
-        TYPE_BINARY_OPERATOR, ///< Node that represents a binary operator.
-        TYPE_VAR_DECLARATION, ///< Node that represents a variable declaration.
-        TYPE_VAR_INIT,        ///< Node that represents variable initialization.
-        TYPE_SYM,             ///< Node for a symbol.
-        TYPE_VAR_REASSIGNMENT, ///< Node for variable reassignment.
-    } type;
-    /**
-     * @brief Union defining a collection for the value and the symbol (string).
-     */
-    NodeVal ast_val;
+    int type;                   ///< Enum for the type of the node.
+    NodeVal ast_val;            ///< Struct for storing the value
+                                ///< of the node.
     struct AstNode *child;      ///< Child node for this node.
     struct AstNode *next_child; ///< Next child for this node.
 } AstNode;
@@ -223,6 +223,16 @@ int is_known_type(LexedToken *token, int *type);
  */
 int check_next_token(char *string_to_cmp, char **temp_file_data,
                      LexedToken **token);
+
+/**
+ * @brief Adds a new type with a binding to the types environment.
+ * @param env_type  [`Env **`] Double-pointer to the environment.
+ * @param node_type [`NodeType`] Enum value for the node type.
+ * @param sym       [`AstNode *`] Symbol for the new type.
+ * @param byte_size [`long long`] Size in bytes of the new type.
+ */
+void ast_add_type_node(Env **env_type, int node_type, AstNode *sym,
+                       long byte_size);
 
 /**
  * @brief Parses tokens (TODO!!), and advances the pointer that
