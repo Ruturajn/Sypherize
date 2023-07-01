@@ -5,19 +5,26 @@ CC=gcc
 CFLAGS=-g -Wall -Werror
 TARGET=sypherize
 
+#==============================================================================
+
 SRCS=$(wildcard ./src/*.c)
 INCS=./inc
 
 OBJS=$(notdir $(SRCS:.c=.o))
 
+#==============================================================================
+
 BUILD_DIR=build
 BIN_DIR=bin
 DOCS_DIR=docs
-
 FILE_PATH=./example/simple.sy
+
+#==============================================================================
 
 %.o:./src/%.c compile_msg
 	$(CC) -c $(CFLAGS) $< -o ./$(BUILD_DIR)/$@
+
+#==============================================================================
 
 .PHONY: all clean build_and_bin_dir compile_msg run docs help
 

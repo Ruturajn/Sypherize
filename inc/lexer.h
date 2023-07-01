@@ -37,6 +37,7 @@ typedef long int_cl;
 
 /**
  * @brief  Calculates the size of the file, pointed by `file_ptr`.
+ *
  * @param  file_ptr  [`FILE *`] pointer to the file, for which the
  *                   size needs to be calculated.
  * @return long      The size of the file.
@@ -45,6 +46,7 @@ long calculate_file_size(FILE *file_ptr);
 
 /**
  * @brief Print out the token, pointed to by `curr_token`.
+ *
  * @param curr_token   [`LexedToken *`] pointer to the token, that needs to be
  *                     printed.
  */
@@ -52,6 +54,7 @@ void print_lexed_token(LexedToken *curr_token);
 
 /**
  * @brief  Compare the string present in a token, with another one.
+ *
  * @param  curr_token  [`LexedToken *`] pointer to the token that needs
  *                     to be compared.
  * @param  str_to_cmp  [`char *`] pointer to the string that needs
@@ -62,6 +65,7 @@ int strncmp_lexed_token(LexedToken *curr_token, char *str_to_cmp);
 
 /**
  * @brief  Allocate a new token, with `token_length` and `data`.
+ *
  * @param  token_length  [`int`] Length of the token from the `data`
  *                       pointer.
  * @param  data          [`char *`] pointer to the data that is being
@@ -72,6 +76,7 @@ LexedToken *create_token(int token_length, char *data);
 
 /**
  * @brief  Check whether a line is a comment.
+ *
  * @param  file_data   [`char *`] Pointer to the file data stream.
  * @return int        `1` for success and `0` for failure.
  */
@@ -79,6 +84,7 @@ int check_comment(char *file_data);
 
 /**
  * @brief  Create a new token from the file data stream.
+ *
  * @param  file_data   [`char **`] double-pointer to the data stream.
  * @param  curr_token  [`LexedToken *`] pointer in which the new token
  *                     needs to be stored.
@@ -90,6 +96,7 @@ char *lex_token(char **file_data, LexedToken **curr_token);
  * @brief This functions takes in the error message, and prints it out, in
  *        a specific format.
  *        TODO: Add `perror` type error handling.
+ *
  * @param msg      [char *] Message to be printed.
  * @param is_exit  [int] `1` for exit, `0` to just print the message and
  *                 continue.
@@ -100,6 +107,7 @@ void print_error(char *msg, int is_exit, LexedToken *token);
 
 /**
  * @brief Lexes and parses a complete file.
+ *
  * @param file_data   [`char *`] pointer to the data stream.
  */
 void lex_file(char *file_dest);

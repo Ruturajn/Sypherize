@@ -162,7 +162,14 @@ AstNode *node_alloc();
  * @param  symbol_str [`char *`] Pointer to the symbol string.
  * @return AstNode*   Pointer to the newly created node.
  */
-AstNode *node_symbol_create(char *symbol_str);
+AstNode *create_node_symbol(char *symbol_str);
+
+/**
+ * @brief  Creates a new node of type TYPE_NULL.
+ *
+ * @return AstNode*   Pointer to the newly created node.
+ */
+AstNode *create_node_none();
 
 /**
  * @brief  Creates a new node of type int from a value.
@@ -170,7 +177,7 @@ AstNode *node_symbol_create(char *symbol_str);
  * @param  val       [`long`] Value for the node.
  * @return AstNode*  Pointer to the newly created node.
  */
-AstNode *node_int_create(long val);
+AstNode *create_node_int(long val);
 
 /**
  * @brief Frees nodes in an AST.
@@ -191,6 +198,7 @@ AstNode *node_symbol_from_token_create(LexedToken *token);
 /**
  * @brief  Deep copies the content from the source node into
  *         the destination node.
+ *
  * @param  dst_node [`AstNode *`] Pointer to the destination
  *                  node.
  * @param  src_node [`AstNode *`] Pointer to the source node.
@@ -201,6 +209,7 @@ int copy_node(AstNode *dst_node, AstNode *src_node);
 /**
  * @brief  Checks if the token is a known type, i.e. int,
  *         float, etc. (As of now only int is supported).
+ *
  * @param  token [`LexedToken *`] Pointer to the token, that needs
  *               to be checked.
  * @param  type  [`int *`] Pointer to a integer that stores the
@@ -213,6 +222,7 @@ int is_known_type(LexedToken *token, int *type);
  * @brief  Lexes the next token, and checks whether it's equal to the
  *         string that is expected next. If it's not, the data stream
  *         is reset to it's previous state..
+ *
  * @param  string_to_cmp  [`char *`] Pointer to the string, that needs
  *                        to be compared.
  * @param  temp_file_data [`char **`] Double pointer to the file data
@@ -226,6 +236,7 @@ int check_next_token(char *string_to_cmp, char **temp_file_data,
 
 /**
  * @brief Adds a new type with a binding to the types environment.
+ *
  * @param env_type  [`Env **`] Double-pointer to the environment.
  * @param node_type [`int`] Enum value for the node type.
  * @param sym       [`AstNode *`] Symbol for the new type.

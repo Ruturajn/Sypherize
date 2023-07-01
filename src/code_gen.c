@@ -32,8 +32,9 @@ void target_x86_64_att_asm(ParsingContext *context, AstNode *program_node) {
         case TYPE_VAR_DECLARATION:;
             // TODO
             AstNode *sym_node = curr_expr->child;
-            AstNode *type = get_env(context->vars, sym_node, &status);
-            print_ast_node(type, 0);
+            AstNode *var = get_env(context->vars, sym_node, &status);
+            var = get_env(context->env_type, var, &status);
+            print_ast_node(var, 0);
             break;
         default:
             break;
