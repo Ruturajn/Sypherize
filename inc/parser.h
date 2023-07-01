@@ -251,4 +251,8 @@ void ast_add_type_node(Env **env_type, int node_type, AstNode *sym,
 char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                    AstNode **curr_expr, ParsingContext **context);
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* __PARSER_H__ */

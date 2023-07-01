@@ -44,4 +44,8 @@ extern "C" {
     "Redfinition of Variable" ///< String for redfinition
                               ///< of a variable error.
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* __HELPERS_H__ */

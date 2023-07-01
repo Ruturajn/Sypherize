@@ -104,4 +104,8 @@ void print_error(char *msg, int is_exit, LexedToken *token);
  */
 void lex_file(char *file_dest);
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* __FILE_PROC_H__ */

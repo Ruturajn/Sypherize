@@ -1,4 +1,5 @@
 #include "../inc/lexer.h"
+#include "../inc/code_gen.h"
 #include "../inc/parser.h"
 
 long calculate_file_size(FILE *file_ptr) {
@@ -141,6 +142,10 @@ void lex_file(char *file_dest) {
     }
 
     print_ast_node(program, 0);
+
+    printf("\nCODE GENERATION\n");
+
+    choose_target(TARGET_X86_64_AT_T_ASM, curr_context, program);
 
     free_node(program);
     free(file_data);

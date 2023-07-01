@@ -12,8 +12,13 @@ typedef enum TargetType {
     TARGET_X86_64_AT_T_ASM,
 } TargetType;
 
-void choose_target(TargetType target, AstNode *program_node);
+void choose_target(TargetType target, ParsingContext *context,
+                   AstNode *program_node);
 
-void target_x86_64_att_asm(AstNode *program_node);
+void target_x86_64_att_asm(ParsingContext *context, AstNode *program_node);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __CODE_GEN_H__ */
