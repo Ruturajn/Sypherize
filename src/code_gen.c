@@ -71,6 +71,7 @@ void target_x86_64_att_asm(ParsingContext *context, AstNode *program_node) {
     write_header(fptr_code_gen);
     target_x86_64_att_asm_data_section(context, fptr_code_gen);
     write_line(".section .text", fptr_code_gen);
+    write_line(".globl _start", fptr_code_gen);
     write_line("_start:", fptr_code_gen);
     // Save the base pointer by pushing it onto the stack
     write_line("push %rbp", fptr_code_gen);

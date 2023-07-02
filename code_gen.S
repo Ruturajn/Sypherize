@@ -3,6 +3,7 @@
 new_val: .space 8
 a: .space 8
 .section .text
+.globl _start
 _start:
 push %rbp
 mov %rsp, %rbp
