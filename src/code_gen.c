@@ -20,7 +20,7 @@ void target_x86_64_att_asm(ParsingContext *context, AstNode *program_node) {
         print_error("Error during code gen : Failed to access program node", 1,
                     NULL);
 
-    FILE *fptr_code_gen = fopen("code_gen.txt", "wb");
+    FILE *fptr_code_gen = fopen("code_gen.S", "wb");
     CHECK_NULL(fptr_code_gen, "Error in creating code gen output file");
 
     AstNode *curr_expr = program_node->child;

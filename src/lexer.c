@@ -143,9 +143,11 @@ void lex_file(char *file_dest) {
 
     print_ast_node(program, 0);
 
-    printf("\nCODE GENERATION\n");
+    printf("\nCODE GENERATION BEGIN\n\n");
 
     choose_target(TARGET_X86_64_AT_T_ASM, curr_context, program);
+
+    printf("\nCODE GENERATION COMPLETE\n");
 
     free_node(program);
     free(file_data);
