@@ -208,8 +208,6 @@ ParsingContext *create_parsing_context() {
     new_context->env_type = create_env(NULL);
     AstNode *sym_node = create_node_symbol("int");
     ast_add_type_node(&new_context->env_type, TYPE_INT, sym_node, sizeof(long));
-    // if (!set_env(&(new_context->env_type), sym_node, create_node_int(49)))
-    //     print_error("Failed to set environment", 0, NULL);
     return new_context;
 }
 
