@@ -14,7 +14,8 @@ movq $93, (%rax)
 lea new_val(%rip), %rax
 movq $11, (%rax)
 lea a(%rip), %rax
-movq $20, (%rax)
+movq $83, (%rax)
 pop %rbp
-movq $69, %rax
-ret
+movq (%rax), %rdi
+mov $0x80, %eax
+int $0x80

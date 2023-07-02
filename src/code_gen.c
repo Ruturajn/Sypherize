@@ -109,8 +109,12 @@ void target_x86_64_att_asm(ParsingContext *context, AstNode *program_node) {
 
     // write_line("add $32, %rsp", fptr_code_gen);
     write_line("pop %rbp", fptr_code_gen);
-    write_line("movq $69, %rax", fptr_code_gen);
-    write_line("ret", fptr_code_gen);
+    // Move the value of rax register into rdi, which holds the exit code.
+    write_line("movq (%rax), %rdi", fptr_code_gen);
+    // Move the system call number for exit into eax register.
+    write_line("mov $60, %eax", fptr_code_gen);
+    // Call the exit system call
+    write_line("syscall", fptr_code_gen);
 
     fclose(fptr_code_gen);
 }

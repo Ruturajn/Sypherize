@@ -35,3 +35,14 @@ Compiling this project:
   $ make
   ```
 - Use `$ make help` to look at available targets.
+
+## Compiling the Generated Assembly File
+
+- Assemble into an object file.
+  ```
+  $ as code_gen.S -o code_gen.o
+  ```
+- Link into the final executable.
+  ```
+  $ ld code_gen.o -subsystem-console -o code_gen
+  ```
