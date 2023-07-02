@@ -3,8 +3,8 @@
 new_val: .space 8
 a: .space 8
 .section .text
-.globl _start
-_start:
+.global main
+main:
 push %rbp
 mov %rsp, %rbp
 lea a(%rip), %rax
@@ -16,6 +16,5 @@ movq $11, (%rax)
 lea a(%rip), %rax
 movq $83, (%rax)
 pop %rbp
-movq (%rax), %rdi
-mov $0x80, %eax
-int $0x80
+movq (%rax), %rax
+ret

@@ -71,8 +71,8 @@ void target_x86_64_att_asm(ParsingContext *context, AstNode *program_node) {
     write_header(fptr_code_gen);
     target_x86_64_att_asm_data_section(context, fptr_code_gen);
     write_line(".section .text", fptr_code_gen);
-    write_line(".globl _start", fptr_code_gen);
-    write_line("_start:", fptr_code_gen);
+    write_line(".global main", fptr_code_gen);
+    write_line("main:", fptr_code_gen);
     // Save the base pointer by pushing it onto the stack
     write_line("push %rbp", fptr_code_gen);
     /**
@@ -110,11 +110,8 @@ void target_x86_64_att_asm(ParsingContext *context, AstNode *program_node) {
     // write_line("add $32, %rsp", fptr_code_gen);
     write_line("pop %rbp", fptr_code_gen);
     // Move the value of rax register into rdi, which holds the exit code.
-    write_line("movq (%rax), %rdi", fptr_code_gen);
-    // Move the system call number for exit into eax register.
-    write_line("mov $60, %eax", fptr_code_gen);
-    // Call the exit system call
-    write_line("syscall", fptr_code_gen);
+    write_line("movq (%rax), %rax", fptr_code_gen);
+    write_line("ret", fptr_code_gen);
 
     fclose(fptr_code_gen);
 }
