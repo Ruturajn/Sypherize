@@ -214,6 +214,7 @@ ParsingContext *create_parsing_context(ParsingContext *parent_ctx) {
     new_context->parent_ctx = parent_ctx;
     new_context->vars = create_env(NULL);
     new_context->env_type = create_env(NULL);
+    new_context->funcs = create_env(NULL);
     return new_context;
 }
 
@@ -398,7 +399,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
     AstNode *running_expr = *curr_expr;
 
     while ((*temp_file_data = lex_token(temp_file_data, &curr_token)) &&
-           *temp_file_data != NULL) {
+           **temp_file_data != '\0') {
 
         if (curr_token == NULL)
             return *temp_file_data;
@@ -427,10 +428,9 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                  */
                 *temp_file_data = lex_token(temp_file_data, &curr_token);
                 running_expr->type = TYPE_FUNCTION;
-                // AstNode *func_name =
-                // node_symbol_from_token_create(curr_token); Function name
-                // should be put into the parsing context, not into the AST.
-                // add_ast_node_child(func, func_name);
+                AstNode *func_name = node_symbol_from_token_create(curr_token);
+                // Function name should be put into the parsing context, not
+                // into the AST. add_ast_node_child(func, func_name);
 
                 if (!check_next_token("(", temp_file_data, &curr_token))
                     print_error(SYNTAX_ERR, 1, curr_token);
@@ -476,10 +476,37 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 add_ast_node_child(running_expr, param_list);
                 add_ast_node_child(running_expr, return_type);
 
+                if (!check_next_token("{", temp_file_data, &curr_token))
+                    print_error("Function definition doesn't have a body", 1,
+                                curr_token);
+
                 *context = create_parsing_context(*context);
                 (*context)->op = create_node_symbol("def_func");
 
-                // return *temp_file_data;
+                AstNode *params = running_expr->child->child;
+                while (params != NULL) {
+                    if (!set_env(&((*context)->vars), params->child,
+                                 params->child->next_child)) {
+                        print_error("Unable to set environment binding for "
+                                    "variable",
+                                    0, NULL);
+                    }
+                    params = params->next_child;
+                }
+
+                AstNode *func_body = node_alloc();
+                AstNode *func_expr = node_alloc();
+                add_ast_node_child(func_body, func_expr);
+                add_ast_node_child(running_expr, func_body);
+
+                if (!set_env(&((*context)->funcs), func_name, running_expr)) {
+                    print_error("Unable to set environment binding for "
+                                "variable",
+                                0, NULL);
+                }
+
+                running_expr = func_expr;
+                continue;
             } else {
                 /**
                  * Parser High level design.
@@ -610,23 +637,20 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                     free_node(var_bind);
                     return *temp_file_data;
                 } else {
-                    *temp_file_data = lex_token(temp_file_data, &curr_token);
-                    print_error(SYNTAX_ERR, 1, curr_token);
+                    if ((*context)->parent_ctx == NULL)
+                        break;
+
+                    AstNode *op = (*context)->op;
+                    if (op->type != TYPE_SYM)
+                        print_error("Compiler - Context operator not a symbol",
+                                    1, NULL);
+
+                    if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
+                        if (check_next_token("}", temp_file_data, &curr_token))
+                            break;
+                    }
                 }
             }
-            if ((*context)->parent_ctx == NULL)
-                break;
-
-            AstNode *op = (*context)->op;
-            if (op->type != TYPE_SYM)
-                print_error("Compiler - Context operator not a symbol", 1,
-                            NULL);
-
-            if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
-                printf("CONTD\n");
-            }
-
-            return *temp_file_data;
         }
     }
     return *temp_file_data;

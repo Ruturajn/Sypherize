@@ -71,6 +71,7 @@ typedef struct ParsingContext {
                    ///< the stack.
     Env *env_type; ///< Pointer to an environment for types.
     Env *vars;     ///< Pointer to an environment for varaibles.
+    Env *funcs;    ///< Pointer to an environment for functions.
 } ParsingContext;
 
 /**
