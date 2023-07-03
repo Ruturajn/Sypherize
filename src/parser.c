@@ -211,6 +211,8 @@ ParsingContext *create_parsing_context(ParsingContext *parent_ctx) {
     ParsingContext *new_context = NULL;
     new_context = (ParsingContext *)calloc(1, sizeof(ParsingContext));
     CHECK_NULL(new_context, MEM_ERR);
+    new_context->op = NULL;
+    new_context->res = NULL;
     new_context->parent_ctx = parent_ctx;
     new_context->vars = create_env(NULL);
     new_context->env_type = create_env(NULL);
@@ -404,8 +406,22 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
         if (curr_token == NULL)
             return *temp_file_data;
 
-        if (strncmp_lexed_token(curr_token, ";"))
+        if (strncmp_lexed_token(curr_token, ";")) {
+            if ((*context)->parent_ctx != NULL) {
+                if (check_next_token("}", temp_file_data, &curr_token)) {
+                    running_expr = (*context)->res;
+                    *context = (*context)->parent_ctx;
+                    print_ast_node(running_expr, 0);
+                    break;
+                }
+                print_ast_node((*context)->res, 0);
+                (*context)->res->next_child = node_alloc();
+                (*context)->res = (*context)->res->next_child;
+                running_expr = (*context)->res;
+                continue;
+            }
             return *temp_file_data;
+        }
 
         // Check if the current token is an integer.
         if (parse_int(curr_token, running_expr)) {
@@ -498,6 +514,8 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 AstNode *func_expr = node_alloc();
                 add_ast_node_child(func_body, func_expr);
                 add_ast_node_child(running_expr, func_body);
+
+                (*context)->res = func_expr;
 
                 if (!set_env(&((*context)->funcs), func_name, running_expr)) {
                     print_error("Unable to set environment binding for "
@@ -646,8 +664,12 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                                     1, NULL);
 
                     if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
-                        if (check_next_token("}", temp_file_data, &curr_token))
+                        if (strncmp_lexed_token(curr_token, "}") ||
+                            check_next_token("}", temp_file_data,
+                                             &curr_token)) {
+                            *context = (*context)->parent_ctx;
                             break;
+                        }
                     }
                 }
             }

@@ -40,9 +40,9 @@ typedef long int_cl;
  *
  * @param  file_ptr  [`FILE *`] pointer to the file, for which the
  *                   size needs to be calculated.
- * @return long      The size of the file.
+ * @return size_t    The size of the file.
  */
-long calculate_file_size(FILE *file_ptr);
+size_t calculate_file_size(FILE *file_ptr);
 
 /**
  * @brief Print out the token, pointed to by `curr_token`.

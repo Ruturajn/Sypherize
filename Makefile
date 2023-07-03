@@ -2,7 +2,7 @@
 # @author: Ruturaj A. Nanoti
 
 CC=gcc
-CFLAGS=-g -Wall -Werror
+CFLAGS=-g -Wall -Werror -Wextra -pedantic
 TARGET=sypherize
 
 #==============================================================================
@@ -44,7 +44,7 @@ $(TARGET): $(SRCS) $(BUILD_DIR) $(BIN_DIR) $(OBJS)
 
 clean:
 	@echo "\033[1;33m[+] Cleaning generated build files ...\033[1;37m"
-	rm -rf $(BUILD_DIR) $(BIN_DIR) $(DOCS_DIR)
+	rm -rf $(BUILD_DIR) $(BIN_DIR)
 
 docs:
 	@echo "\033[1;34m[+] Generating Documentation ...\033[1;37m"

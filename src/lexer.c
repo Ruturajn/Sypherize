@@ -2,7 +2,7 @@
 #include "../inc/code_gen.h"
 #include "../inc/parser.h"
 
-long calculate_file_size(FILE *file_ptr) {
+size_t calculate_file_size(FILE *file_ptr) {
     if (file_ptr == NULL) {
         return 0;
     }
@@ -101,7 +101,7 @@ void lex_file(char *file_dest) {
     file_ptr = fopen(file_dest, "r");
     CHECK_NULL(file_ptr, "Unable to open file");
 
-    long file_sz = calculate_file_size(file_ptr);
+    size_t file_sz = calculate_file_size(file_ptr);
 
     char *file_data = NULL;
 

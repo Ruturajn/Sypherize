@@ -21,6 +21,9 @@ a := 83;
 !!! This is again a comment. Probably too much XD.
 def_func add_int(int: a, int: x) ~ int {
     x := 33;
+    a := 99;
+    x := 10;
+    a := 100;
 }
 
 int: test := 17;

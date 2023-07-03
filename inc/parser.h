@@ -69,6 +69,8 @@ typedef struct ParsingContext {
     struct ParsingContext *parent_ctx; ///< Pointer to the parent context.
     AstNode *op;   ///< Pointer to an operator that caused the increase in
                    ///< the stack.
+    AstNode *res;  ///< Pointer to an AstNode to keep track of the list
+                   ///< of expressions in a function body.
     Env *env_type; ///< Pointer to an environment for types.
     Env *vars;     ///< Pointer to an environment for varaibles.
     Env *funcs;    ///< Pointer to an environment for functions.
