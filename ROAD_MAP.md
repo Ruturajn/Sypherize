@@ -178,6 +178,50 @@ a basic compiler.
   Finally, we have the `~` sign, which denotes that the following is the return
   type of the function. Then within braces, exists the function body, which can
   be represented as a list of expressions in a nested scope or *context*.
+- For creating the AST for our function:
+    - We will need a node of type *function*.
+    - Then we will need to store the list of parameters it accepts and
+      their types.
+    - After that, we will require the return type of the function.
+    - Finally, we will have the function body, which can be considered
+      a list of expressions.
+
+  With all of this information, we can add the representation for
+  our function to the AST.
+  ```
+    PROGRAM
+          |-- VAR_DECL
+          |          |-- SYM: a
+          |           `- INT: 340
+          |
+          |-- VAR_RE_ASSIGN
+          |                |-- SYM: a
+          |                 `- INT: 10
+          |
+           ` FUNCTION
+                     |-- PARAMETER_LIST
+                     |                |-- PARAM
+                     |                |        |-- SYM: a
+                     |                |         `- SYM: int
+                     |                |  
+                     |                 `-- PARAM
+                     |                         |-- SYM: x
+                     |                          `- SYM: int
+                     |
+                     |-- SYM: int (Return type)
+                      `- LIST_OF_EXPRESSIONS
+                                            `- VAR_RE_ASSIGN
+                                                            |-- SYM: x
+                                                             `- INT: 33
+  ```
+  Great, we have now parsed our function into the AST. Then, we need
+  to setup a child context, and store our variable bindings into
+  that environment, to allow for nested scopes. So, e.g. `x` will
+  be bound in the context within the *variables* environment
+  with a type `int` in the function's scope. Finally, we also bind
+  the function name with the actual function node in the AST within
+  the *functions* environment.
+  
 
 ### Code Generation - Assembly (x86_64)
 
