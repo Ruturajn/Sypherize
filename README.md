@@ -7,12 +7,14 @@ called **Sypher**.
 
 I will be developing this project by following
 [`Lens_r's`](https://www.youtube.com/playlist?list=PLysa8wRFCssxGKj_RxBWr3rwmjEYlJIpa)
-playslist on youtube which outlines the complete process
-of desigining and implementing a compiler.
+playlist on youtube which outlines the complete process
+of designing and implementing a compiler.
 
-The file [`RoadMap.md`](https://github.com/Ruturajn/Sypherize/blob/main/RoadMap.md)
-is a summary of what I picked up from the playslist, which include a set of
-steps, that outline the whole design.
+The file [`ROAD_MAP.md`](https://github.com/Ruturajn/Sypherize/blob/main/ROAD_MAP.md)
+is a summary of what I picked up from the playlist, which includes a set of
+steps, that outline the whole design. It's mainly for my understanding, but
+you can definitely give it a read if you like.
+
 
 ## Build Instructions
 
