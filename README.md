@@ -36,13 +36,13 @@ Compiling this project:
   ```
 - Use `$ make help` to look at available targets.
 
-## Compiling the Generated Assembly File
+## Compiling the Generated x86_64 Assembly File
 
-- Use `gcc`:
-  ```
-  $ gcc code_gen.S -o code_gen
-  ```
-
+Using `gcc`:
+```
+$ gcc code_gen.S -o code_gen
+```
+<!--
 - Use an assembler and linker:
     - Assemble into an object file.
       ```
@@ -52,3 +52,4 @@ Compiling this project:
       ```
       $ ld code_gen.o -subsystem-console -o code_gen
       ```
+-->
