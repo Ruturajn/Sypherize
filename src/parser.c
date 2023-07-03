@@ -430,7 +430,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 running_expr->type = TYPE_FUNCTION;
                 AstNode *func_name = node_symbol_from_token_create(curr_token);
                 // Function name should be put into the parsing context, not
-                // into the AST. add_ast_node_child(func, func_name);
+                // into the AST.
 
                 if (!check_next_token("(", temp_file_data, &curr_token))
                     print_error(SYNTAX_ERR, 1, curr_token);
