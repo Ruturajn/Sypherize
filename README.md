@@ -45,7 +45,7 @@ Compiling this project:
 
 - Use an assembler and linker:
     - Assemble into an object file.
-    ```
+      ```
       $ as code_gen.S -o code_gen.o
       ```
     - Link into the final executable.
