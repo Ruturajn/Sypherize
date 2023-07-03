@@ -38,11 +38,17 @@ Compiling this project:
 
 ## Compiling the Generated Assembly File
 
-- Assemble into an object file.
+- Use `gcc`:
   ```
-  $ as code_gen.S -o code_gen.o
+  $ gcc code_gen.S -o code_gen
   ```
-- Link into the final executable.
-  ```
-  $ ld code_gen.o -subsystem-console -o code_gen
-  ```
+
+- Use an assembler and linker:
+    - Assemble into an object file.
+    ```
+      $ as code_gen.S -o code_gen.o
+      ```
+    - Link into the final executable.
+      ```
+      $ ld code_gen.o -subsystem-console -o code_gen
+      ```

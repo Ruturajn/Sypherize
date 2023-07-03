@@ -34,6 +34,9 @@ void print_ast_node(AstNode *root_node, int indent) {
     case TYPE_VAR_REASSIGNMENT:
         printf("VAR REASSIGNMENT");
         break;
+    case TYPE_FUNCTION:
+        printf("FUNCTION");
+        break;
     default:
         printf("Unknown TYPE");
         break;
@@ -116,12 +119,8 @@ int node_cmp(AstNode *node1, AstNode *node2) {
 
     switch (node1->type) {
     case TYPE_NULL:
-        if (node2->type == TYPE_NULL)
-            return 1;
         break;
     case TYPE_PROGRAM:
-        if (node2->type == TYPE_PROGRAM)
-            return 1;
         break;
     case TYPE_ROOT:
         printf("Compare Programs : Not implemented\n");
@@ -131,22 +130,13 @@ int node_cmp(AstNode *node1, AstNode *node2) {
             return 1;
         break;
     case TYPE_BINARY_OPERATOR:
-        if (node2->type == TYPE_BINARY_OPERATOR) {
-            printf("TODO : BINARY OPERATOR!\n");
-            return 1;
-        }
+        printf("TODO : BINARY OPERATOR!\n");
         break;
     case TYPE_VAR_DECLARATION:
-        if (node2->type == TYPE_VAR_DECLARATION) {
-            printf("TODO : VAR DECLARATION!\n");
-            return 1;
-        }
+        printf("TODO : VAR DECLARATION!\n");
         break;
     case TYPE_VAR_INIT:
-        if (node2->type == TYPE_VAR_INIT) {
-            printf("TODO : VAR INIT!\n");
-            return 1;
-        }
+        printf("TODO : VAR INIT!\n");
         break;
     case TYPE_SYM:
         if (node1->ast_val.node_symbol != NULL &&
@@ -159,10 +149,10 @@ int node_cmp(AstNode *node1, AstNode *node2) {
             return 1;
         break;
     case TYPE_VAR_REASSIGNMENT:
-        if (node2->type == TYPE_VAR_REASSIGNMENT) {
-            printf("TODO : VAR REASSIGNMENT!\n");
-            return 1;
-        }
+        printf("TODO : VAR REASSIGNMENT!\n");
+        break;
+    case TYPE_FUNCTION:
+        printf("TODO : FUNCTION!\n");
         break;
     default:
         break;
@@ -186,6 +176,23 @@ AstNode *get_env(Env *env_to_get, AstNode *identifier, int *stat) {
     return val;
 }
 
+AstNode *parser_get_type(ParsingContext *context, AstNode *identifier,
+                         int *stat) {
+    ParsingContext *temp_ctx = context;
+    int status = -1;
+    while (temp_ctx != NULL) {
+        AstNode *res = get_env(temp_ctx->env_type, identifier, &status);
+        if (status) {
+            *stat = 1;
+            return res;
+        }
+        temp_ctx = temp_ctx->parent_ctx;
+    }
+    AstNode *res = create_node_none();
+    *stat = 0;
+    return res;
+}
+
 void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add) {
     if (parent_node == NULL || child_to_add == NULL)
         return;
@@ -200,12 +207,18 @@ void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add) {
     temp_child->next_child = child_to_add;
 }
 
-ParsingContext *create_parsing_context() {
+ParsingContext *create_parsing_context(ParsingContext *parent_ctx) {
     ParsingContext *new_context = NULL;
     new_context = (ParsingContext *)calloc(1, sizeof(ParsingContext));
     CHECK_NULL(new_context, MEM_ERR);
+    new_context->parent_ctx = parent_ctx;
     new_context->vars = create_env(NULL);
     new_context->env_type = create_env(NULL);
+    return new_context;
+}
+
+ParsingContext *create_default_parsing_context() {
+    ParsingContext *new_context = create_parsing_context(NULL);
     AstNode *sym_node = create_node_symbol("int");
     ast_add_type_node(&new_context->env_type, TYPE_INT, sym_node, sizeof(long));
     return new_context;
@@ -396,129 +409,224 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
         // Check if the current token is an integer.
         if (parse_int(curr_token, running_expr)) {
             // If this is an integer, look for a valid operator.
-            return *temp_file_data;
-        }
-        // If the token was not an integer, check if it is
-        // variable declaration, assignment, etc.
+            // return *temp_file_data;
+        } else {
+            // If the token was not an integer, check if it is
+            // variable declaration, assignment, etc.
 
-        /**
-         * Parser High level design.
-         *
-         * int a := 340;
-         *
-         * PROGRAM
-         *        `-- VARIABLE_INITIALIZED
-         *            `-- INT (420) -> SYMBOL (a)
-         */
+            if (strncmp_lexed_token(curr_token, "def_func")) {
+                CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
+                /**
+                 * FUNCTION
+                 *         `-- LIST OF PARAMETERS
+                 *         |                     `--PARAMETER
+                 *         |                                 `-- SYM: NAME
+                 *         |                                 `-- SYM: TYPE
+                 *         `-- RETURN TYPE SYMBOL
+                 *         `-- PROGRAM / LIST OF EXPRESSIONS
+                 */
+                *temp_file_data = lex_token(temp_file_data, &curr_token);
+                running_expr->type = TYPE_FUNCTION;
+                // AstNode *func_name =
+                // node_symbol_from_token_create(curr_token); Function name
+                // should be put into the parsing context, not into the AST.
+                // add_ast_node_child(func, func_name);
 
-        AstNode *sym_node = node_symbol_from_token_create(curr_token);
-        int status = -1;
-        AstNode *res = get_env((*context)->env_type, sym_node, &status);
-        if (status) {
-            AstNode *curr_var_decl = node_alloc();
-            curr_var_decl->type = TYPE_VAR_DECLARATION;
+                if (!check_next_token("(", temp_file_data, &curr_token))
+                    print_error(SYNTAX_ERR, 1, curr_token);
 
-            AstNode *curr_type = node_symbol_from_token_create(curr_token);
-            curr_type->type = res->type;
+                AstNode *param_list = node_alloc();
+                for (;;) {
+                    if (check_next_token(")", temp_file_data, &curr_token))
+                        break;
 
-            // Lex again to look forward.
-            if (check_next_token(":", temp_file_data, &curr_token)) {
+                    *temp_file_data = lex_token(temp_file_data, &curr_token);
+                    AstNode *param_type =
+                        node_symbol_from_token_create(curr_token);
 
+                    if (!check_next_token(":", temp_file_data, &curr_token))
+                        print_error(SYNTAX_ERR, 1, curr_token);
+
+                    *temp_file_data = lex_token(temp_file_data, &curr_token);
+                    AstNode *param_name =
+                        node_symbol_from_token_create(curr_token);
+
+                    AstNode *param = node_alloc();
+
+                    add_ast_node_child(param, param_name);
+                    add_ast_node_child(param, param_type);
+
+                    add_ast_node_child(param_list, param);
+
+                    if (!check_next_token(",", temp_file_data, &curr_token)) {
+                        if (check_next_token(")", temp_file_data, &curr_token))
+                            break;
+                        print_error(SYNTAX_ERR, 1, curr_token);
+                    }
+                }
                 CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
 
+                if (!check_next_token("~", temp_file_data, &curr_token))
+                    print_error(SYNTAX_ERR, 1, curr_token);
+
                 *temp_file_data = lex_token(temp_file_data, &curr_token);
+                AstNode *return_type =
+                    node_symbol_from_token_create(curr_token);
 
-                AstNode *curr_sym = node_symbol_from_token_create(curr_token);
-                curr_sym->type = TYPE_SYM;
+                add_ast_node_child(running_expr, param_list);
+                add_ast_node_child(running_expr, return_type);
 
-                get_env((*context)->vars, curr_sym, &status);
-                if (status)
-                    print_error("Redefinition of a variable", 1, curr_token);
+                *context = create_parsing_context(*context);
+                (*context)->op = create_node_symbol("def_func");
 
-                add_ast_node_child(curr_var_decl, curr_sym);
+                // return *temp_file_data;
+            } else {
+                /**
+                 * Parser High level design.
+                 *
+                 * int a := 340;
+                 *
+                 * PROGRAM
+                 *        `-- VARIABLE_INITIALIZED
+                 *            `-- INT (420) -> SYMBOL (a)
+                 */
+                AstNode *sym_node = node_symbol_from_token_create(curr_token);
+                int status = -1;
+                AstNode *res = parser_get_type(*context, sym_node, &status);
+                if (status) {
+                    AstNode *curr_var_decl = node_alloc();
+                    curr_var_decl->type = TYPE_VAR_DECLARATION;
 
-                // Lex again to look forward.
-                if (check_next_token(":", temp_file_data, &curr_token)) {
-                    CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
-                    if (check_next_token("=", temp_file_data, &curr_token)) {
+                    AstNode *curr_type =
+                        node_symbol_from_token_create(curr_token);
+                    curr_type->type = res->type;
+
+                    // Lex again to look forward.
+                    if (check_next_token(":", temp_file_data, &curr_token)) {
+
                         CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
 
-                        AstNode *new_expr = node_alloc();
-                        add_ast_node_child(curr_var_decl, new_expr);
-                        AstNode *sym_name = node_alloc();
-                        copy_node(sym_name, curr_sym);
-                        if (!set_env(&((*context)->vars), sym_name, sym_node)) {
+                        *temp_file_data =
+                            lex_token(temp_file_data, &curr_token);
+
+                        AstNode *curr_sym =
+                            node_symbol_from_token_create(curr_token);
+                        curr_sym->type = TYPE_SYM;
+
+                        get_env((*context)->vars, curr_sym, &status);
+                        if (status)
+                            print_error("Redefinition of a variable", 1,
+                                        curr_token);
+
+                        add_ast_node_child(curr_var_decl, curr_sym);
+
+                        // Lex again to look forward.
+                        if (check_next_token(":", temp_file_data,
+                                             &curr_token)) {
+                            CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
+                            if (check_next_token("=", temp_file_data,
+                                                 &curr_token)) {
+                                CHECK_END(**temp_file_data, SYNTAX_ERR,
+                                          curr_token);
+
+                                AstNode *new_expr = node_alloc();
+                                add_ast_node_child(curr_var_decl, new_expr);
+                                AstNode *sym_name = node_alloc();
+                                copy_node(sym_name, curr_sym);
+                                if (!set_env(&((*context)->vars), sym_name,
+                                             sym_node)) {
+                                    print_error(
+                                        "Unable to set environment binding for "
+                                        "variable",
+                                        0, NULL);
+                                }
+                                *running_expr = *curr_var_decl;
+                                running_expr = new_expr;
+                                continue;
+                            }
+                        }
+                        // If the control flow is here, it means that it is a
+                        // variable declaration without intiialization.
+
+                        // Initialize the value of the variable to NULL.
+                        AstNode *sym_name_node = node_alloc();
+                        copy_node(sym_name_node, curr_sym);
+
+                        AstNode *init_val = create_node_none();
+                        // init_val->type = res->type;
+
+                        add_ast_node_child(curr_var_decl, init_val);
+
+                        if (!set_env(&((*context)->vars), sym_name_node,
+                                     sym_node)) {
                             print_error("Unable to set environment binding for "
                                         "variable",
                                         0, NULL);
                         }
                         *running_expr = *curr_var_decl;
-                        running_expr = new_expr;
-                        continue;
+                    } else {
+                        *temp_file_data =
+                            lex_token(temp_file_data, &curr_token);
+                        print_error(SYNTAX_ERR, 1, 0);
+                        print_lexed_token(curr_token);
                     }
+                    return *temp_file_data;
                 }
-                // If the control flow is here, it means that it is a variable
-                // declaration without intiialization.
-
-                // Initialize the value of the variable to NULL.
-                AstNode *sym_name_node = node_alloc();
-                copy_node(sym_name_node, curr_sym);
-
-                AstNode *init_val = create_node_none();
-                // init_val->type = res->type;
-
-                add_ast_node_child(curr_var_decl, init_val);
-
-                if (!set_env(&((*context)->vars), sym_name_node, sym_node)) {
-                    print_error(
-                        "Unable to set environment binding for variable", 0,
-                        NULL);
-                }
-                *running_expr = *curr_var_decl;
-            } else {
-                *temp_file_data = lex_token(temp_file_data, &curr_token);
-                print_error(SYNTAX_ERR, 1, 0);
-                print_lexed_token(curr_token);
-            }
-            return *temp_file_data;
-        }
-        free_node(res);
-
-        // Lex again to look forward.
-        if (check_next_token(":", temp_file_data, &curr_token)) {
-            CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
-
-            AstNode *var_bind = get_env((*context)->vars, sym_node, &status);
-            if (status) {
-                // re-assignment or redefinition (which is an error),
-                // otherwise invalid syntax error.
+                free_node(res);
 
                 // Lex again to look forward.
-                if (check_next_token("=", temp_file_data, &curr_token)) {
+                if (check_next_token(":", temp_file_data, &curr_token)) {
                     CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
 
-                    AstNode *new_expr = node_alloc();
-                    AstNode *node_reassign = node_alloc();
-                    node_reassign->type = TYPE_VAR_REASSIGNMENT;
+                    AstNode *var_bind =
+                        get_env((*context)->vars, sym_node, &status);
+                    if (status) {
+                        // re-assignment or redefinition (which is an error),
+                        // otherwise invalid syntax error.
 
-                    add_ast_node_child(node_reassign, sym_node);
-                    add_ast_node_child(node_reassign, new_expr);
+                        // Lex again to look forward.
+                        if (check_next_token("=", temp_file_data,
+                                             &curr_token)) {
+                            CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
 
-                    *running_expr = *node_reassign;
-                    running_expr = new_expr;
-                    continue;
+                            AstNode *new_expr = node_alloc();
+                            AstNode *node_reassign = node_alloc();
+                            node_reassign->type = TYPE_VAR_REASSIGNMENT;
 
+                            add_ast_node_child(node_reassign, sym_node);
+                            add_ast_node_child(node_reassign, new_expr);
+
+                            *running_expr = *node_reassign;
+                            running_expr = new_expr;
+                            continue;
+
+                        } else {
+                            *temp_file_data =
+                                lex_token(temp_file_data, &curr_token);
+                            print_error("UKNOWN : ", 1, curr_token);
+                        }
+                    } else
+                        print_error("Undefined Symbol", 1, curr_token);
+                    free_node(var_bind);
+                    return *temp_file_data;
                 } else {
                     *temp_file_data = lex_token(temp_file_data, &curr_token);
-                    print_error("UKNOWN : ", 1, curr_token);
+                    print_error(SYNTAX_ERR, 1, curr_token);
                 }
-            } else
-                print_error("Undefined Symbol", 1, curr_token);
-            free_node(var_bind);
+            }
+            if ((*context)->parent_ctx == NULL)
+                break;
+
+            AstNode *op = (*context)->op;
+            if (op->type != TYPE_SYM)
+                print_error("Compiler - Context operator not a symbol", 1,
+                            NULL);
+
+            if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
+                printf("CONTD\n");
+            }
+
             return *temp_file_data;
-        } else {
-            *temp_file_data = lex_token(temp_file_data, &curr_token);
-            print_error(SYNTAX_ERR, 1, curr_token);
         }
     }
     return *temp_file_data;

@@ -113,5 +113,17 @@ void target_x86_64_att_asm(ParsingContext *context, AstNode *program_node) {
     write_line("movq (%rax), %rax", fptr_code_gen);
     write_line("ret", fptr_code_gen);
 
+    /**
+     * ; Custom C lib call in assembly
+     * The first parameter for a C lib call on windows
+     * gets stored in `%rcx`, and the second parameter gets
+     * stored in `%rdx`.
+     * - `fmt: .asciz "%ld"` above `.section .text`
+     * - `movq $4303493, %rdx` ; Move a long integer into the 2nd arg.
+     * - `lea fmt(%rip), %rcx ; Move the address of the string into the
+     *                         ; firt argument.
+     * - `call printf`
+     */
+
     fclose(fptr_code_gen);
 }

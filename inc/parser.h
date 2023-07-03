@@ -20,6 +20,7 @@ typedef enum NodeType {
     TYPE_VAR_INIT,         ///< Node that represents variable initialization.
     TYPE_SYM,              ///< Node for a symbol.
     TYPE_VAR_REASSIGNMENT, ///< Node for variable reassignment.
+    TYPE_FUNCTION,         ///< Node for storing functions.
 } NodeType;
 
 /**
@@ -65,6 +66,9 @@ typedef struct Env {
  *        with types, and variables. This enables scoped access to variables.
  */
 typedef struct ParsingContext {
+    struct ParsingContext *parent_ctx; ///< Pointer to the parent context.
+    AstNode *op;   ///< Pointer to an operator that caused the increase in
+                   ///< the stack.
     Env *env_type; ///< Pointer to an environment for types.
     Env *vars;     ///< Pointer to an environment for varaibles.
 } ParsingContext;
@@ -122,15 +126,28 @@ int set_env(Env **Env_to_set, AstNode *identifier_node, AstNode *id_val);
 int node_cmp(AstNode *node1, AstNode *node2);
 
 /**
- * @brief  Gets the value node based on the identifier node.
+ * @brief  Gets the type node based on the identifier node.
  *
  * @param  Env_to_get [`Env *`] Pointer to the environment which
  *                    must be looked at.
  * @param  identifier [`AstNode *`] Pointer to the identifier node.
  * @param  stat       [`int`] Status of the function execution.
- * @return AstNode*   Pointer to the value node.
+ * @return AstNode*   Pointer to the type node.
  */
 AstNode *get_env(Env *Env_to_get, AstNode *identifier, int *stat);
+
+/**
+ * @brief  Searches the parsing contexts, for a type node based
+ *         on the identifier.
+ *
+ * @param  Env_to_get [`ParsingContext *`] Pointer to the ParsingContext
+ *                    context.
+ * @param  identifier [`AstNode *`] Pointer to the identifier node.
+ * @param  stat       [`int`] Status of the function execution.
+ * @return AstNode*   Pointer to the type node.
+ */
+AstNode *parser_get_type(ParsingContext *context, AstNode *identifier,
+                         int *stat);
 
 /**
  * @brief Adds a child node to the parent in the AST.
@@ -142,11 +159,19 @@ AstNode *get_env(Env *Env_to_get, AstNode *identifier, int *stat);
 void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add);
 
 /**
- * @brief  Creates a parsing context.
+ * @brief  Creates a parsing context, without any types.
+ *
+ * @param  [`ParsingContext *`] Pointer to the parent context.
+ * @return ParsingContext* Pointer to the newly created parsing context.
+ */
+ParsingContext *create_parsing_context(ParsingContext *parent_ctx);
+
+/**
+ * @brief  Creates a default parsing context, with all the types.
  *
  * @return ParsingContext* Pointer to the newly created parsing context.
  */
-ParsingContext *create_parsing_context();
+ParsingContext *create_default_parsing_context();
 
 /**
  * @brief  Allocates memory for a new node, and initialize its

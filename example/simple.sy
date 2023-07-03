@@ -19,3 +19,6 @@ new_val := 11;
 a := 83;
 
 !!! This is again a comment. Probably too much XD.
+def_func add_int(int: a, int: b) ~ int
+
+int: test := 17;

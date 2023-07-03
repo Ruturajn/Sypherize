@@ -128,7 +128,7 @@ void lex_file(char *file_dest) {
     AstNode *program = node_alloc();
     program->type = TYPE_PROGRAM;
 
-    ParsingContext *curr_context = create_parsing_context();
+    ParsingContext *curr_context = create_default_parsing_context();
 
     while (*temp_file_data != '\0') {
         curr_expr = node_alloc();
@@ -143,11 +143,11 @@ void lex_file(char *file_dest) {
 
     print_ast_node(program, 0);
 
-    printf("\nCODE GENERATION BEGIN\n\n");
+    // printf("\nCODE GENERATION BEGIN\n\n");
 
-    choose_target(TARGET_X86_64_AT_T_ASM, curr_context, program);
+    // choose_target(TARGET_X86_64_AT_T_ASM, curr_context, program);
 
-    printf("\nCODE GENERATION COMPLETE\n");
+    // printf("\nCODE GENERATION COMPLETE\n");
 
     free_node(program);
     free(file_data);
