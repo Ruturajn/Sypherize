@@ -36,7 +36,7 @@ pop %rbp
 ret
 afteryvmcpjnb:
 mov $13, %rcx
-mov $94, %rcx
+mov $94, %rdx
 call add_int
 add $32, %rsp
 pop %rbp

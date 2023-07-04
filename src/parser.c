@@ -87,10 +87,8 @@ int set_env(Env **env_to_set, AstNode *identifier_node, AstNode *id_val) {
 
     IdentifierBind *binds = calloc(1, sizeof(IdentifierBind));
     CHECK_NULL(binds, MEM_ERR);
-    binds->identifier = node_alloc();
-    copy_node(binds->identifier, identifier_node);
-    binds->id_val = node_alloc();
-    copy_node(binds->id_val, id_val);
+    binds->identifier = identifier_node;
+    binds->id_val = id_val;
 
     if (temp == NULL) {
         (*env_to_set)->binding = binds;
@@ -99,7 +97,7 @@ int set_env(Env **env_to_set, AstNode *identifier_node, AstNode *id_val) {
 
     while (temp != NULL) {
         if (node_cmp(temp->identifier, identifier_node)) {
-            copy_node(temp->id_val, id_val);
+            temp->id_val = id_val;
             return 1;
         }
         temp = temp->next_id_bind;
@@ -431,7 +429,8 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                  *         `-- PROGRAM / LIST OF EXPRESSIONS
                  */
                 *temp_file_data = lex_token(temp_file_data, &curr_token);
-                running_expr->type = TYPE_FUNCTION;
+                AstNode *func_node = node_alloc();
+                func_node->type = TYPE_FUNCTION;
                 AstNode *func_name = node_symbol_from_token_create(curr_token);
                 // Function name should be put into the parsing context, not
                 // into the AST.
@@ -477,23 +476,23 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 AstNode *return_type =
                     node_symbol_from_token_create(curr_token);
 
-                add_ast_node_child(running_expr, param_list);
-                add_ast_node_child(running_expr, return_type);
+                add_ast_node_child(func_node, param_list);
+                add_ast_node_child(func_node, return_type);
 
-                if (!check_next_token("{", temp_file_data, &curr_token))
-                    print_error("Function definition doesn't have a body", 1,
-                                curr_token);
-
-                if (!set_env(&((*context)->funcs), func_name, *curr_expr)) {
+                if (!set_env(&((*context)->funcs), func_name, func_node)) {
                     print_error("Unable to set environment binding for "
                                 "variable",
                                 0, NULL);
                 }
 
+                if (!check_next_token("{", temp_file_data, &curr_token))
+                    print_error("Function definition doesn't have a body", 1,
+                                curr_token);
+
                 *context = create_parsing_context(*context);
                 (*context)->op = create_node_symbol("def_func");
 
-                AstNode *params = running_expr->child->child;
+                AstNode *params = func_node->child->child;
                 while (params != NULL) {
                     if (!set_env(&((*context)->vars), params->child,
                                  params->child->next_child)) {
@@ -507,10 +506,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 AstNode *func_body = node_alloc();
                 AstNode *func_expr = node_alloc();
                 add_ast_node_child(func_body, func_expr);
-                add_ast_node_child(running_expr, func_body);
+                add_ast_node_child(func_node, func_body);
 
                 (*context)->res = func_expr;
-
+                *running_expr = *func_node;
                 running_expr = func_expr;
                 continue;
             } else {
@@ -672,15 +671,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
         if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
             if (strncmp_lexed_token(curr_token, "}") ||
                 check_next_token("}", temp_file_data, &curr_token)) {
-                running_expr = (*context)->res;
                 *context = (*context)->parent_ctx;
-                if (!set_env(&((*context)->funcs),
-                             (*context)->funcs->binding->identifier,
-                             *curr_expr)) {
-                    print_error("Unable to set environment binding for "
-                                "variable",
-                                0, NULL);
-                }
                 break;
             }
         }
