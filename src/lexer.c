@@ -95,7 +95,7 @@ void print_error(char *msg, int is_exit, LexedToken *token) {
         exit(EXIT_FAILURE);
 }
 
-void lex_file(char *file_dest) {
+void lex_and_parse(char *file_dest) {
 
     FILE *file_ptr = NULL;
     file_ptr = fopen(file_dest, "r");
@@ -143,11 +143,9 @@ void lex_file(char *file_dest) {
 
     print_ast_node(program, 0);
 
-    // printf("\nCODE GENERATION BEGIN\n\n");
-
-    // choose_target(TARGET_X86_64_AT_T_ASM, curr_context, program);
-
-    // printf("\nCODE GENERATION COMPLETE\n");
+    printf("\n[+]CODE GENERATION BEGIN...");
+    choose_target(TARGET_X86_64_AT_T_ASM, curr_context, program);
+    printf("\n[+]CODE GENERATION COMPLETE\n");
 
     free_node(program);
     free(file_data);

@@ -4,18 +4,41 @@ test: .space 8
 new_val: .space 8
 a: .space 8
 .section .text
+jmp afteradd_int
+add_int:
+push %rbp
+mov %rsp, %rbp
+sub $32, %rsp
+add $32, %rsp
+pop %rbp
+ret
+afteradd_int:
 .global main
 main:
 push %rbp
 mov %rsp, %rbp
+sub $32, %rsp
 lea a(%rip), %rax
 movq $10, (%rax)
 lea a(%rip), %rax
 movq $93, (%rax)
 lea new_val(%rip), %rax
 movq $11, (%rax)
-lea a(%rip), %rax
+lea new_val(%rip), %rax
 movq $83, (%rax)
+jmp afteryvmcpjnb
+yvmcpjnb:
+push %rbp
+mov %rsp, %rbp
+sub $32, %rsp
+add $32, %rsp
+pop %rbp
+ret
+afteryvmcpjnb:
+mov $13, %rcx
+mov $94, %rcx
+call add_int
+add $32, %rsp
 pop %rbp
 movq (%rax), %rax
 ret

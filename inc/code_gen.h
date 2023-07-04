@@ -26,9 +26,18 @@ void write_int(long int_val, FILE *fptr);
 
 void write_header(FILE *fptr);
 
-void target_x86_64_att_asm(ParsingContext *context, AstNode *program_node);
-
 void target_x86_64_att_asm_data_section(ParsingContext *context, FILE *fptr);
+
+void target_x86_64_att_asm_expr_windows(ParsingContext *context,
+                                        AstNode *curr_expr,
+                                        FILE *fptr_code_gen);
+
+void target_x86_64_att_asm_func_windows(ParsingContext *context,
+                                        char *func_name, AstNode *func,
+                                        FILE *fptr_code_gen);
+
+void target_x86_64_att_asm_windows(ParsingContext *context,
+                                   AstNode *program_node);
 
 #ifdef __cplusplus
 }

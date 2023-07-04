@@ -37,6 +37,9 @@ void print_ast_node(AstNode *root_node, int indent) {
     case TYPE_FUNCTION:
         printf("FUNCTION");
         break;
+    case TYPE_FUNCTION_CALL:
+        printf("FUNCTION CALL");
+        break;
     default:
         printf("Unknown TYPE");
         break;
@@ -153,6 +156,9 @@ int node_cmp(AstNode *node1, AstNode *node2) {
         break;
     case TYPE_FUNCTION:
         printf("TODO : FUNCTION!\n");
+        break;
+    case TYPE_FUNCTION_CALL:
+        printf("TODO : FUNCTION CALL!\n");
         break;
     default:
         break;
@@ -399,29 +405,11 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                    AstNode **curr_expr, ParsingContext **context) {
 
     AstNode *running_expr = *curr_expr;
-
-    while ((*temp_file_data = lex_token(temp_file_data, &curr_token)) &&
-           **temp_file_data != '\0') {
+    for (;;) {
+        *temp_file_data = lex_token(temp_file_data, &curr_token);
 
         if (curr_token == NULL)
             return *temp_file_data;
-
-        if (strncmp_lexed_token(curr_token, ";")) {
-            if ((*context)->parent_ctx != NULL) {
-                if (check_next_token("}", temp_file_data, &curr_token)) {
-                    running_expr = (*context)->res;
-                    *context = (*context)->parent_ctx;
-                    print_ast_node(running_expr, 0);
-                    break;
-                }
-                print_ast_node((*context)->res, 0);
-                (*context)->res->next_child = node_alloc();
-                (*context)->res = (*context)->res->next_child;
-                running_expr = (*context)->res;
-                continue;
-            }
-            return *temp_file_data;
-        }
 
         // Check if the current token is an integer.
         if (parse_int(curr_token, running_expr)) {
@@ -496,6 +484,12 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                     print_error("Function definition doesn't have a body", 1,
                                 curr_token);
 
+                if (!set_env(&((*context)->funcs), func_name, *curr_expr)) {
+                    print_error("Unable to set environment binding for "
+                                "variable",
+                                0, NULL);
+                }
+
                 *context = create_parsing_context(*context);
                 (*context)->op = create_node_symbol("def_func");
 
@@ -516,12 +510,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 add_ast_node_child(running_expr, func_body);
 
                 (*context)->res = func_expr;
-
-                if (!set_env(&((*context)->funcs), func_name, running_expr)) {
-                    print_error("Unable to set environment binding for "
-                                "variable",
-                                0, NULL);
-                }
 
                 running_expr = func_expr;
                 continue;
@@ -655,25 +643,67 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                     free_node(var_bind);
                     return *temp_file_data;
                 } else {
-                    if ((*context)->parent_ctx == NULL)
-                        break;
+                    if (check_next_token("(", temp_file_data, &curr_token)) {
+                        running_expr->type = TYPE_FUNCTION_CALL;
+                        add_ast_node_child(running_expr, sym_node);
+                        AstNode *arg_list = node_alloc();
+                        AstNode *curr_arg = node_alloc();
+                        add_ast_node_child(arg_list, curr_arg);
+                        add_ast_node_child(running_expr, arg_list);
+                        running_expr = curr_arg;
 
-                    AstNode *op = (*context)->op;
-                    if (op->type != TYPE_SYM)
-                        print_error("Compiler - Context operator not a symbol",
-                                    1, NULL);
-
-                    if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
-                        if (strncmp_lexed_token(curr_token, "}") ||
-                            check_next_token("}", temp_file_data,
-                                             &curr_token)) {
-                            *context = (*context)->parent_ctx;
-                            break;
-                        }
+                        *context = create_parsing_context(*context);
+                        (*context)->op = create_node_symbol("func_call");
+                        (*context)->res = running_expr;
+                        continue;
                     }
+                    if ((*context)->parent_ctx == NULL)
+                        print_error("UNKNOWN SYMBOL", 1, curr_token);
                 }
             }
         }
+        if ((*context)->parent_ctx == NULL)
+            break;
+
+        AstNode *op = (*context)->op;
+        if (op->type != TYPE_SYM)
+            print_error("Compiler - Context operator not a symbol", 1, NULL);
+
+        if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
+            if (strncmp_lexed_token(curr_token, "}") ||
+                check_next_token("}", temp_file_data, &curr_token)) {
+                running_expr = (*context)->res;
+                *context = (*context)->parent_ctx;
+                if (!set_env(&((*context)->funcs),
+                             (*context)->funcs->binding->identifier,
+                             *curr_expr)) {
+                    print_error("Unable to set environment binding for "
+                                "variable",
+                                0, NULL);
+                }
+                break;
+            }
+        }
+
+        if (strcmp(op->ast_val.node_symbol, "func_call") == 0) {
+            if (strncmp_lexed_token(curr_token, ")") ||
+                check_next_token(")", temp_file_data, &curr_token)) {
+                running_expr = (*context)->res;
+                *context = (*context)->parent_ctx;
+                break;
+            } else if (strncmp_lexed_token(curr_token, ",") ||
+                       check_next_token(",", temp_file_data, &curr_token)) {
+                (*context)->res->next_child = node_alloc();
+                (*context)->res = (*context)->res->next_child;
+                running_expr = (*context)->res;
+                continue;
+            }
+        }
+
+        (*context)->res->next_child = node_alloc();
+        (*context)->res = (*context)->res->next_child;
+        running_expr = (*context)->res;
+        continue;
     }
     return *temp_file_data;
 }

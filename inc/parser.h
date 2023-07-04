@@ -21,6 +21,7 @@ typedef enum NodeType {
     TYPE_SYM,              ///< Node for a symbol.
     TYPE_VAR_REASSIGNMENT, ///< Node for variable reassignment.
     TYPE_FUNCTION,         ///< Node for storing functions.
+    TYPE_FUNCTION_CALL,    ///< Node for storing function calls.
 } NodeType;
 
 /**

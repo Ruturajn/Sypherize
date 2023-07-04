@@ -8,7 +8,7 @@ int: a := 340; ` this is also a comment.
 
 a := 10;
 
-a := 93;
+a := 93
 ` This is a variable declaration
 
 ! Assigning value to a variable.
@@ -16,14 +16,16 @@ int: new_val;
 
 new_val := 11;
 
-a := 83;
+new_val := 83;
 
 !!! This is again a comment. Probably too much XD.
-def_func add_int(int: a, int: x) ~ int {
-    x := 33;
-    a := 99;
-    x := 10;
-    a := 100;
-}
+ def_func add_int(int: a, int: x) ~ int {
+     x := 33;
+     a := 99
+     x := 10
+     a := 100;
+ }
+
+add_int(13, 94);
 
 int: test := 17;

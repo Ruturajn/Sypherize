@@ -17,7 +17,7 @@ extern "C" {
  * @brief String containing all the the whitespace characters
  *        for tokenizing.
  */
-#define WHITESPACE " \r\n"
+#define WHITESPACE " ;\r\n"
 
 /**
  * @brief String containing all the comment delimeters used
@@ -110,7 +110,7 @@ void print_error(char *msg, int is_exit, LexedToken *token);
  *
  * @param file_data   [`char *`] pointer to the data stream.
  */
-void lex_file(char *file_dest);
+void lex_and_parse(char *file_dest);
 
 #ifdef __cplusplus
 }
