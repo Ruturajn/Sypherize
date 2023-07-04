@@ -89,7 +89,7 @@ void target_x86_64_att_asm_expr_windows(ParsingContext *context,
                     write_line(", %rcx", fptr_code_gen);
                     break;
                 case 1:
-                    write_line(", %rcx", fptr_code_gen);
+                    write_line(", %rdx", fptr_code_gen);
                     break;
                 case 2:
                     write_line(", %r8", fptr_code_gen);
