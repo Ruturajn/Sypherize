@@ -125,13 +125,17 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                 get_reg_name(curr_expr->result_reg_desc, reg_head));
         break;
     case TYPE_FUNCTION:;
+        if (cg_ctx->parent_ctx == NULL) {
+            break;
+        }
         char *lambda_func_name = gen_label();
         target_x86_64_win_codegen_func(reg_head, cg_ctx, context,
                                        lambda_func_name, curr_expr, fptr_code);
-
+        break;
     case TYPE_VAR_REASSIGNMENT:
         if (cg_ctx->parent_ctx != NULL) {
             // print_error("Local variable code gen not implemented", 1, NULL);
+            break;
         } else {
             if (curr_expr->child->next_child->type == TYPE_INT) {
                 fprintf(fptr_code, "movq $%ld, %s\n",

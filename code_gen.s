@@ -21,16 +21,6 @@ movq $10, a(%rip)
 movq $93, a(%rip)
 movq $11, new_val(%rip)
 movq $83, new_val(%rip)
-jmp after.L0
-.L0:
-push %rbp
-mov %rsp, %rbp
-sub $32, %rsp
-add $32, %rsp
-pop %rbp
-ret
-after.L0:
-mov %rax, (null)(%rip)
 mov $12, %rax
 add $32, %rsp
 pop %rbp
