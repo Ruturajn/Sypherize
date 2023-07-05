@@ -1,7 +1,6 @@
 #include "../inc/lexer.h"
 #include "../inc/code_gen.h"
 #include "../inc/parser.h"
-#include <stdarg.h>
 
 const char *err_strings[] = {"GENERIC",     "NUM ARGS",     "MEMORY ALLOCATION",
                              "FILE ACCESS", "FILE SIZE",    "FILE READ",
