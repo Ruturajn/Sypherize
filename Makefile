@@ -2,7 +2,7 @@
 # @author: Ruturaj A. Nanoti
 
 CC=gcc
-CFLAGS=-g -Wall -Werror -Wextra -pedantic
+CFLAGS=-g -Wall -Werror # -Wextra -pedantic
 TARGET=sypherize
 
 #==============================================================================

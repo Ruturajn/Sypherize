@@ -1,229 +1,291 @@
 #include "../inc/code_gen.h"
 
-void choose_target(TargetType target, ParsingContext *context,
-                   AstNode *program_node) {
-    if (context == NULL)
-        print_error("NULL context encountered", 1, NULL);
-    switch (target) {
-    case TARGET_DEFAULT:
+char label_arr[LABEL_ARR_SIZE];
+int label_cnt = 0;
+int label_idx = 0;
+
+char sym_arr[SYM_ARR_SIZE];
+int sym_cnt = 0;
+int sym_idx = 0;
+
+Reg *reg_create_new(char *reg_name) {
+    Reg *new_reg = calloc(1, sizeof(Reg));
+    CHECK_NULL(new_reg, MEM_ERR);
+    new_reg->reg_name = reg_name;
+    new_reg->next_reg = NULL;
+    return new_reg;
+}
+
+void reg_add_new(Reg **reg_head, char *reg_name) {
+    if (*reg_head == NULL) {
+        *reg_head = reg_create_new(reg_name);
+        return;
+    }
+
+    Reg *temp = *reg_head;
+    while (temp->next_reg != NULL) {
+        temp = temp->next_reg;
+    }
+    temp->next_reg = reg_create_new(reg_name);
+}
+
+void reg_free(Reg *reg_head) {
+    Reg *temp = NULL;
+    while (temp != NULL) {
+        temp = reg_head;
+        reg_head = reg_head->next_reg;
+        if (temp->reg_name != NULL)
+            free(temp->reg_name);
+        free(temp);
+    }
+}
+
+RegDescriptor reg_alloc(Reg *reg_head) {
+    Reg *temp = reg_head;
+    RegDescriptor curr_reg = 0;
+    while (temp != NULL) {
+        if (!temp->reg_in_use) {
+            temp->reg_in_use = 1;
+            return curr_reg;
+        }
+        temp = temp->next_reg;
+        curr_reg++;
+    }
+    print_error("FATAL: Could not allocate new register", 1, NULL);
+    return curr_reg;
+}
+
+char *get_reg_name(RegDescriptor reg_desc, Reg *reg_head) {
+    Reg *temp = reg_head;
+    while (temp != NULL) {
+        if (reg_desc == 0)
+            return temp->reg_name;
+        temp = temp->next_reg;
+        reg_desc--;
+    }
+    print_error("Could not find the name of the register", 1, NULL);
+    return NULL;
+}
+
+void reg_dealloc(Reg *reg_head, RegDescriptor reg_desc) {
+    Reg *temp = reg_head;
+    while (temp != NULL) {
+        if (reg_desc == 0) {
+            temp->reg_in_use = 0;
+            return;
+        }
+        temp = temp->next_reg;
+        reg_desc--;
+    }
+    print_error("Could not De-allocate register", 1, NULL);
+}
+
+char *gen_label() {
+    char *label = label_arr + label_idx;
+    label_idx = snprintf(label, LABEL_ARR_SIZE - label_idx, ".L%d", label_cnt);
+    label_idx++;
+    if (label_idx > LABEL_ARR_SIZE) {
+        label_idx = 0;
+        label = gen_label();
+    }
+    label_cnt++;
+    return label;
+}
+
+char *map_sym_to_addr_win(AstNode *sym_node) {
+    char *sym = sym_arr + sym_idx;
+    sym_idx = snprintf(sym, SYM_ARR_SIZE - sym_idx, "%s(%%rip)",
+                       sym_node->ast_val.node_symbol);
+    sym_idx++;
+    if (sym_idx > LABEL_ARR_SIZE) {
+        sym_idx = 0;
+        sym = map_sym_to_addr_win(sym_node);
+    }
+    sym_cnt++;
+    return sym;
+}
+
+CGContext *create_codegen_context(CGContext *parent_ctx) {
+    CGContext *new_ctx = calloc(1, sizeof(CGContext));
+    CHECK_NULL(new_ctx, MEM_ERR);
+    new_ctx->parent_ctx = parent_ctx;
+    new_ctx->local_env = create_env(NULL);
+    return new_ctx;
+}
+
+void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
+                                    AstNode *curr_expr, CGContext *cg_ctx,
+                                    FILE *fptr_code) {
+    switch (curr_expr->type) {
+    case TYPE_VAR_DECLARATION:
         break;
-    case TARGET_X86_64_AT_T_ASM:
-        target_x86_64_att_asm_windows(context, program_node);
+    case TYPE_INT:
+        curr_expr->result_reg_desc = reg_alloc(reg_head);
+        fprintf(fptr_code, "movq $%ld, %s\n", curr_expr->ast_val.val,
+                get_reg_name(curr_expr->result_reg_desc, reg_head));
+        break;
+    case TYPE_FUNCTION:;
+        char *lambda_func_name = gen_label();
+        target_x86_64_win_codegen_func(reg_head, cg_ctx, context,
+                                       lambda_func_name, curr_expr, fptr_code);
+
+    case TYPE_VAR_REASSIGNMENT:
+        if (cg_ctx->parent_ctx != NULL) {
+            // print_error("Local variable code gen not implemented", 1, NULL);
+        } else {
+            if (curr_expr->child->next_child->type == TYPE_INT) {
+                fprintf(fptr_code, "movq $%ld, %s\n",
+                        curr_expr->child->next_child->ast_val.val,
+                        map_sym_to_addr_win(curr_expr->child));
+            } else {
+                target_x86_64_win_codegen_expr(reg_head, context,
+                                               curr_expr->child->next_child,
+                                               cg_ctx, fptr_code);
+                char *res_reg = get_reg_name(
+                    curr_expr->child->next_child->result_reg_desc, reg_head);
+                fprintf(fptr_code, "mov %s, %s\n", res_reg,
+                        map_sym_to_addr_win(curr_expr->child));
+                reg_dealloc(reg_head,
+                            curr_expr->child->next_child->result_reg_desc);
+            }
+        }
         break;
     default:
         break;
     }
 }
 
-void write_bytes(char *byte_str, FILE *fptr) {
-    if (fptr == NULL)
-        print_error(FILE_OPEN_ERR, 1, NULL);
-    size_t len_bytes = strlen(byte_str);
-    if (fwrite(byte_str, 1, len_bytes, fptr) != len_bytes)
-        print_error("Code gen - Failed to write to file", 1, NULL);
-}
+void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx,
+                                    ParsingContext *context, char *func_name,
+                                    AstNode *func, FILE *fptr_code) {
+    cg_ctx = create_codegen_context(cg_ctx);
 
-void write_line(char *byte_str, FILE *fptr) {
-    write_bytes(byte_str, fptr);
-    write_bytes("\n", fptr);
-}
-
-void write_int(long int_val, FILE *fptr) {
-    char byte_str[INT_STR_WIDTH] = {0};
-    sprintf(byte_str, "%ld", int_val);
-    write_bytes(byte_str, fptr);
-}
-
-void write_header(FILE *fptr) {
-    write_bytes(";## ", fptr);
-    write_bytes(SYPHERIZE_HEADER, fptr);
-    write_line(" ##;", fptr);
-}
-
-void target_x86_64_att_asm_data_section(ParsingContext *context, FILE *fptr) {
-    IdentifierBind *temp_bind = context->vars->binding;
-    int status = -1;
-    write_line(".section .data", fptr);
-    while (temp_bind != NULL) {
-        AstNode *var = get_env(context->env_type, temp_bind->id_val, &status);
-        if (!status)
-            print_error("Unable to retrieve value from environment", 1, NULL);
-
-        write_bytes(temp_bind->identifier->ast_val.node_symbol, fptr);
-        write_bytes(": .space ", fptr);
-        write_int(var->child->ast_val.val, fptr);
-        write_bytes("\n", fptr);
-
-        temp_bind = temp_bind->next_id_bind;
+    /**
+     * Storing the offset for parameters passed to the function
+     * so that we know, which register to use for passing them
+     * to the function.
+     *
+     * We also set the locals environment to have the name of the
+     * parameter bound to an integer with the stack offset.
+     * Example:
+     * jmp afterfoo
+     * foo:
+     *     push %rbp
+     *     mov %rsp, %rbp
+     *
+     *     pop %rbp
+     *     ret
+     * Due to the first and second instructions in the function, we
+     * have moved 8 bytes twice in the stack, i.e. 16 bytes,
+     * so we will need to account for them while binding the value to
+     * the parameter names. Hence notice 'param_cnt' starts from '2',
+     * to make space for the first and second instructions.
+     */
+    AstNode *func_param_list = func->child->child;
+    long param_cnt = 1;
+    while (func_param_list != NULL) {
+        param_cnt++;
+        if (!set_env(&(cg_ctx->local_env), func_param_list->child,
+                     create_node_int(-param_cnt * 8)))
+            print_error("Unable to set locals environment in code gen context",
+                        1, NULL);
+        func_param_list = func_param_list->next_child;
     }
-}
 
-void target_x86_64_att_asm_expr_windows(ParsingContext *context,
-                                        AstNode *curr_expr,
-                                        FILE *fptr_code_gen) {
-    AstNode *temp_node = NULL;
-    int num_args = 0;
-    char lambda_name[8] = {0};
-    for (int i = 0; i < 8; i++)
-        lambda_name[i] = (rand() % (122 - 97)) + 97;
-    while (curr_expr != NULL) {
-        num_args = 0;
-        switch (curr_expr->type) {
-        case TYPE_FUNCTION:
-            target_x86_64_att_asm_func_windows(context, lambda_name, curr_expr,
-                                               fptr_code_gen);
-            break;
-        case TYPE_FUNCTION_CALL:
-            /**
-             * On MS Windows for a function call the first
-             * argument is stored in RCX, then RDX, then R8,
-             * and finally R9. All other arguments if still
-             * remain need to be pushed onto the stack.
-             */
-            temp_node = curr_expr->child->next_child->child;
-            while (temp_node != NULL) {
-                write_bytes("mov $", fptr_code_gen);
-                write_int(temp_node->ast_val.val, fptr_code_gen);
-                switch (num_args) {
-                case 0:
-                    write_line(", %rcx", fptr_code_gen);
-                    break;
-                case 1:
-                    write_line(", %rdx", fptr_code_gen);
-                    break;
-                case 2:
-                    write_line(", %r8", fptr_code_gen);
-                    break;
-                case 3:
-                    write_line(", %r9", fptr_code_gen);
-                    break;
-                default:
-                    printf("TODO: Push arguments onto stack\n");
-                    break;
-                }
-                num_args++;
-                temp_node = temp_node->next_child;
-            }
-            write_bytes("call ", fptr_code_gen);
-            write_line(curr_expr->child->ast_val.node_symbol, fptr_code_gen);
-            break;
-
-        case TYPE_VAR_REASSIGNMENT:
-            if (context->parent_ctx == NULL) {
-                write_bytes("lea ", fptr_code_gen);
-                write_bytes(curr_expr->child->ast_val.node_symbol,
-                            fptr_code_gen);
-                write_line("(%rip), %rax", fptr_code_gen);
-                write_bytes("movq $", fptr_code_gen);
-                write_int(curr_expr->child->next_child->ast_val.val,
-                          fptr_code_gen);
-                write_line(", (%rax)", fptr_code_gen);
-            } else {
-            }
-            break;
-        default:
-            break;
-        }
-        curr_expr = curr_expr->next_child;
-    }
-}
-
-void target_x86_64_att_asm_func_windows(ParsingContext *context,
-                                        char *func_name, AstNode *func,
-                                        FILE *fptr_code_gen) {
     // Function protection
-    write_bytes("jmp after", fptr_code_gen);
-    write_line(func_name, fptr_code_gen);
-    write_bytes(func_name, fptr_code_gen);
-    write_line(":", fptr_code_gen);
+    fprintf(fptr_code, "jmp after%s\n", func_name);
+
+    fprintf(fptr_code, "%s:\n", func_name);
 
     // Function header.
-    write_line("push %rbp", fptr_code_gen);
-    write_line("mov %rsp, %rbp", fptr_code_gen);
-    write_line("sub $32, %rsp", fptr_code_gen);
+    fprintf(fptr_code, "%s", FUNC_HEADER_x86_64);
 
-    context = create_parsing_context(context);
-    target_x86_64_att_asm_expr_windows(
-        context, func->child->next_child->next_child->child, fptr_code_gen);
+    AstNode *temp_expr = func->child->next_child->next_child->child;
+    while (temp_expr != NULL) {
+        target_x86_64_win_codegen_expr(reg_head, context, temp_expr, cg_ctx,
+                                       fptr_code);
+        temp_expr = temp_expr->next_child;
+    }
 
-    context = context->parent_ctx;
-
-    write_line("add $32, %rsp", fptr_code_gen);
-    write_line("pop %rbp", fptr_code_gen);
-    write_line("ret", fptr_code_gen);
+    // Function footer.
+    fprintf(fptr_code, "%s", FUNC_FOOTER_x86_64);
 
     // Jump after function protection
-    write_bytes("after", fptr_code_gen);
-    write_bytes(func_name, fptr_code_gen);
-    write_line(":", fptr_code_gen);
+    fprintf(fptr_code, "after%s:\n", func_name);
+    cg_ctx = cg_ctx->parent_ctx;
 }
 
-void target_x86_64_att_asm_windows(ParsingContext *context,
-                                   AstNode *program_node) {
-    if (program_node == NULL || program_node->type != TYPE_PROGRAM)
-        print_error("Error during code gen : Failed to access program node", 1,
-                    NULL);
+void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
+                                    CGContext *cg_ctx, FILE *fptr_code) {
 
-    FILE *fptr_code_gen = fopen("code_gen.s", "wb");
-    CHECK_NULL(fptr_code_gen, "Error in creating code gen output file");
+    Reg *reg_head = reg_create_new("%rax");
+    reg_add_new(&reg_head, "%r10");
+    reg_add_new(&reg_head, "%r11");
 
-    write_header(fptr_code_gen);
-    target_x86_64_att_asm_data_section(context, fptr_code_gen);
-    write_line(".section .text", fptr_code_gen);
+    fprintf(fptr_code, ".section .data\n");
+
+    IdentifierBind *temp_var_bind = context->vars->binding;
+    int status = -1;
+    while (temp_var_bind != NULL) {
+        AstNode *var =
+            get_env(context->env_type, temp_var_bind->id_val, &status);
+        if (!status)
+            print_error("Unable to retrieve value from environment", 1, NULL);
+
+        fprintf(fptr_code, "%s: .space %ld\n",
+                temp_var_bind->identifier->ast_val.node_symbol,
+                var->child->ast_val.val);
+
+        temp_var_bind = temp_var_bind->next_id_bind;
+    }
+
+    fprintf(fptr_code, ".section .text\n");
 
     IdentifierBind *temp_bind = context->funcs->binding;
-    int status = -1;
+    status = -1;
     while (temp_bind != NULL) {
         if (!status)
             print_error("Unable to retrieve value from environment", 1, NULL);
 
-        target_x86_64_att_asm_func_windows(
-            context, temp_bind->identifier->ast_val.node_symbol,
-            temp_bind->id_val, fptr_code_gen);
+        target_x86_64_win_codegen_func(
+            reg_head, cg_ctx, context,
+            temp_bind->identifier->ast_val.node_symbol, temp_bind->id_val,
+            fptr_code);
 
         temp_bind = temp_bind->next_id_bind;
     }
 
-    write_line(".global main", fptr_code_gen);
-    write_line("main:", fptr_code_gen);
-    // Save the base pointer by pushing it onto the stack
-    write_line("push %rbp", fptr_code_gen);
-    /**
-     * Due to the above operation the stack pointer itself moves, since we added
-     * the value of the base pointer to it. Hence, we set the base pointer to
-     * the new location of the stack pointer.
-     * | 1 | <-RBP (1) ; The base pointer is initially here.
-     * | 1 |
-     * | 1 | <-[RBP (1)] ;We push it onto the stack it moves. So SP also moves.
-     * | 1 | <-RSP <- RBP ; Now, we set the base pointer to the SP.
-     * | 1 |
-     * | 1 |
-     * | 1 |
-     */
-    write_line("mov %rsp, %rbp", fptr_code_gen);
-    // We want to make some stack space just in case things mess up.
-    write_line("sub $32, %rsp", fptr_code_gen);
+    fprintf(fptr_code,
+            ".global main\n"
+            "main:\n"
+            "%s",
+            FUNC_HEADER_x86_64);
 
-    target_x86_64_att_asm_expr_windows(context, program_node->child,
-                                       fptr_code_gen);
+    AstNode *curr_expr = program->child;
+    while (curr_expr != NULL) {
+        target_x86_64_win_codegen_expr(reg_head, context, curr_expr, cg_ctx,
+                                       fptr_code);
+        curr_expr = curr_expr->next_child;
+    }
 
-    write_line("add $32, %rsp", fptr_code_gen);
-    write_line("pop %rbp", fptr_code_gen);
-    // Move the value of rax register into rdi, which holds the exit code.
-    write_line("movq (%rax), %rax", fptr_code_gen);
-    write_line("ret", fptr_code_gen);
+    fprintf(fptr_code, "mov $12, %%rax\n");
+    fprintf(fptr_code, "%s", FUNC_FOOTER_x86_64);
 
-    /**
-     * ; Custom C lib call in assembly
-     * The first parameter for a C lib call on windows
-     * gets stored in `%rcx`, and the second parameter gets
-     * stored in `%rdx`.
-     * - `fmt: .asciz "%ld"` above `.section .text`
-     * - `movq $4303493, %rdx` ; Move a long integer into the 2nd arg.
-     * - `lea fmt(%rip), %rcx ; Move the address of the string into the
-     *                         ; firt argument.
-     * - `call printf`
-     */
+    reg_free(reg_head);
+}
 
-    fclose(fptr_code_gen);
+void target_codegen(ParsingContext *context, AstNode *program,
+                    TargetType type) {
+    if (context == NULL || program == NULL)
+        print_error("FATAL: NULL program node passed for code generation", 1,
+                    NULL);
+
+    FILE *fptr_code = fopen("code_gen.s", "w");
+
+    CGContext *cg_ctx = create_codegen_context(NULL);
+
+    if (type == TARGET_DEFAULT || type == TARGET_x86_64_WIN)
+        target_x86_64_win_codegen_prog(context, program, cg_ctx, fptr_code);
+
+    fclose(fptr_code);
 }

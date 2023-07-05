@@ -41,6 +41,8 @@ typedef struct AstNode {
                                 ///< of the node.
     struct AstNode *child;      ///< Child node for this node.
     struct AstNode *next_child; ///< Next child for this node.
+    int result_reg_desc;        ///< Register descriptor for stroing the
+                                ///< rersult.
 } AstNode;
 
 /**
