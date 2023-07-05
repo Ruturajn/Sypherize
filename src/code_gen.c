@@ -10,7 +10,7 @@ int sym_idx = 0;
 
 Reg *reg_create_new(char *reg_name) {
     Reg *new_reg = calloc(1, sizeof(Reg));
-    CHECK_NULL(new_reg, MEM_ERR);
+    CHECK_NULL(new_reg, "Unable to allocate memory for a new register", NULL);
     new_reg->reg_name = reg_name;
     new_reg->next_reg = NULL;
     return new_reg;
@@ -51,33 +51,41 @@ RegDescriptor reg_alloc(Reg *reg_head) {
         temp = temp->next_reg;
         curr_reg++;
     }
-    print_error("FATAL: Could not allocate new register", 1, NULL);
+    print_error(ERR_MEM, "Unable to allocate memory for a new register", NULL,
+                0);
     return curr_reg;
 }
 
 char *get_reg_name(RegDescriptor reg_desc, Reg *reg_head) {
     Reg *temp = reg_head;
+    RegDescriptor temp_desc = reg_desc;
     while (temp != NULL) {
-        if (reg_desc == 0)
+        if (temp_desc == 0)
             return temp->reg_name;
         temp = temp->next_reg;
-        reg_desc--;
+        temp_desc--;
     }
-    print_error("Could not find the name of the register", 1, NULL);
+    print_error(ERR_COMMON,
+                "Unable to find register name for register descriptor : `%d`",
+                NULL, reg_desc);
     return NULL;
 }
 
 void reg_dealloc(Reg *reg_head, RegDescriptor reg_desc) {
     Reg *temp = reg_head;
+    RegDescriptor temp_desc = reg_desc;
     while (temp != NULL) {
-        if (reg_desc == 0) {
+        if (temp_desc == 0) {
             temp->reg_in_use = 0;
             return;
         }
         temp = temp->next_reg;
-        reg_desc--;
+        temp_desc--;
     }
-    print_error("Could not De-allocate register", 1, NULL);
+    print_error(
+        ERR_COMMON,
+        "Unable to de-allocate register with register descriptor : `%d`", NULL,
+        reg_desc);
 }
 
 char *gen_label() {
@@ -107,7 +115,8 @@ char *map_sym_to_addr_win(AstNode *sym_node) {
 
 CGContext *create_codegen_context(CGContext *parent_ctx) {
     CGContext *new_ctx = calloc(1, sizeof(CGContext));
-    CHECK_NULL(new_ctx, MEM_ERR);
+    CHECK_NULL(new_ctx, "Unable to allocate memory for new codegen context",
+               NULL);
     new_ctx->parent_ctx = parent_ctx;
     new_ctx->local_env = create_env(NULL);
     return new_ctx;
@@ -191,8 +200,10 @@ void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx,
         param_cnt++;
         if (!set_env(&(cg_ctx->local_env), func_param_list->child,
                      create_node_int(-param_cnt * 8)))
-            print_error("Unable to set locals environment in code gen context",
-                        1, NULL);
+            print_error(ERR_COMMON,
+                        "Unable to set locals environment in code gen context "
+                        "for : `%s`",
+                        func_param_list->child->ast_val.node_symbol, 0);
         func_param_list = func_param_list->next_child;
     }
 
@@ -234,7 +245,9 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
         AstNode *var =
             get_env(context->env_type, temp_var_bind->id_val, &status);
         if (!status)
-            print_error("Unable to retrieve value from environment", 1, NULL);
+            print_error(ERR_COMMON,
+                        "Unable to retrieve value from environment for : `%s`",
+                        temp_var_bind->id_val->ast_val.node_symbol, 0);
 
         fprintf(fptr_code, "%s: .space %ld\n",
                 temp_var_bind->identifier->ast_val.node_symbol,
@@ -248,9 +261,6 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
     IdentifierBind *temp_bind = context->funcs->binding;
     status = -1;
     while (temp_bind != NULL) {
-        if (!status)
-            print_error("Unable to retrieve value from environment", 1, NULL);
-
         target_x86_64_win_codegen_func(
             reg_head, cg_ctx, context,
             temp_bind->identifier->ast_val.node_symbol, temp_bind->id_val,
@@ -281,8 +291,10 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
 void target_codegen(ParsingContext *context, AstNode *program,
                     TargetType type) {
     if (context == NULL || program == NULL)
-        print_error("FATAL: NULL program node passed for code generation", 1,
-                    NULL);
+        print_error(ERR_COMMON,
+                    "NULL program node passed for code generation to "
+                    "`target_codegen()`",
+                    NULL, 0);
 
     FILE *fptr_code = fopen("code_gen.s", "w");
 

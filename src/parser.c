@@ -73,7 +73,7 @@ int parse_int(LexedToken *token, AstNode *node) {
 
 Env *create_env(Env *parent_env) {
     Env *new_env = calloc(1, sizeof(Env));
-    CHECK_NULL(new_env, MEM_ERR);
+    CHECK_NULL(new_env, "Unable to allocate memory for new environment", NULL);
     new_env->parent_env = parent_env;
     new_env->binding = NULL;
     return new_env;
@@ -86,7 +86,7 @@ int set_env(Env **env_to_set, AstNode *identifier_node, AstNode *id_val) {
     IdentifierBind *temp = (*env_to_set)->binding;
 
     IdentifierBind *binds = calloc(1, sizeof(IdentifierBind));
-    CHECK_NULL(binds, MEM_ERR);
+    CHECK_NULL(binds, "Unable to allocate memory for new binding", NULL);
     binds->identifier = identifier_node;
     binds->id_val = id_val;
 
@@ -214,7 +214,8 @@ void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add) {
 ParsingContext *create_parsing_context(ParsingContext *parent_ctx) {
     ParsingContext *new_context = NULL;
     new_context = (ParsingContext *)calloc(1, sizeof(ParsingContext));
-    CHECK_NULL(new_context, MEM_ERR);
+    CHECK_NULL(new_context, "Unable to allocate memory for new parsing context",
+               NULL);
     new_context->op = NULL;
     new_context->res = NULL;
     new_context->parent_ctx = parent_ctx;
@@ -233,7 +234,7 @@ ParsingContext *create_default_parsing_context() {
 
 AstNode *node_alloc() {
     AstNode *new_node = (AstNode *)calloc(1, sizeof(AstNode));
-    CHECK_NULL(new_node, MEM_ERR);
+    CHECK_NULL(new_node, "Unable to allocate memory for a new node", NULL);
     new_node->type = TYPE_NULL;
     new_node->child = NULL;
     new_node->next_child = NULL;
@@ -296,7 +297,8 @@ AstNode *node_symbol_from_token_create(LexedToken *token) {
 
     AstNode *node = node_alloc();
     char *symbol_str = (char *)calloc(token->token_length + 1, sizeof(char));
-    CHECK_NULL(symbol_str, MEM_ERR);
+    CHECK_NULL(symbol_str, "Unable to allocate memory for a new symbol node",
+               NULL);
     memcpy(symbol_str, token->token_start, token->token_length);
     symbol_str[token->token_length] = '\0';
     node->ast_val.node_symbol = symbol_str;
@@ -365,7 +367,8 @@ int is_known_type(LexedToken *token, int *type) {
 int check_next_token(char *string_to_cmp, char **temp_file_data,
                      LexedToken **token) {
     if (string_to_cmp == NULL || *temp_file_data == NULL || token == NULL) {
-        print_error("NULL pointer passed to check_next_token()", 0, NULL);
+        print_error(ERR_COMMON, "NULL pointer passed to `check_next_token()`",
+                    NULL, 0);
         return 0;
     }
     char *prev_file_data = *temp_file_data;
@@ -382,8 +385,9 @@ int check_next_token(char *string_to_cmp, char **temp_file_data,
 void ast_add_type_node(Env **env_type, int node_type, AstNode *sym,
                        long byte_size) {
     if (sym == NULL || byte_size <= 0)
-        print_error("Unable to add a new type to the types environment", 1,
-                    NULL);
+        print_error(ERR_COMMON,
+                    "Unable to add a new type to the types environment", NULL,
+                    0);
 
     AstNode *sz_node = node_alloc();
     sz_node->type = TYPE_INT;
@@ -394,8 +398,8 @@ void ast_add_type_node(Env **env_type, int node_type, AstNode *sym,
     new_type_node->child = sz_node;
 
     if (!set_env(env_type, sym, new_type_node)) {
-        printf("Type redefinition : `%s`\n", sym->ast_val.node_symbol);
-        print_error("Unable to redefine type", 1, NULL);
+        print_error(ERR_REDEFINITION, "Unable to redefine type : `%s`",
+                    sym->ast_val.node_symbol, 0);
     }
 }
 
@@ -418,7 +422,8 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
             // variable declaration, assignment, etc.
 
             if (strncmp_lexed_token(curr_token, "def_func")) {
-                CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
+                CHECK_END(**temp_file_data, "End of file after : `def_func`",
+                          NULL);
                 /**
                  * FUNCTION
                  *         `-- LIST OF PARAMETERS
@@ -436,7 +441,9 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 // into the AST.
 
                 if (!check_next_token("(", temp_file_data, &curr_token))
-                    print_error(SYNTAX_ERR, 1, curr_token);
+                    print_error(ERR_SYNTAX,
+                                "Invalid function definition for : `%s`",
+                                func_name->ast_val.node_symbol, 0);
 
                 AstNode *param_list = node_alloc();
                 for (;;) {
@@ -448,7 +455,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                         node_symbol_from_token_create(curr_token);
 
                     if (!check_next_token(":", temp_file_data, &curr_token))
-                        print_error(SYNTAX_ERR, 1, curr_token);
+                        print_error(
+                            ERR_SYNTAX,
+                            "Couldn't find `:` after parameter type : `%s`",
+                            param_type->ast_val.node_symbol, 0);
 
                     *temp_file_data = lex_token(temp_file_data, &curr_token);
                     AstNode *param_name =
@@ -464,13 +474,20 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                     if (!check_next_token(",", temp_file_data, &curr_token)) {
                         if (check_next_token(")", temp_file_data, &curr_token))
                             break;
-                        print_error(SYNTAX_ERR, 1, curr_token);
+                        print_error(
+                            ERR_SYNTAX,
+                            "Could not find end of function definition : `%s`",
+                            func_name->ast_val.node_symbol, 0);
                     }
                 }
-                CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
+                CHECK_END(**temp_file_data,
+                          "End of file - Incomplete function definition : `%s`",
+                          func_name->ast_val.node_symbol);
 
                 if (!check_next_token("~", temp_file_data, &curr_token))
-                    print_error(SYNTAX_ERR, 1, curr_token);
+                    print_error(ERR_SYNTAX,
+                                "Return type not specified for function : `%s`",
+                                func_name->ast_val.node_symbol, 0);
 
                 *temp_file_data = lex_token(temp_file_data, &curr_token);
                 AstNode *return_type =
@@ -480,14 +497,17 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 add_ast_node_child(func_node, return_type);
 
                 if (!set_env(&((*context)->funcs), func_name, func_node)) {
-                    print_error("Unable to set environment binding for "
-                                "variable",
-                                0, NULL);
+                    print_error(ERR_COMMON,
+                                "Unable to set environment binding for "
+                                "function : `%s`",
+                                func_name->ast_val.node_symbol, 0);
                 }
 
                 if (!check_next_token("{", temp_file_data, &curr_token))
-                    print_error("Function definition doesn't have a body", 1,
-                                curr_token);
+                    print_error(
+                        ERR_SYNTAX,
+                        "Function definition doesn't have a body : `%s`",
+                        func_name->ast_val.node_symbol, 0);
 
                 *context = create_parsing_context(*context);
                 (*context)->op = create_node_symbol("def_func");
@@ -496,9 +516,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 while (params != NULL) {
                     if (!set_env(&((*context)->vars), params->child,
                                  params->child->next_child)) {
-                        print_error("Unable to set environment binding for "
-                                    "variable",
-                                    0, NULL);
+                        print_error(ERR_COMMON,
+                                    "Unable to set environment binding for "
+                                    "variable : `%s`",
+                                    params->child->ast_val.node_symbol, 0);
                     }
                     params = params->next_child;
                 }
@@ -535,8 +556,9 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
 
                     // Lex again to look forward.
                     if (check_next_token(":", temp_file_data, &curr_token)) {
-
-                        CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
+                        CHECK_END(**temp_file_data,
+                                  "End of file during variable declaration",
+                                  NULL);
 
                         *temp_file_data =
                             lex_token(temp_file_data, &curr_token);
@@ -547,19 +569,25 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
 
                         get_env((*context)->vars, curr_sym, &status);
                         if (status)
-                            print_error("Redefinition of a variable", 1,
-                                        curr_token);
+                            print_error(ERR_REDEFINITION,
+                                        "Redefinition of variable : `%s`",
+                                        curr_sym->ast_val.node_symbol, 0);
 
                         add_ast_node_child(curr_var_decl, curr_sym);
 
                         // Lex again to look forward.
                         if (check_next_token(":", temp_file_data,
                                              &curr_token)) {
-                            CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
+                            CHECK_END(**temp_file_data,
+                                      "End of file during variable declaration "
+                                      ": `%s`",
+                                      curr_sym->ast_val.node_symbol);
                             if (check_next_token("=", temp_file_data,
                                                  &curr_token)) {
-                                CHECK_END(**temp_file_data, SYNTAX_ERR,
-                                          curr_token);
+                                CHECK_END(**temp_file_data,
+                                          "End of file during variable "
+                                          "declaration : `%s`",
+                                          curr_sym->ast_val.node_symbol);
 
                                 AstNode *new_expr = node_alloc();
                                 add_ast_node_child(curr_var_decl, new_expr);
@@ -568,9 +596,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                                 if (!set_env(&((*context)->vars), sym_name,
                                              sym_node)) {
                                     print_error(
+                                        ERR_COMMON,
                                         "Unable to set environment binding for "
-                                        "variable",
-                                        0, NULL);
+                                        "variable : `%s`",
+                                        sym_name->ast_val.node_symbol, 0);
                                 }
                                 *running_expr = *curr_var_decl;
                                 running_expr = new_expr;
@@ -591,24 +620,27 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
 
                         if (!set_env(&((*context)->vars), sym_name_node,
                                      sym_node)) {
-                            print_error("Unable to set environment binding for "
-                                        "variable",
-                                        0, NULL);
+                            print_error(ERR_COMMON,
+                                        "Unable to set environment binding for "
+                                        "variable : `%s`",
+                                        sym_name_node->ast_val.node_symbol, 0);
                         }
                         *running_expr = *curr_var_decl;
-                    } else {
-                        *temp_file_data =
-                            lex_token(temp_file_data, &curr_token);
-                        print_error(SYNTAX_ERR, 1, 0);
-                        print_lexed_token(curr_token);
-                    }
+                    } else
+                        print_error(ERR_SYNTAX,
+                                    "Could not find variable name in variable "
+                                    "declaration",
+                                    NULL, 0);
                     return *temp_file_data;
                 }
                 free_node(res);
 
                 // Lex again to look forward.
                 if (check_next_token(":", temp_file_data, &curr_token)) {
-                    CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
+                    CHECK_END(
+                        **temp_file_data,
+                        "End of file during variable re-assignment : `%s`",
+                        sym_node->ast_val.node_symbol);
 
                     AstNode *var_bind =
                         get_env((*context)->vars, sym_node, &status);
@@ -619,7 +651,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                         // Lex again to look forward.
                         if (check_next_token("=", temp_file_data,
                                              &curr_token)) {
-                            CHECK_END(**temp_file_data, SYNTAX_ERR, curr_token);
+                            CHECK_END(**temp_file_data,
+                                      "End of file during variable "
+                                      "re-assignment : `%s`",
+                                      sym_node->ast_val.node_symbol);
 
                             AstNode *new_expr = node_alloc();
                             AstNode *node_reassign = node_alloc();
@@ -633,12 +668,13 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                             continue;
 
                         } else {
-                            *temp_file_data =
-                                lex_token(temp_file_data, &curr_token);
-                            print_error("UKNOWN : ", 1, curr_token);
+                            print_error(ERR_COMMON,
+                                        "Undefined symbol after : `%s`",
+                                        sym_node->ast_val.node_symbol, 0);
                         }
                     } else
-                        print_error("Undefined Symbol", 1, curr_token);
+                        print_error(ERR_COMMON, "Undefined symbol after : `%s`",
+                                    sym_node->ast_val.node_symbol, 0);
                     free_node(var_bind);
                     return *temp_file_data;
                 } else {
@@ -657,7 +693,8 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                         continue;
                     }
                     if ((*context)->parent_ctx == NULL)
-                        print_error("UNKNOWN SYMBOL", 1, curr_token);
+                        print_error(ERR_COMMON, "Undefined symbol after : `%s`",
+                                    sym_node->ast_val.node_symbol, 0);
                 }
             }
         }
@@ -666,7 +703,8 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
 
         AstNode *op = (*context)->op;
         if (op->type != TYPE_SYM)
-            print_error("Compiler - Context operator not a symbol", 1, NULL);
+            print_error(ERR_COMMON, "Compiler - Context operator not a symbol",
+                        NULL, 0);
 
         if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
             if (strncmp_lexed_token(curr_token, "}") ||

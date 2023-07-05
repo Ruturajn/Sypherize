@@ -103,7 +103,7 @@ char *lex_token(char **file_data, LexedToken **curr_token);
  * @param token    [`LexedToken *`] Pointer to the token if it needs to be
  *                 printed out.
  */
-void print_error(char *msg, int is_exit, LexedToken *token);
+void print_error(ErrType err, char *fmt, char *str, int val);
 
 /**
  * @brief Lexes and parses a complete file.
@@ -112,6 +112,7 @@ void print_error(char *msg, int is_exit, LexedToken *token);
  */
 void lex_and_parse(char *file_dest);
 
+void sample_print(const char *fmt, ...);
 #ifdef __cplusplus
 }
 #endif

@@ -1,6 +1,11 @@
 #include "../inc/lexer.h"
 #include "../inc/code_gen.h"
 #include "../inc/parser.h"
+#include <stdarg.h>
+
+const char *err_strings[] = {"GENERIC",     "NUM ARGS",     "MEMORY ALLOCATION",
+                             "FILE ACCESS", "FILE SIZE",    "FILE READ",
+                             "SYNTAX",      "REDEFINITION", "EOF"};
 
 size_t calculate_file_size(FILE *file_ptr) {
     if (file_ptr == NULL) {
@@ -8,18 +13,18 @@ size_t calculate_file_size(FILE *file_ptr) {
     }
 
     if (fseek(file_ptr, 0, SEEK_SET) < 0)
-        print_error(FILE_OPEN_ERR, 1, NULL);
+        print_error(ERR_FILE_OPEN, "Could not open source file", NULL, 0);
 
     if (fseek(file_ptr, 0, SEEK_END) < 0)
-        print_error(FILE_OPEN_ERR, 1, NULL);
+        print_error(ERR_FILE_OPEN, "Could not open source file", NULL, 0);
 
     long file_sz = ftell(file_ptr);
 
     if (fseek(file_ptr, 0, SEEK_SET) < 0)
-        print_error(FILE_OPEN_ERR, 1, NULL);
+        print_error(ERR_FILE_OPEN, "Could not open source file", NULL, 0);
 
     if (file_sz < 0)
-        print_error(FILE_SIZE_ERR, 1, NULL);
+        print_error(ERR_FILE_SIZE, "Could not calculate file size", NULL, 0);
 
     return file_sz;
 }
@@ -48,7 +53,7 @@ int strncmp_lexed_token(LexedToken *curr_token, char *str_to_cmp) {
 
 LexedToken *create_token(int token_length, char *data) {
     LexedToken *curr_token = (LexedToken *)calloc(1, sizeof(LexedToken));
-    CHECK_NULL(curr_token, MEM_ERR);
+    CHECK_NULL(curr_token, "Could not allocate memory for token", NULL);
     curr_token->token_length = token_length;
     curr_token->token_start = data;
 
@@ -83,35 +88,39 @@ char *lex_token(char **file_data, LexedToken **curr_token) {
     return *file_data;
 }
 
-void print_error(char *msg, int is_exit, LexedToken *token) {
-    printf("\033[1;31m[ERROR] %s", msg);
-    if (token != NULL) {
-        printf(": `");
-        print_lexed_token(token);
-        putchar('`');
+void print_error(ErrType err, char *fmt, char *str, int val) {
+    printf("\033[1;31m[ERROR]\033[1;37m ");
+    printf("%s :: ", err_strings[err]);
+    if (val != 0)
+        printf((const char *)fmt, val);
+    else {
+        if (str != NULL)
+            printf((const char *)fmt, str);
+        else
+            printf("%s", fmt);
     }
-    printf("!\n\033[1;37m");
-    if (is_exit)
-        exit(EXIT_FAILURE);
+    printf("!\n");
+    exit(EXIT_FAILURE);
 }
 
 void lex_and_parse(char *file_dest) {
 
     FILE *file_ptr = NULL;
     file_ptr = fopen(file_dest, "r");
-    CHECK_NULL(file_ptr, "Unable to open file");
+    CHECK_NULL(file_ptr, "Unable to open file : `%s`", file_dest);
 
     size_t file_sz = calculate_file_size(file_ptr);
 
     char *file_data = NULL;
 
     file_data = (char *)malloc((file_sz + 1) * sizeof(char));
-    CHECK_NULL(file_data, MEM_ERR);
+    CHECK_NULL(file_data, "Unable to allocate memory for file contents", NULL);
 
     size_t bytes_read = fread(file_data, 1, file_sz, file_ptr);
 
     if (bytes_read != file_sz)
-        print_error(FILE_OPEN_ERR, 1, NULL);
+        print_error(ERR_FILE_READ, "Unable to read file contents : `%s`",
+                    file_dest, 0);
 
     file_data[file_sz] = '\0';
 

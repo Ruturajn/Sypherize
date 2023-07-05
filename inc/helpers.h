@@ -13,10 +13,10 @@ extern "C" {
  * @brief Checks if a `ptr` is NULL, is so calls `print_error`, with exit
  *        enabled.
  */
-#define CHECK_NULL(ptr, msg)                                                   \
+#define CHECK_NULL(ptr, fmt, str)                                              \
     {                                                                          \
         if (ptr == NULL) {                                                     \
-            print_error(msg, 1, NULL);                                         \
+            print_error(ERR_MEM, fmt, str, 0);                                 \
         }                                                                      \
     }
 
@@ -24,25 +24,26 @@ extern "C" {
  * @brief Checks if a `ptr` is at the end of file, is so calls `print_error`
  *        with exit enabled.
  */
-#define CHECK_END(ptr, msg, token)                                             \
+#define CHECK_END(ptr, fmt, str)                                               \
     {                                                                          \
         if (ptr == '\0') {                                                     \
-            print_error(msg, 1, token);                                        \
+            print_error(ERR_EOF, fmt, str, 0);                                 \
         }                                                                      \
     }
 
-#define MEM_ERR                                                                \
-    "Could not allocate memory" ///< String for memory
-                                ///< allocation error.
-#define FILE_OPEN_ERR                                                          \
-    "Could not access file" ///< String for file access errors.
-#define FILE_SIZE_ERR                                                          \
-    "Could not calculate file size" ///< String for file size
-                                    ///< errors.
-#define SYNTAX_ERR "Invalid Syntax" ///< String for Syntax error.
-#define VAR_REDEFINITION_ERR                                                   \
-    "Redfinition of Variable" ///< String for redfinition
-                              ///< of a variable error.
+typedef enum ErrType {
+    ERR_COMMON = 0,
+    ERR_NUM_ARGS,
+    ERR_MEM,
+    ERR_FILE_OPEN,
+    ERR_FILE_SIZE,
+    ERR_FILE_READ,
+    ERR_SYNTAX,
+    ERR_REDEFINITION,
+    ERR_EOF,
+} ErrType;
+
+extern const char *err_strings[];
 
 #ifdef __cplusplus
 }
