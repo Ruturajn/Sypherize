@@ -70,13 +70,14 @@ typedef struct Env {
  */
 typedef struct ParsingContext {
     struct ParsingContext *parent_ctx; ///< Pointer to the parent context.
-    AstNode *op;   ///< Pointer to an operator that caused the increase in
-                   ///< the stack.
-    AstNode *res;  ///< Pointer to an AstNode to keep track of the list
-                   ///< of expressions in a function body.
-    Env *env_type; ///< Pointer to an environment for types.
-    Env *vars;     ///< Pointer to an environment for varaibles.
-    Env *funcs;    ///< Pointer to an environment for functions.
+    AstNode *op;     ///< Pointer to an operator that caused the increase in
+                     ///< the stack.
+    AstNode *res;    ///< Pointer to an AstNode to keep track of the list
+                     ///< of expressions in a function body.
+    Env *env_type;   ///< Pointer to an environment for types.
+    Env *vars;       ///< Pointer to an environment for varaibles.
+    Env *funcs;      ///< Pointer to an environment for functions.
+    Env *binary_ops; ///< Pointer to an environment for binary operators.
 } ParsingContext;
 
 /**
@@ -275,6 +276,9 @@ int check_next_token(char *string_to_cmp, char **temp_file_data,
  */
 void ast_add_type_node(Env **env_type, int node_type, AstNode *sym,
                        long byte_size);
+
+void ast_add_binary_ops(ParsingContext **context, char *bin_op, int precedence,
+                        char *ret_type, char *lhs_type, char *rhs_type);
 
 /**
  * @brief Parses tokens (TODO!!), and advances the pointer that

@@ -12,7 +12,7 @@ of designing and implementing a compiler.
 
 The file [`ROAD_MAP.md`](https://github.com/Ruturajn/Sypherize/blob/main/ROAD_MAP.md)
 is a summary of what I picked up from the playlist, which includes a set of
-steps, that outline the whole design. It's mainly for my understanding, but
+steps, that describe the whole design. It's mainly for my understanding, but
 you can definitely give it a read if you like.
 
 

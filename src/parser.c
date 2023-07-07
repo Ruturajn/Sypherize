@@ -222,6 +222,7 @@ ParsingContext *create_parsing_context(ParsingContext *parent_ctx) {
     new_context->vars = create_env(NULL);
     new_context->env_type = create_env(NULL);
     new_context->funcs = create_env(NULL);
+    new_context->binary_ops = create_env(NULL);
     return new_context;
 }
 
@@ -229,6 +230,10 @@ ParsingContext *create_default_parsing_context() {
     ParsingContext *new_context = create_parsing_context(NULL);
     AstNode *sym_node = create_node_symbol("int");
     ast_add_type_node(&new_context->env_type, TYPE_INT, sym_node, sizeof(long));
+    ast_add_binary_ops(&new_context, "+", 5, "int", "int", "int");
+    ast_add_binary_ops(&new_context, "-", 5, "int", "int", "int");
+    ast_add_binary_ops(&new_context, "*", 10, "int", "int", "int");
+    ast_add_binary_ops(&new_context, "/", 10, "int", "int", "int");
     return new_context;
 }
 
@@ -312,7 +317,7 @@ int copy_node(AstNode *dst_node, AstNode *src_node) {
 
     dst_node->type = src_node->type;
 
-    if (src_node->type == TYPE_SYM)
+    if (src_node->ast_val.node_symbol != NULL)
         dst_node->ast_val.node_symbol = strdup(src_node->ast_val.node_symbol);
     else
         dst_node->ast_val.node_symbol = NULL;
@@ -403,10 +408,38 @@ void ast_add_type_node(Env **env_type, int node_type, AstNode *sym,
     }
 }
 
+void ast_add_binary_ops(ParsingContext **context, char *bin_op, int precedence,
+                        char *ret_type, char *lhs_type, char *rhs_type) {
+    AstNode *node_sym_op = create_node_symbol(bin_op);
+    AstNode *node_bin_op_body = node_alloc();
+    AstNode *node_prec = create_node_int(precedence);
+    AstNode *node_ret = create_node_symbol(ret_type);
+    AstNode *node_lhs = create_node_symbol(lhs_type);
+    AstNode *node_rhs = create_node_symbol(rhs_type);
+
+    add_ast_node_child(node_bin_op_body, node_prec);
+    add_ast_node_child(node_bin_op_body, node_ret);
+    add_ast_node_child(node_bin_op_body, node_lhs);
+    add_ast_node_child(node_bin_op_body, node_rhs);
+
+    ParsingContext *temp = *context;
+
+    while (temp->parent_ctx != NULL)
+        temp = temp->parent_ctx;
+
+    if (!set_env(&((temp)->binary_ops), node_sym_op, node_bin_op_body)) {
+        print_error(ERR_COMMON,
+                    "Unable to set environment binding for "
+                    "binary operator : `%s`",
+                    node_sym_op->ast_val.node_symbol, 0);
+    }
+}
+
 char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                    AstNode **curr_expr, ParsingContext **context) {
 
     AstNode *running_expr = *curr_expr;
+    long running_precedence = 0;
     for (;;) {
         *temp_file_data = lex_token(temp_file_data, &curr_token);
 
@@ -692,12 +725,72 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                         (*context)->res = running_expr;
                         continue;
                     }
-                    if ((*context)->parent_ctx == NULL)
-                        print_error(ERR_COMMON, "Undefined symbol after : `%s`",
-                                    sym_node->ast_val.node_symbol, 0);
+                    // if ((*context)->parent_ctx == NULL)
+                    //     print_error(ERR_COMMON, "Undefined symbol after :
+                    //     `%s`",
+                    //                 sym_node->ast_val.node_symbol, 0);
                 }
             }
         }
+
+        char *tmp_data = *temp_file_data;
+        LexedToken *tmp_token = curr_token;
+        tmp_data = lex_token(&tmp_data, &tmp_token);
+        AstNode *node_binary_op = node_symbol_from_token_create(tmp_token);
+        int stat = -1;
+        ParsingContext *global_ctx = *context;
+        while (global_ctx->parent_ctx != NULL)
+            global_ctx = global_ctx->parent_ctx;
+        AstNode *bin_op_val =
+            get_env(global_ctx->binary_ops, node_binary_op, &stat);
+        if (stat) {
+            *temp_file_data = tmp_data;
+            *curr_token = *tmp_token;
+            long temp_prec = bin_op_val->child->ast_val.val;
+            AstNode *node_bin_op_body = node_alloc();
+            node_bin_op_body->type = TYPE_BINARY_OPERATOR;
+            if (temp_prec <= running_precedence) {
+                // `curr_expr` needs to change completely,
+                // and it needs to become a child of this new node, because we
+                // encountered something of lower precedence, and hence this
+                // node will have a binary operator node as a child.
+                AstNode *temp_expr_copy = node_alloc();
+                copy_node(temp_expr_copy, *curr_expr);
+                add_ast_node_child(node_bin_op_body, temp_expr_copy);
+                node_bin_op_body->ast_val.node_symbol =
+                    strdup(node_binary_op->ast_val.node_symbol);
+                node_bin_op_body->next_child = NULL;
+
+                AstNode *rhs_node = node_alloc();
+                add_ast_node_child(node_bin_op_body, rhs_node);
+
+                **curr_expr = *node_bin_op_body;
+                *running_expr = **curr_expr;
+                running_expr = rhs_node;
+            } else {
+                // Here `running_expr` needs to change, and will store the value
+                // of the next integer that needs to be used for the operation
+                // based on the operator.
+                AstNode *temp_expr_copy = node_alloc();
+                copy_node(temp_expr_copy, running_expr);
+                add_ast_node_child(node_bin_op_body, temp_expr_copy);
+                node_bin_op_body->ast_val.node_symbol =
+                    strdup(node_binary_op->ast_val.node_symbol);
+                node_bin_op_body->next_child = NULL;
+
+                AstNode *rhs_node = node_alloc();
+                add_ast_node_child(node_bin_op_body, rhs_node);
+
+                *running_expr = *node_bin_op_body;
+                running_expr = rhs_node;
+            }
+            running_precedence = temp_prec;
+            continue;
+        }
+        free(bin_op_val);
+        free(tmp_token);
+        free(node_binary_op);
+
         if ((*context)->parent_ctx == NULL)
             break;
 

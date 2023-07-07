@@ -29,3 +29,5 @@ new_val := 83;
 add_int(13, 94);
 
 int: test := 17;
+
+test := 14 + 12
