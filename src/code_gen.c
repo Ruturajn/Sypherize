@@ -123,6 +123,14 @@ CGContext *create_codegen_context(CGContext *parent_ctx) {
     return new_ctx;
 }
 
+void print_regs(Reg *reg_head) {
+    Reg *temp = reg_head;
+    while (temp != NULL) {
+        printf("REG: %s, USE: %d\n", temp->reg_name, temp->reg_in_use);
+        temp = temp->next_reg;
+    }
+}
+
 void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                                     AstNode *curr_expr, CGContext *cg_ctx,
                                     FILE *fptr_code) {
@@ -133,6 +141,50 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         curr_expr->result_reg_desc = reg_alloc(reg_head);
         fprintf(fptr_code, "movq $%ld, %s\n", curr_expr->ast_val.val,
                 get_reg_name(curr_expr->result_reg_desc, reg_head));
+        break;
+    case TYPE_BINARY_OPERATOR:;
+        // Move the integers on the left and right hand side into different
+        // registers.
+        target_x86_64_win_codegen_expr(reg_head, context, curr_expr->child,
+                                       cg_ctx, fptr_code);
+        target_x86_64_win_codegen_expr(
+            reg_head, context, curr_expr->child->next_child, cg_ctx, fptr_code);
+
+        // Get the names of those registers, which contain the LHS and RHS
+        // integers.
+        char *reg_lhs =
+            get_reg_name(curr_expr->child->result_reg_desc, reg_head);
+        char *reg_rhs = get_reg_name(
+            curr_expr->child->next_child->result_reg_desc, reg_head);
+        if (strcmp(curr_expr->ast_val.node_symbol, "+") == 0) {
+            curr_expr->result_reg_desc =
+                curr_expr->child->next_child->result_reg_desc;
+            // Add those registers and save the result in the RHS register.
+            fprintf(fptr_code, "add %s, %s\n", reg_lhs, reg_rhs);
+
+            // De-allocate the LHS register since it is not in use anymore.
+            reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+        } else if (strcmp(curr_expr->ast_val.node_symbol, "-") == 0) {
+            curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
+            // Subtract those registers and save the result in the LHS register.
+            // `sub` operation subtracts the second operand from the first
+            // operand, and stores it in the first operand.
+            fprintf(fptr_code, "sub %s, %s\n", reg_lhs, reg_rhs);
+
+            // De-allocate the RHS register since it is not in use anymore.
+            reg_dealloc(reg_head,
+                        curr_expr->child->next_child->result_reg_desc);
+        } else if (strcmp(curr_expr->ast_val.node_symbol, "*") == 0) {
+            curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
+            // Subtract those registers and save the result in the LHS register.
+            // `sub` operation subtracts the second operand from the first
+            // operand, and stores it in the first operand.
+            fprintf(fptr_code, "imul %s, %s\n", reg_lhs, reg_rhs);
+
+            // De-allocate the RHS register since it is not in use anymore.
+            reg_dealloc(reg_head,
+                        curr_expr->child->next_child->result_reg_desc);
+        }
         break;
     case TYPE_FUNCTION:;
         if (cg_ctx->parent_ctx == NULL) {
@@ -277,13 +329,17 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
             FUNC_HEADER_x86_64);
 
     AstNode *curr_expr = program->child;
+    AstNode *last_expr = NULL;
     while (curr_expr != NULL) {
         target_x86_64_win_codegen_expr(reg_head, context, curr_expr, cg_ctx,
                                        fptr_code);
+        last_expr = curr_expr;
         curr_expr = curr_expr->next_child;
     }
 
-    fprintf(fptr_code, "mov $12, %%rax\n");
+    if (strcmp(get_reg_name(last_expr->result_reg_desc, reg_head), "%rax"))
+        fprintf(fptr_code, "mov %s, %%rax\n",
+                get_reg_name(last_expr->result_reg_desc, reg_head));
     fprintf(fptr_code, "%s", FUNC_FOOTER_x86_64);
 
     reg_free(reg_head);
