@@ -102,8 +102,25 @@ void print_error(ErrType err, char *fmt, char *str, int val) {
     exit(EXIT_FAILURE);
 }
 
-void lex_and_parse(char *file_dest) {
+int check_next_token(char *string_to_cmp, char **temp_file_data,
+                     LexedToken **token) {
+    if (string_to_cmp == NULL || *temp_file_data == NULL || token == NULL) {
+        print_error(ERR_COMMON, "NULL pointer passed to `check_next_token()`",
+                    NULL, 0);
+        return 0;
+    }
+    char *prev_file_data = *temp_file_data;
+    LexedToken *temp_token = *token;
+    prev_file_data = lex_token(&prev_file_data, &temp_token);
+    if (strncmp_lexed_token(temp_token, string_to_cmp)) {
+        *token = temp_token;
+        *temp_file_data = prev_file_data;
+        return 1;
+    }
+    return 0;
+}
 
+char *read_file_data(char *file_dest) {
     FILE *file_ptr = NULL;
     file_ptr = fopen(file_dest, "r");
     CHECK_NULL(file_ptr, "Unable to open file : `%s`", file_dest);
@@ -112,7 +129,7 @@ void lex_and_parse(char *file_dest) {
 
     char *file_data = NULL;
 
-    file_data = (char *)malloc((file_sz + 1) * sizeof(char));
+    file_data = (char *)calloc((file_sz + 1), sizeof(char));
     CHECK_NULL(file_data, "Unable to allocate memory for file contents", NULL);
 
     size_t bytes_read = fread(file_data, 1, file_sz, file_ptr);
@@ -122,40 +139,6 @@ void lex_and_parse(char *file_dest) {
                     file_dest, 0);
 
     file_data[file_sz] = '\0';
-
-    char *temp_file_data = file_data;
-    temp_file_data += strspn(temp_file_data, WHITESPACE);
-
-    LexedToken *root_token = NULL;
-    LexedToken *curr_token = root_token;
-
-    // The whole program will be tokenized and parsed into an
-    // AST which will be created from the curr_node.
-    AstNode *curr_expr;
-
-    AstNode *program = node_alloc();
-    program->type = TYPE_PROGRAM;
-
-    ParsingContext *curr_context = create_default_parsing_context();
-
-    while (*temp_file_data != '\0') {
-        curr_expr = node_alloc();
-
-        temp_file_data = parse_tokens(&temp_file_data, curr_token, &curr_expr,
-                                      &curr_context);
-        if (curr_expr->type != TYPE_NULL)
-            add_ast_node_child(program, curr_expr);
-
-        free_node(curr_expr);
-    }
-
-    print_ast_node(program, 0);
-
-    printf("\n[+]CODE GENERATION BEGIN...\n");
-    target_codegen(curr_context, program, TARGET_x86_64_WIN);
-    printf("[+]CODE GENERATION COMPLETE\n");
-
-    free_node(program);
-    free(file_data);
     fclose(file_ptr);
+    return file_data;
 }

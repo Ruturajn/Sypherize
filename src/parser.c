@@ -1,56 +1,5 @@
 #include "../inc/parser.h"
-
-void print_ast_node(AstNode *root_node, int indent) {
-    if (root_node == NULL) {
-        return;
-    }
-    for (int i = 0; i < indent; i++)
-        putchar(' ');
-    switch (root_node->type) {
-    case TYPE_NULL:
-        printf("NULL");
-        break;
-    case TYPE_PROGRAM:
-        printf("PROGRAM");
-        break;
-    case TYPE_ROOT:
-        printf("ROOT");
-        break;
-    case TYPE_INT:
-        printf("INT : %ld", root_node->ast_val.val);
-        break;
-    case TYPE_BINARY_OPERATOR:
-        printf("BINARY OP : %s", root_node->ast_val.node_symbol);
-        break;
-    case TYPE_VAR_DECLARATION:
-        printf("VAR DECL");
-        break;
-    case TYPE_VAR_INIT:
-        printf("VAR INIT");
-        break;
-    case TYPE_SYM:
-        printf("SYM : %s", root_node->ast_val.node_symbol);
-        break;
-    case TYPE_VAR_REASSIGNMENT:
-        printf("VAR REASSIGNMENT");
-        break;
-    case TYPE_FUNCTION:
-        printf("FUNCTION");
-        break;
-    case TYPE_FUNCTION_CALL:
-        printf("FUNCTION CALL");
-        break;
-    default:
-        printf("Unknown TYPE");
-        break;
-    }
-    putchar('\n');
-    AstNode *child_node = root_node->child;
-    while (child_node != NULL) {
-        print_ast_node(child_node, indent + 4);
-        child_node = child_node->next_child;
-    }
-}
+#include "../inc/ast_funcs.h"
 
 int parse_int(LexedToken *token, AstNode *node) {
     if (token == NULL || node == NULL) {
@@ -108,63 +57,6 @@ int set_env(Env **env_to_set, AstNode *identifier_node, AstNode *id_val) {
     return 1;
 }
 
-int node_cmp(AstNode *node1, AstNode *node2) {
-    if (node1 == NULL && node2 == NULL)
-        return 1;
-    if ((node1 == NULL && node2 != NULL) || (node1 != NULL && node2 == NULL))
-        return 0;
-
-    if (node1->type != node2->type) {
-        return 0;
-    }
-
-    switch (node1->type) {
-    case TYPE_NULL:
-        break;
-    case TYPE_PROGRAM:
-        break;
-    case TYPE_ROOT:
-        printf("Compare Programs : Not implemented\n");
-        break;
-    case TYPE_INT:
-        if (node1->ast_val.val == node2->ast_val.val)
-            return 1;
-        break;
-    case TYPE_BINARY_OPERATOR:
-        printf("TODO : BINARY OPERATOR!\n");
-        break;
-    case TYPE_VAR_DECLARATION:
-        printf("TODO : VAR DECLARATION!\n");
-        break;
-    case TYPE_VAR_INIT:
-        printf("TODO : VAR INIT!\n");
-        break;
-    case TYPE_SYM:
-        if (node1->ast_val.node_symbol != NULL &&
-            node2->ast_val.node_symbol != NULL &&
-            (strcmp(node1->ast_val.node_symbol, node2->ast_val.node_symbol) ==
-             0))
-            return 1;
-        else if (node1->ast_val.node_symbol == NULL &&
-                 node2->ast_val.node_symbol == NULL)
-            return 1;
-        break;
-    case TYPE_VAR_REASSIGNMENT:
-        printf("TODO : VAR REASSIGNMENT!\n");
-        break;
-    case TYPE_FUNCTION:
-        printf("TODO : FUNCTION!\n");
-        break;
-    case TYPE_FUNCTION_CALL:
-        printf("TODO : FUNCTION CALL!\n");
-        break;
-    default:
-        break;
-    }
-
-    return 0;
-}
-
 AstNode *get_env(Env *env_to_get, AstNode *identifier, int *stat) {
     IdentifierBind *curr_bind = env_to_get->binding;
     AstNode *val = node_alloc();
@@ -197,18 +89,21 @@ AstNode *parser_get_type(ParsingContext *context, AstNode *identifier,
     return res;
 }
 
-void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add) {
-    if (parent_node == NULL || child_to_add == NULL)
-        return;
-    if (parent_node->child == NULL) {
-        parent_node->child = child_to_add;
-        return;
+AstNode *parser_get_func(ParsingContext *context, AstNode *identifier,
+                         int *stat) {
+    ParsingContext *temp_ctx = context;
+    int status = -1;
+    while (temp_ctx != NULL) {
+        AstNode *res = get_env(temp_ctx->funcs, identifier, &status);
+        if (status) {
+            *stat = 1;
+            return res;
+        }
+        temp_ctx = temp_ctx->parent_ctx;
     }
-    AstNode *temp_child = parent_node->child;
-    while (temp_child->next_child != NULL) {
-        temp_child = temp_child->next_child;
-    }
-    temp_child->next_child = child_to_add;
+    AstNode *res = create_node_none();
+    *stat = 0;
+    return res;
 }
 
 ParsingContext *create_parsing_context(ParsingContext *parent_ctx) {
@@ -235,156 +130,6 @@ ParsingContext *create_default_parsing_context() {
     ast_add_binary_ops(&new_context, "*", 10, "int", "int", "int");
     ast_add_binary_ops(&new_context, "/", 10, "int", "int", "int");
     return new_context;
-}
-
-AstNode *node_alloc() {
-    AstNode *new_node = (AstNode *)calloc(1, sizeof(AstNode));
-    CHECK_NULL(new_node, "Unable to allocate memory for a new node", NULL);
-    new_node->type = TYPE_NULL;
-    new_node->child = NULL;
-    new_node->next_child = NULL;
-    new_node->ast_val.node_symbol = NULL;
-    new_node->ast_val.val = 0;
-
-    return new_node;
-}
-
-AstNode *create_node_symbol(char *symbol_str) {
-    AstNode *sym_node = node_alloc();
-    sym_node->type = TYPE_SYM;
-    sym_node->ast_val.node_symbol =
-        (char *)calloc(strlen(symbol_str), sizeof(char));
-    strcpy(sym_node->ast_val.node_symbol, symbol_str);
-
-    return sym_node;
-}
-
-AstNode *create_node_none() {
-    AstNode *null_node = node_alloc();
-    null_node->type = TYPE_NULL;
-
-    return null_node;
-}
-
-AstNode *create_node_int(long val) {
-    AstNode *int_node = node_alloc();
-    int_node->type = TYPE_INT;
-    int_node->ast_val.val = val;
-
-    return int_node;
-}
-
-void free_node(AstNode *node_to_free) {
-    if (node_to_free == NULL) {
-        return;
-    }
-    AstNode *temp = node_to_free->child;
-    while (temp != NULL) {
-        free_node(temp);
-        temp = temp->child;
-    }
-
-    AstNode *temp1 = NULL;
-    while (temp != NULL) {
-        temp1 = temp->next_child;
-        if (temp->type == TYPE_SYM && temp->ast_val.node_symbol != NULL)
-            free(temp->ast_val.node_symbol);
-        free(temp);
-        temp = temp1;
-    }
-}
-
-AstNode *node_symbol_from_token_create(LexedToken *token) {
-
-    if (token == NULL) {
-        return NULL;
-    }
-
-    AstNode *node = node_alloc();
-    char *symbol_str = (char *)calloc(token->token_length + 1, sizeof(char));
-    CHECK_NULL(symbol_str, "Unable to allocate memory for a new symbol node",
-               NULL);
-    memcpy(symbol_str, token->token_start, token->token_length);
-    symbol_str[token->token_length] = '\0';
-    node->ast_val.node_symbol = symbol_str;
-    node->type = TYPE_SYM;
-    return node;
-}
-
-int copy_node(AstNode *dst_node, AstNode *src_node) {
-    if (src_node == NULL || dst_node == NULL)
-        return 0;
-
-    dst_node->type = src_node->type;
-
-    if (src_node->ast_val.node_symbol != NULL)
-        dst_node->ast_val.node_symbol = strdup(src_node->ast_val.node_symbol);
-    else
-        dst_node->ast_val.node_symbol = NULL;
-
-    dst_node->ast_val.val = src_node->ast_val.val;
-
-    AstNode *temp_child = src_node->child;
-    AstNode *temp_dst_child = NULL;
-
-    while (temp_child != NULL) {
-        // Allocate memory for a new child node.
-        AstNode *new_child = node_alloc();
-
-        /**
-         *  If temp_dst_child is NULL, it means we
-         *  are copying the first child, in which case
-         *  the dst_node's child is new_child, and we
-         *  can set temp_dst_child to new_child.
-         *  On the other hand, when temp_dst_child is not
-         *  NULL, we can set it's next child to be the new_child,
-         *  and move temp_dst_child forward, by setting it to
-         *  its next child.
-         */
-        if (temp_dst_child != NULL)
-            temp_dst_child->next_child = new_child;
-        else
-            dst_node->child = new_child;
-
-        temp_dst_child = new_child;
-
-        copy_node(temp_dst_child, temp_child);
-        temp_child = temp_child->next_child;
-    }
-    return 0;
-}
-
-// TODO: Add more types as the language starts supporting
-// new types.
-int is_known_type(LexedToken *token, int *type) {
-    if (token == NULL) {
-        *type = TYPE_NULL;
-        return 0;
-    }
-    if (strncmp_lexed_token(token, "int")) {
-        *type = TYPE_INT;
-        return 1;
-    }
-    *type = TYPE_NULL;
-    return 0;
-}
-
-int check_next_token(char *string_to_cmp, char **temp_file_data,
-                     LexedToken **token) {
-    if (string_to_cmp == NULL || *temp_file_data == NULL || token == NULL) {
-        print_error(ERR_COMMON, "NULL pointer passed to `check_next_token()`",
-                    NULL, 0);
-        return 0;
-    }
-    char *prev_file_data = *temp_file_data;
-    LexedToken *temp_token = *token;
-    prev_file_data = lex_token(&prev_file_data, &temp_token);
-    if (strncmp_lexed_token(temp_token, string_to_cmp)) {
-        *token = temp_token;
-        *temp_file_data = prev_file_data;
-        return 1;
-    }
-    return 0;
 }
 
 void ast_add_type_node(Env **env_type, int node_type, AstNode *sym,
@@ -435,6 +180,36 @@ void ast_add_binary_ops(ParsingContext **context, char *bin_op, int precedence,
     }
 }
 
+void lex_and_parse(char *file_dest, ParsingContext **curr_context,
+                   AstNode **program) {
+
+    char *file_data = read_file_data(file_dest);
+
+    char *temp_file_data = file_data;
+    temp_file_data += strspn(temp_file_data, WHITESPACE);
+
+    LexedToken *root_token = NULL;
+    LexedToken *curr_token = root_token;
+
+    // The whole program will be tokenized and parsed into an
+    // AST which will be created from the curr_node.
+    AstNode *curr_expr;
+
+    while (*temp_file_data != '\0') {
+        curr_expr = node_alloc();
+
+        temp_file_data =
+            parse_tokens(&temp_file_data, curr_token, &curr_expr, curr_context);
+        if (curr_expr->type != TYPE_NULL)
+            add_ast_node_child(*program, curr_expr);
+
+        free_node(curr_expr);
+    }
+
+    print_ast_node(*program, 0);
+    free(file_data);
+}
+
 char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                    AstNode **curr_expr, ParsingContext **context) {
 
@@ -450,6 +225,63 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
         if (parse_int(curr_token, running_expr)) {
             // If this is an integer, look for a valid operator.
             // return *temp_file_data;
+            char *tmp_data = *temp_file_data;
+            LexedToken *tmp_token = curr_token;
+            tmp_data = lex_token(&tmp_data, &tmp_token);
+            AstNode *node_binary_op = node_symbol_from_token_create(tmp_token);
+            int stat = -1;
+            ParsingContext *global_ctx = *context;
+            while (global_ctx->parent_ctx != NULL)
+                global_ctx = global_ctx->parent_ctx;
+            AstNode *bin_op_val =
+                get_env(global_ctx->binary_ops, node_binary_op, &stat);
+            if (stat) {
+                *temp_file_data = tmp_data;
+                *curr_token = *tmp_token;
+                long temp_prec = bin_op_val->child->ast_val.val;
+                AstNode *node_bin_op_body = node_alloc();
+                node_bin_op_body->type = TYPE_BINARY_OPERATOR;
+                if (temp_prec <= running_precedence) {
+                    // `curr_expr` needs to change completely,
+                    // and it needs to become a child of this new node, because
+                    // we encountered something of lower precedence, and hence
+                    // this node will have a binary operator node as a child.
+                    AstNode *temp_expr_copy = node_alloc();
+                    copy_node(temp_expr_copy, *curr_expr);
+                    add_ast_node_child(node_bin_op_body, temp_expr_copy);
+                    node_bin_op_body->ast_val.node_symbol =
+                        strdup(node_binary_op->ast_val.node_symbol);
+                    node_bin_op_body->next_child = NULL;
+
+                    AstNode *rhs_node = node_alloc();
+                    add_ast_node_child(node_bin_op_body, rhs_node);
+
+                    **curr_expr = *node_bin_op_body;
+                    *running_expr = **curr_expr;
+                    running_expr = rhs_node;
+                } else {
+                    // Here `running_expr` needs to change, and will store the
+                    // value of the next integer that needs to be used for the
+                    // operation based on the operator.
+                    AstNode *temp_expr_copy = node_alloc();
+                    copy_node(temp_expr_copy, running_expr);
+                    add_ast_node_child(node_bin_op_body, temp_expr_copy);
+                    node_bin_op_body->ast_val.node_symbol =
+                        strdup(node_binary_op->ast_val.node_symbol);
+                    node_bin_op_body->next_child = NULL;
+
+                    AstNode *rhs_node = node_alloc();
+                    add_ast_node_child(node_bin_op_body, rhs_node);
+
+                    *running_expr = *node_bin_op_body;
+                    running_expr = rhs_node;
+                }
+                running_precedence = temp_prec;
+                continue;
+            }
+            free(bin_op_val);
+            free(tmp_token);
+            free(node_binary_op);
         } else {
             // If the token was not an integer, check if it is
             // variable declaration, assignment, etc.
@@ -712,84 +544,36 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                     return *temp_file_data;
                 } else {
                     if (check_next_token("(", temp_file_data, &curr_token)) {
-                        running_expr->type = TYPE_FUNCTION_CALL;
-                        add_ast_node_child(running_expr, sym_node);
-                        AstNode *arg_list = node_alloc();
-                        AstNode *curr_arg = node_alloc();
-                        add_ast_node_child(arg_list, curr_arg);
-                        add_ast_node_child(running_expr, arg_list);
-                        running_expr = curr_arg;
+                        status = -1;
+                        parser_get_func(*context, sym_node, &status);
+                        if (status) {
+                            running_expr->type = TYPE_FUNCTION_CALL;
+                            add_ast_node_child(running_expr, sym_node);
+                            AstNode *arg_list = node_alloc();
+                            AstNode *curr_arg = node_alloc();
+                            add_ast_node_child(arg_list, curr_arg);
+                            add_ast_node_child(running_expr, arg_list);
+                            running_expr = curr_arg;
 
-                        *context = create_parsing_context(*context);
-                        (*context)->op = create_node_symbol("func_call");
-                        (*context)->res = running_expr;
-                        continue;
+                            *context = create_parsing_context(*context);
+                            (*context)->op = create_node_symbol("func_call");
+                            (*context)->res = running_expr;
+                            continue;
+                        } else {
+                            print_error(ERR_COMMON,
+                                        "Function definition not found :"
+                                        "`%s`",
+                                        sym_node->ast_val.node_symbol, 0);
+                        }
                     }
-                    // if ((*context)->parent_ctx == NULL)
-                    //     print_error(ERR_COMMON, "Undefined symbol after :
-                    //     `%s`",
-                    //                 sym_node->ast_val.node_symbol, 0);
+                    if ((*context)->parent_ctx == NULL)
+                        print_error(ERR_COMMON,
+                                    "Undefined symbol after :"
+                                    "`%s`",
+                                    sym_node->ast_val.node_symbol, 0);
                 }
             }
         }
-
-        char *tmp_data = *temp_file_data;
-        LexedToken *tmp_token = curr_token;
-        tmp_data = lex_token(&tmp_data, &tmp_token);
-        AstNode *node_binary_op = node_symbol_from_token_create(tmp_token);
-        int stat = -1;
-        ParsingContext *global_ctx = *context;
-        while (global_ctx->parent_ctx != NULL)
-            global_ctx = global_ctx->parent_ctx;
-        AstNode *bin_op_val =
-            get_env(global_ctx->binary_ops, node_binary_op, &stat);
-        if (stat) {
-            *temp_file_data = tmp_data;
-            *curr_token = *tmp_token;
-            long temp_prec = bin_op_val->child->ast_val.val;
-            AstNode *node_bin_op_body = node_alloc();
-            node_bin_op_body->type = TYPE_BINARY_OPERATOR;
-            if (temp_prec <= running_precedence) {
-                // `curr_expr` needs to change completely,
-                // and it needs to become a child of this new node, because we
-                // encountered something of lower precedence, and hence this
-                // node will have a binary operator node as a child.
-                AstNode *temp_expr_copy = node_alloc();
-                copy_node(temp_expr_copy, *curr_expr);
-                add_ast_node_child(node_bin_op_body, temp_expr_copy);
-                node_bin_op_body->ast_val.node_symbol =
-                    strdup(node_binary_op->ast_val.node_symbol);
-                node_bin_op_body->next_child = NULL;
-
-                AstNode *rhs_node = node_alloc();
-                add_ast_node_child(node_bin_op_body, rhs_node);
-
-                **curr_expr = *node_bin_op_body;
-                *running_expr = **curr_expr;
-                running_expr = rhs_node;
-            } else {
-                // Here `running_expr` needs to change, and will store the value
-                // of the next integer that needs to be used for the operation
-                // based on the operator.
-                AstNode *temp_expr_copy = node_alloc();
-                copy_node(temp_expr_copy, running_expr);
-                add_ast_node_child(node_bin_op_body, temp_expr_copy);
-                node_bin_op_body->ast_val.node_symbol =
-                    strdup(node_binary_op->ast_val.node_symbol);
-                node_bin_op_body->next_child = NULL;
-
-                AstNode *rhs_node = node_alloc();
-                add_ast_node_child(node_bin_op_body, rhs_node);
-
-                *running_expr = *node_bin_op_body;
-                running_expr = rhs_node;
-            }
-            running_precedence = temp_prec;
-            continue;
-        }
-        free(bin_op_val);
-        free(tmp_token);
-        free(node_binary_op);
 
         if ((*context)->parent_ctx == NULL)
             break;

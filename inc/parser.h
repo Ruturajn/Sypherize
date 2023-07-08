@@ -1,11 +1,11 @@
 #ifndef __PARSER_H__
 #define __PARSER_H__
 
-#include "../inc/lexer.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "../inc/lexer.h"
 
 /**
  * @brief Enumeration that defines a type for the `AstNode`.
@@ -81,16 +81,6 @@ typedef struct ParsingContext {
 } ParsingContext;
 
 /**
- * @brief This function prints out a node and all its children from the AST,
- *        pointed to by the `root_node`.
- *
- * @param root_node [`AstNode *`] Pointer to the node that needs to be
- *                  printed
- * @param indent    [int] The level of indentation required while printing.
- */
-void print_ast_node(AstNode *root_node, int indent);
-
-/**
  * @brief Parses an integer from a token, and stores it in
  *        a node.
  *
@@ -124,15 +114,6 @@ Env *create_env(Env *parent_Env);
 int set_env(Env **Env_to_set, AstNode *identifier_node, AstNode *id_val);
 
 /**
- * @brief  Compares two nodes.
- *
- * @param  node1 [`AstNode *`] Pointer to the first node.
- * @param  node2 [`AstNode *`] Pointer to the second node.
- * @return int   `1` to denote equality and `0` otherwise.
- */
-int node_cmp(AstNode *node1, AstNode *node2);
-
-/**
  * @brief  Gets the type node based on the identifier node.
  *
  * @param  Env_to_get [`Env *`] Pointer to the environment which
@@ -157,13 +138,17 @@ AstNode *parser_get_type(ParsingContext *context, AstNode *identifier,
                          int *stat);
 
 /**
- * @brief Adds a child node to the parent in the AST.
+ * @brief  Searches the parsing contexts, for a type func based
+ *         on the identifier.
  *
- * @param parent_node  [`AstNode *`] Pointer to the parent node.
- * @param child_to_add [`AstNode *`] Pointer to the child node
- *                     that needs to be added.
+ * @param  Env_to_get [`ParsingContext *`] Pointer to the ParsingContext
+ *                    context.
+ * @param  identifier [`AstNode *`] Pointer to the identifier node.
+ * @param  stat       [`int`] Status of the function execution.
+ * @return AstNode*   Pointer to the type node.
  */
-void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add);
+AstNode *parser_get_func(ParsingContext *context, AstNode *identifier,
+                         int *stat);
 
 /**
  * @brief  Creates a parsing context, without any types.
@@ -181,92 +166,6 @@ ParsingContext *create_parsing_context(ParsingContext *parent_ctx);
 ParsingContext *create_default_parsing_context();
 
 /**
- * @brief  Allocates memory for a new node, and initialize its
- *         members.
- *
- * @return AstNode* Pointer to newly allocated node.
- */
-AstNode *node_alloc();
-
-/**
- * @brief  Creates a new node of type symbol from a string.
- *
- * @param  symbol_str [`char *`] Pointer to the symbol string.
- * @return AstNode*   Pointer to the newly created node.
- */
-AstNode *create_node_symbol(char *symbol_str);
-
-/**
- * @brief  Creates a new node of type TYPE_NULL.
- *
- * @return AstNode*   Pointer to the newly created node.
- */
-AstNode *create_node_none();
-
-/**
- * @brief  Creates a new node of type int from a value.
- *
- * @param  val       [`long`] Value for the node.
- * @return AstNode*  Pointer to the newly created node.
- */
-AstNode *create_node_int(long val);
-
-/**
- * @brief Frees nodes in an AST.
- *
- * @param node_to_free [`AstNode *`] Pointer to the node
- *                     that needs to be freed.
- */
-void free_node(AstNode *node_to_free);
-
-/**
- * @brief  Creates a node of type symbol from a token.
- *
- * @param  token     [`LexedToken *`] Pointer to the token.
- * @return AstNode*  Pointer to the newly created node.
- */
-AstNode *node_symbol_from_token_create(LexedToken *token);
-
-/**
- * @brief  Deep copies the content from the source node into
- *         the destination node.
- *
- * @param  dst_node [`AstNode *`] Pointer to the destination
- *                  node.
- * @param  src_node [`AstNode *`] Pointer to the source node.
- * @return int      `1` for success, and `0` for failure.
- */
-int copy_node(AstNode *dst_node, AstNode *src_node);
-
-/**
- * @brief  Checks if the token is a known type, i.e. int,
- *         float, etc. (As of now only int is supported).
- *
- * @param  token [`LexedToken *`] Pointer to the token, that needs
- *               to be checked.
- * @param  type  [`int *`] Pointer to a integer that stores the
- *               type of the token, if it is recognized.
- * @return int   `1` for success, and `0` for failure.
- */
-int is_known_type(LexedToken *token, int *type);
-
-/**
- * @brief  Lexes the next token, and checks whether it's equal to the
- *         string that is expected next. If it's not, the data stream
- *         is reset to it's previous state..
- *
- * @param  string_to_cmp  [`char *`] Pointer to the string, that needs
- *                        to be compared.
- * @param  temp_file_data [`char **`] Double pointer to the file data
- *                        stream.
- * @param  token          [`LexedToken *`] Pointer to a token, that
- *                        stores the next token.
- * @return int            `1` for success, and `0` for failure.
- */
-int check_next_token(char *string_to_cmp, char **temp_file_data,
-                     LexedToken **token);
-
-/**
  * @brief Adds a new type with a binding to the types environment.
  *
  * @param env_type  [`Env **`] Double-pointer to the environment.
@@ -279,6 +178,14 @@ void ast_add_type_node(Env **env_type, int node_type, AstNode *sym,
 
 void ast_add_binary_ops(ParsingContext **context, char *bin_op, int precedence,
                         char *ret_type, char *lhs_type, char *rhs_type);
+
+/**
+ * @brief Lexes and parses a complete file.
+ *
+ * @param file_data   [`char *`] pointer to the data stream.
+ */
+void lex_and_parse(char *file_dest, ParsingContext **curr_context,
+                   AstNode **program);
 
 /**
  * @brief Parses tokens (TODO!!), and advances the pointer that

@@ -1,4 +1,5 @@
 #include "../inc/code_gen.h"
+#include "../inc/ast_funcs.h"
 
 char label_arr[LABEL_ARR_SIZE];
 int label_cnt = 0;

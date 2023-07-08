@@ -1,11 +1,11 @@
 #ifndef __CODE_GEN_H__
 #define __CODE_GEN_H__
 
-#include "../inc/parser.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "../inc/parser.h"
 
 #define LABEL_ARR_SIZE 1024
 #define SYM_ARR_SIZE 1024

@@ -106,13 +106,23 @@ char *lex_token(char **file_data, LexedToken **curr_token);
 void print_error(ErrType err, char *fmt, char *str, int val);
 
 /**
- * @brief Lexes and parses a complete file.
+ * @brief  Lexes the next token, and checks whether it's equal to the
+ *         string that is expected next. If it's not, the data stream
+ *         is reset to it's previous state..
  *
- * @param file_data   [`char *`] pointer to the data stream.
+ * @param  string_to_cmp  [`char *`] Pointer to the string, that needs
+ *                        to be compared.
+ * @param  temp_file_data [`char **`] Double pointer to the file data
+ *                        stream.
+ * @param  token          [`LexedToken *`] Pointer to a token, that
+ *                        stores the next token.
+ * @return int            `1` for success, and `0` for failure.
  */
-void lex_and_parse(char *file_dest);
+int check_next_token(char *string_to_cmp, char **temp_file_data,
+                     LexedToken **token);
 
-void sample_print(const char *fmt, ...);
+char *read_file_data(char *file_dest);
+
 #ifdef __cplusplus
 }
 #endif
