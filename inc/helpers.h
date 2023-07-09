@@ -45,6 +45,30 @@ typedef enum ErrType {
 
 extern const char *err_strings[];
 
+/**
+ * @brief This functions takes in the error message, and prints it out, in
+ *        a specific format.
+ *        TODO: Add `perror` type error handling.
+ *
+ * @param msg      [char *] Message to be printed.
+ * @param is_exit  [int] `1` for exit, `0` to just print the message and
+ *                 continue.
+ * @param token    [`LexedToken *`] Pointer to the token if it needs to be
+ *                 printed out.
+ */
+void print_error(ErrType err, char *fmt, char *str, int val);
+
+char *read_file_data(char *file_dest);
+
+/**
+ * @brief  Calculates the size of the file, pointed by `file_ptr`.
+ *
+ * @param  file_ptr  [`FILE *`] pointer to the file, for which the
+ *                   size needs to be calculated.
+ * @return size_t    The size of the file.
+ */
+size_t calculate_file_size(FILE *file_ptr);
+
 #ifdef __cplusplus
 }
 #endif

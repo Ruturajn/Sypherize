@@ -33,17 +33,6 @@ typedef struct LexedToken {
     int token_length;  ///< Length of the token from the beginning.
 } LexedToken;
 
-typedef long int_cl;
-
-/**
- * @brief  Calculates the size of the file, pointed by `file_ptr`.
- *
- * @param  file_ptr  [`FILE *`] pointer to the file, for which the
- *                   size needs to be calculated.
- * @return size_t    The size of the file.
- */
-size_t calculate_file_size(FILE *file_ptr);
-
 /**
  * @brief Print out the token, pointed to by `curr_token`.
  *
@@ -93,19 +82,6 @@ int check_comment(char *file_data);
 char *lex_token(char **file_data, LexedToken **curr_token);
 
 /**
- * @brief This functions takes in the error message, and prints it out, in
- *        a specific format.
- *        TODO: Add `perror` type error handling.
- *
- * @param msg      [char *] Message to be printed.
- * @param is_exit  [int] `1` for exit, `0` to just print the message and
- *                 continue.
- * @param token    [`LexedToken *`] Pointer to the token if it needs to be
- *                 printed out.
- */
-void print_error(ErrType err, char *fmt, char *str, int val);
-
-/**
  * @brief  Lexes the next token, and checks whether it's equal to the
  *         string that is expected next. If it's not, the data stream
  *         is reset to it's previous state..
@@ -120,8 +96,6 @@ void print_error(ErrType err, char *fmt, char *str, int val);
  */
 int check_next_token(char *string_to_cmp, char **temp_file_data,
                      LexedToken **token);
-
-char *read_file_data(char *file_dest);
 
 #ifdef __cplusplus
 }

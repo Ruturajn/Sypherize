@@ -17,7 +17,7 @@ OBJS=$(notdir $(SRCS:.c=.o))
 BUILD_DIR=build
 BIN_DIR=bin
 DOCS_DIR=docs
-FILE_PATH=./example/simple.sy
+FILE_PATH=./examples/simple.sy
 
 #==============================================================================
 
@@ -47,11 +47,12 @@ clean:
 	rm -rf $(BUILD_DIR) $(BIN_DIR)
 
 docs:
-	@echo "\033[1;34m[+] Generating Documentation ...\033[1;37m"
+	@echo "\033[1;34m[+] Re-generating docs directory ...\033[1;37m"
 	rm -rf $(DOCS_DIR)
 	mkdir -p $(DOCS_DIR)
-	doxygen Doxyfile
-	$(MAKE) -C ./docs/latex/
+	@echo "\033[1;34m[+] Generating Documentation ...\033[1;37m"
+	@doxygen Doxyfile
+	@$(MAKE) -C ./docs/latex/
 
 run: clean all
 	@echo "\033[1;33m[+] Running the executable ...\033[1;37m"

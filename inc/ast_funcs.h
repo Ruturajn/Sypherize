@@ -5,7 +5,8 @@
 extern "C" {
 #endif
 
-#include "../inc/parser.h"
+typedef struct AstNode AstNode;
+typedef struct LexedToken LexedToken;
 
 /**
  * @brief This function prints out a node and all its children from the AST,

@@ -1,4 +1,7 @@
 #include "../inc/ast_funcs.h"
+#include "../inc/helpers.h"
+#include "../inc/lexer.h"
+#include "../inc/parser.h"
 
 void print_ast_node(AstNode *root_node, int indent) {
     if (root_node == NULL) {

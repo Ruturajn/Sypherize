@@ -5,7 +5,8 @@
 extern "C" {
 #endif
 
-#include "../inc/parser.h"
+typedef struct ParsingContext ParsingContext;
+typedef struct AstNode AstNode;
 
 int get_return_type(ParsingContext *context, AstNode *expr);
 

@@ -1,5 +1,8 @@
 #include "../inc/type_check.h"
 #include "../inc/ast_funcs.h"
+#include "../inc/env_funcs.h"
+#include "../inc/helpers.h"
+#include "../inc/parser.h"
 
 int get_return_type(ParsingContext *context, AstNode *expr) {
     int ret_type = -1;

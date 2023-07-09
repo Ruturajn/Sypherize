@@ -5,7 +5,11 @@
 extern "C" {
 #endif
 
-#include "../inc/parser.h"
+#include <stdio.h>
+
+typedef struct AstNode AstNode;
+typedef struct Env Env;
+typedef struct ParsingContext ParsingContext;
 
 #define LABEL_ARR_SIZE 1024
 #define SYM_ARR_SIZE 1024
