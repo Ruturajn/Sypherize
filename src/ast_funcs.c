@@ -124,10 +124,10 @@ AstNode *node_alloc() {
 AstNode *create_node_symbol(char *symbol_str) {
     AstNode *sym_node = node_alloc();
     sym_node->type = TYPE_SYM;
-    sym_node->ast_val.node_symbol =
-        (char *)calloc(strlen(symbol_str), sizeof(char));
+    size_t len = strlen(symbol_str);
+    sym_node->ast_val.node_symbol = (char *)calloc(len + 1, sizeof(char));
     strcpy(sym_node->ast_val.node_symbol, symbol_str);
-
+    sym_node->ast_val.node_symbol[len] = '\0';
     return sym_node;
 }
 
@@ -159,7 +159,7 @@ void free_node(AstNode *node_to_free) {
     AstNode *temp1 = NULL;
     while (temp != NULL) {
         temp1 = temp->next_child;
-        if (temp->type == TYPE_SYM && temp->ast_val.node_symbol != NULL)
+        if (temp->ast_val.node_symbol != NULL)
             free(temp->ast_val.node_symbol);
         free(temp);
         temp = temp1;

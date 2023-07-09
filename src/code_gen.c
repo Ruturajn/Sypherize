@@ -175,15 +175,15 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             reg_dealloc(reg_head,
                         curr_expr->child->next_child->result_reg_desc);
         } else if (strcmp(curr_expr->ast_val.node_symbol, "*") == 0) {
-            curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
+            curr_expr->result_reg_desc =
+                curr_expr->child->next_child->result_reg_desc;
             // Subtract those registers and save the result in the LHS register.
             // `sub` operation subtracts the second operand from the first
             // operand, and stores it in the first operand.
             fprintf(fptr_code, "imul %s, %s\n", reg_lhs, reg_rhs);
 
             // De-allocate the RHS register since it is not in use anymore.
-            reg_dealloc(reg_head,
-                        curr_expr->child->next_child->result_reg_desc);
+            reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
         }
         break;
     case TYPE_FUNCTION:;

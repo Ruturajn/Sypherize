@@ -180,6 +180,69 @@ void ast_add_binary_ops(ParsingContext **context, char *bin_op, int precedence,
     }
 }
 
+int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token,
+                          ParsingContext **context, long *running_precedence,
+                          AstNode **curr_expr, AstNode **running_expr) {
+    char *tmp_data = *temp_file_data;
+    LexedToken *tmp_token = NULL;
+    tmp_data = lex_token(&tmp_data, &tmp_token);
+    AstNode *node_binary_op = node_symbol_from_token_create(tmp_token);
+    int stat = -1;
+    ParsingContext *global_ctx = *context;
+    while (global_ctx->parent_ctx != NULL)
+        global_ctx = global_ctx->parent_ctx;
+    AstNode *bin_op_val =
+        get_env(global_ctx->binary_ops, node_binary_op, &stat);
+    if (stat) {
+        *temp_file_data = tmp_data;
+        **curr_token = *tmp_token;
+        long temp_prec = bin_op_val->child->ast_val.val;
+        AstNode *node_bin_op_body = node_alloc();
+        node_bin_op_body->type = TYPE_BINARY_OPERATOR;
+        if (temp_prec <= *running_precedence) {
+            // `curr_expr` needs to change completely,
+            // and it needs to become a child of this new node, because
+            // we encountered something of lower precedence, and hence
+            // this node will have a binary operator node as a child.
+            AstNode *temp_expr_copy = node_alloc();
+            copy_node(temp_expr_copy, *curr_expr);
+            add_ast_node_child(node_bin_op_body, temp_expr_copy);
+            node_bin_op_body->ast_val.node_symbol =
+                strdup(node_binary_op->ast_val.node_symbol);
+            node_bin_op_body->next_child = NULL;
+
+            AstNode *rhs_node = node_alloc();
+            add_ast_node_child(node_bin_op_body, rhs_node);
+
+            **curr_expr = *node_bin_op_body;
+            **running_expr = **curr_expr;
+            *running_expr = rhs_node;
+        } else {
+            // Here `running_expr` needs to change, and will store the
+            // value of the next integer that needs to be used for the
+            // operation based on the operator.
+            AstNode *temp_expr_copy = node_alloc();
+            copy_node(temp_expr_copy, *running_expr);
+            add_ast_node_child(node_bin_op_body, temp_expr_copy);
+            node_bin_op_body->ast_val.node_symbol =
+                strdup(node_binary_op->ast_val.node_symbol);
+            node_bin_op_body->next_child = NULL;
+
+            AstNode *rhs_node = node_alloc();
+            add_ast_node_child(node_bin_op_body, rhs_node);
+
+            **running_expr = *node_bin_op_body;
+            *running_expr = rhs_node;
+        }
+        *running_precedence = temp_prec;
+        return 1;
+    }
+    free(bin_op_val);
+    free(tmp_token);
+    free(node_binary_op);
+    return 0;
+}
+
 void lex_and_parse(char *file_dest, ParsingContext **curr_context,
                    AstNode **program) {
 
@@ -225,63 +288,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
         if (parse_int(curr_token, running_expr)) {
             // If this is an integer, look for a valid operator.
             // return *temp_file_data;
-            char *tmp_data = *temp_file_data;
-            LexedToken *tmp_token = curr_token;
-            tmp_data = lex_token(&tmp_data, &tmp_token);
-            AstNode *node_binary_op = node_symbol_from_token_create(tmp_token);
-            int stat = -1;
-            ParsingContext *global_ctx = *context;
-            while (global_ctx->parent_ctx != NULL)
-                global_ctx = global_ctx->parent_ctx;
-            AstNode *bin_op_val =
-                get_env(global_ctx->binary_ops, node_binary_op, &stat);
-            if (stat) {
-                *temp_file_data = tmp_data;
-                *curr_token = *tmp_token;
-                long temp_prec = bin_op_val->child->ast_val.val;
-                AstNode *node_bin_op_body = node_alloc();
-                node_bin_op_body->type = TYPE_BINARY_OPERATOR;
-                if (temp_prec <= running_precedence) {
-                    // `curr_expr` needs to change completely,
-                    // and it needs to become a child of this new node, because
-                    // we encountered something of lower precedence, and hence
-                    // this node will have a binary operator node as a child.
-                    AstNode *temp_expr_copy = node_alloc();
-                    copy_node(temp_expr_copy, *curr_expr);
-                    add_ast_node_child(node_bin_op_body, temp_expr_copy);
-                    node_bin_op_body->ast_val.node_symbol =
-                        strdup(node_binary_op->ast_val.node_symbol);
-                    node_bin_op_body->next_child = NULL;
-
-                    AstNode *rhs_node = node_alloc();
-                    add_ast_node_child(node_bin_op_body, rhs_node);
-
-                    **curr_expr = *node_bin_op_body;
-                    *running_expr = **curr_expr;
-                    running_expr = rhs_node;
-                } else {
-                    // Here `running_expr` needs to change, and will store the
-                    // value of the next integer that needs to be used for the
-                    // operation based on the operator.
-                    AstNode *temp_expr_copy = node_alloc();
-                    copy_node(temp_expr_copy, running_expr);
-                    add_ast_node_child(node_bin_op_body, temp_expr_copy);
-                    node_bin_op_body->ast_val.node_symbol =
-                        strdup(node_binary_op->ast_val.node_symbol);
-                    node_bin_op_body->next_child = NULL;
-
-                    AstNode *rhs_node = node_alloc();
-                    add_ast_node_child(node_bin_op_body, rhs_node);
-
-                    *running_expr = *node_bin_op_body;
-                    running_expr = rhs_node;
-                }
-                running_precedence = temp_prec;
-                continue;
-            }
-            free(bin_op_val);
-            free(tmp_token);
-            free(node_binary_op);
         } else {
             // If the token was not an integer, check if it is
             // variable declaration, assignment, etc.
@@ -566,14 +572,20 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                                         sym_node->ast_val.node_symbol, 0);
                         }
                     }
-                    if ((*context)->parent_ctx == NULL)
-                        print_error(ERR_COMMON,
-                                    "Undefined symbol after :"
-                                    "`%s`",
-                                    sym_node->ast_val.node_symbol, 0);
+                    // if ((*context)->parent_ctx == NULL)
+                    //     print_error(ERR_COMMON,
+                    //                 "Undefined symbol :"
+                    //                 "`%s`",
+                    //                 sym_node->ast_val.node_symbol, 0);
                 }
             }
         }
+
+        if (!strncmp_lexed_token(curr_token, ")") &&
+            parse_binary_infix_op(temp_file_data, &curr_token, context,
+                                  &running_precedence, curr_expr,
+                                  &running_expr))
+            continue;
 
         if ((*context)->parent_ctx == NULL)
             break;
@@ -596,6 +608,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 check_next_token(")", temp_file_data, &curr_token)) {
                 running_expr = (*context)->res;
                 *context = (*context)->parent_ctx;
+                if (parse_binary_infix_op(temp_file_data, &curr_token, context,
+                                          &running_precedence, curr_expr,
+                                          &running_expr))
+                    continue;
                 break;
             } else if (strncmp_lexed_token(curr_token, ",") ||
                        check_next_token(",", temp_file_data, &curr_token)) {

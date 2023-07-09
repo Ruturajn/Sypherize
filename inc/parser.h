@@ -187,6 +187,10 @@ void ast_add_binary_ops(ParsingContext **context, char *bin_op, int precedence,
 void lex_and_parse(char *file_dest, ParsingContext **curr_context,
                    AstNode **program);
 
+int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token,
+                          ParsingContext **context, long *running_precedence,
+                          AstNode **curr_expr, AstNode **running_expr);
+
 /**
  * @brief Parses tokens (TODO!!), and advances the pointer that
  *        points to the file data stream.
