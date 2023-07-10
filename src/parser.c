@@ -45,6 +45,8 @@ ParsingContext *create_default_parsing_context() {
     ParsingContext *new_context = create_parsing_context(NULL);
     AstNode *sym_node = create_node_symbol("int");
     ast_add_type_node(&new_context->env_type, TYPE_INT, sym_node, sizeof(long));
+    ast_add_type_node(&new_context->env_type, TYPE_FUNCTION,
+                      create_node_symbol("func"), sizeof(long));
     ast_add_binary_ops(&new_context, "+", 5, "int", "int", "int");
     ast_add_binary_ops(&new_context, "-", 5, "int", "int", "int");
     ast_add_binary_ops(&new_context, "*", 10, "int", "int", "int");
@@ -179,6 +181,48 @@ int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token,
     return 0;
 }
 
+void print_parsing_context(ParsingContext *context, int indent) {
+    int temp_ident = indent;
+    while (temp_ident != 0) {
+        putchar(' ');
+        temp_ident--;
+    }
+    printf("TYPES:\n");
+    print_env(context->env_type, indent + 2);
+
+    temp_ident = indent;
+    while (temp_ident != 0) {
+        putchar(' ');
+        temp_ident--;
+    }
+    printf("VARIABLES:\n");
+    print_env(context->vars, indent + 2);
+
+    temp_ident = indent;
+    while (temp_ident != 0) {
+        putchar(' ');
+        temp_ident--;
+    }
+    printf("FUCTIONS:\n");
+    print_env(context->funcs, indent + 2);
+
+    if (context->parent_ctx == NULL) {
+        temp_ident = indent;
+        while (temp_ident != 0) {
+            putchar(' ');
+            temp_ident--;
+        }
+        printf("OPERATORS:\n");
+        print_env(context->binary_ops, indent + 2);
+    }
+
+    ParsingContext *temp_ctx = context->child;
+    while (temp_ctx != NULL) {
+        print_parsing_context(temp_ctx, indent + 2);
+        temp_ctx = temp_ctx->next_child;
+    }
+}
+
 void lex_and_parse(char *file_dest, ParsingContext **curr_context,
                    AstNode **program) {
 
@@ -221,12 +265,96 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
             return *temp_file_data;
 
         // Check if the current token is an integer.
-        if (parse_int(curr_token, running_expr)) {
-            // If this is an integer, look for a valid operator.
-            // return *temp_file_data;
-        } else {
+        if (!parse_int(curr_token, running_expr)) {
             // If the token was not an integer, check if it is
             // variable declaration, assignment, etc.
+
+            if (strncmp_lexed_token(curr_token, "[")) {
+                AstNode *func_node = node_alloc();
+                func_node->type = TYPE_FUNCTION;
+                // Get function return type.
+                *temp_file_data = lex_token(temp_file_data, &curr_token);
+                AstNode *return_type =
+                    node_symbol_from_token_create(curr_token);
+
+                // Get parameter list.
+                if (!check_next_token("(", temp_file_data, &curr_token))
+                    print_error(ERR_SYNTAX,
+                                "Invalid lambda function definition", NULL, 0);
+
+                AstNode *param_list = node_alloc();
+                for (;;) {
+                    if (check_next_token(")", temp_file_data, &curr_token))
+                        break;
+
+                    *temp_file_data = lex_token(temp_file_data, &curr_token);
+                    AstNode *param_type =
+                        node_symbol_from_token_create(curr_token);
+
+                    if (!check_next_token(":", temp_file_data, &curr_token))
+                        print_error(
+                            ERR_SYNTAX,
+                            "Couldn't find `:` after parameter type : `%s`",
+                            param_type->ast_val.node_symbol, 0);
+
+                    *temp_file_data = lex_token(temp_file_data, &curr_token);
+                    AstNode *param_name =
+                        node_symbol_from_token_create(curr_token);
+
+                    AstNode *param = node_alloc();
+
+                    add_ast_node_child(param, param_name);
+                    add_ast_node_child(param, param_type);
+
+                    add_ast_node_child(param_list, param);
+
+                    if (!check_next_token(",", temp_file_data, &curr_token)) {
+                        if (check_next_token(")", temp_file_data, &curr_token))
+                            break;
+                        print_error(
+                            ERR_SYNTAX,
+                            "Could not find end of lambda function definition",
+                            NULL, 0);
+                    }
+                }
+                CHECK_END(**temp_file_data,
+                          "End of file - Incomplete lambda function definition",
+                          NULL);
+
+                add_ast_node_child(func_node, param_list);
+                add_ast_node_child(func_node, return_type);
+
+                if (!check_next_token("{", temp_file_data, &curr_token))
+                    print_error(
+                        ERR_SYNTAX,
+                        "Lambda Function definition doesn't have a body", NULL,
+                        0);
+
+                *context = create_parsing_context(*context);
+                (*context)->op = create_node_symbol("lambda");
+
+                AstNode *params = func_node->child->child;
+                while (params != NULL) {
+                    if (!set_env(&((*context)->vars), params->child,
+                                 params->child->next_child)) {
+                        print_error(ERR_COMMON,
+                                    "Unable to set environment binding for "
+                                    "variable : `%s`",
+                                    params->child->ast_val.node_symbol, 0);
+                    }
+                    params = params->next_child;
+                }
+
+                AstNode *func_body = node_alloc();
+                AstNode *func_expr = node_alloc();
+                add_ast_node_child(func_body, func_expr);
+                add_ast_node_child(func_node, func_body);
+
+                (*context)->res = func_expr;
+                *running_expr = *func_node;
+                running_expr = func_expr;
+                continue;
+            }
 
             if (strncmp_lexed_token(curr_token, "def_func")) {
                 CHECK_END(**temp_file_data, "End of file after : `def_func`",
@@ -536,6 +664,19 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 check_next_token("}", temp_file_data, &curr_token)) {
                 *context = (*context)->parent_ctx;
                 break;
+            }
+        }
+
+        if (strcmp(op->ast_val.node_symbol, "lambda") == 0) {
+            if (strncmp_lexed_token(curr_token, "}") ||
+                check_next_token("}", temp_file_data, &curr_token)) {
+                if (strncmp_lexed_token(curr_token, "]") ||
+                    check_next_token("]", temp_file_data, &curr_token)) {
+                    *context = (*context)->parent_ctx;
+                    break;
+                }
+                print_error(ERR_SYNTAX, "Couldn't find `[` for lambda function",
+                            NULL, 0);
             }
         }
 

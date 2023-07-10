@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 typedef struct AstNode AstNode;
+typedef struct ParsingContext ParsingContext;
 
 /**
  * @brief Structure defining binding for an identifier, i.e. a node for
@@ -57,6 +58,34 @@ int set_env(Env **Env_to_set, AstNode *identifier_node, AstNode *id_val);
  * @return AstNode*   Pointer to the type node.
  */
 AstNode *get_env(Env *Env_to_get, AstNode *identifier, int *stat);
+
+/**
+ * @brief  Searches the parsing contexts, for a type node based
+ *         on the identifier.
+ *
+ * @param  Env_to_get [`ParsingContext *`] Pointer to the ParsingContext
+ *                    context.
+ * @param  identifier [`AstNode *`] Pointer to the identifier node.
+ * @param  stat       [`int`] Status of the function execution.
+ * @return AstNode*   Pointer to the type node.
+ */
+AstNode *parser_get_type(ParsingContext *context, AstNode *identifier,
+                         int *stat);
+
+/**
+ * @brief  Searches the parsing contexts, for a type func based
+ *         on the identifier.
+ *
+ * @param  Env_to_get [`ParsingContext *`] Pointer to the ParsingContext
+ *                    context.
+ * @param  identifier [`AstNode *`] Pointer to the identifier node.
+ * @param  stat       [`int`] Status of the function execution.
+ * @return AstNode*   Pointer to the type node.
+ */
+AstNode *parser_get_func(ParsingContext *context, AstNode *identifier,
+                         int *stat);
+
+void print_env(Env *env, int indent);
 
 #ifdef __cplusplus
 }

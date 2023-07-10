@@ -22,9 +22,8 @@ int get_return_type(ParsingContext *context, AstNode *expr) {
         AstNode *op_decl_ret_type =
             parser_get_type(temp_ctx, op_data->child->next_child, &stat);
         if (!stat)
-            print_error(
-                ERR_COMMON, "Couldn't find information for type : `%s`",
-                op_data->child->next_child->next_child->ast_val.node_symbol, 0);
+            print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
+                        op_data->child->next_child->ast_val.node_symbol, 0);
         ret_type = op_decl_ret_type->type;
         free_node(op_sym);
         free_node(op_data);
@@ -39,8 +38,7 @@ int get_return_type(ParsingContext *context, AstNode *expr) {
         AstNode *func_ret =
             parser_get_type(context, func_body->child->next_child, &stat);
         if (!stat)
-            print_error(ERR_COMMON,
-                        "Couldn't find information for operator : `%s`",
+            print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
                         func_body->child->next_child->ast_val.node_symbol, 0);
         ret_type = func_ret->type;
         free_node(func_ret);

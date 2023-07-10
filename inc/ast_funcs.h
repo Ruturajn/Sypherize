@@ -8,6 +8,10 @@ extern "C" {
 typedef struct AstNode AstNode;
 typedef struct LexedToken LexedToken;
 
+#define NODE_BUF_SIZE 512
+
+char *get_node_str(AstNode *node);
+
 /**
  * @brief This function prints out a node and all its children from the AST,
  *        pointed to by the `root_node`.

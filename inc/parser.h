@@ -77,32 +77,6 @@ typedef struct ParsingContext {
 int parse_int(LexedToken *token, AstNode *node);
 
 /**
- * @brief  Searches the parsing contexts, for a type node based
- *         on the identifier.
- *
- * @param  Env_to_get [`ParsingContext *`] Pointer to the ParsingContext
- *                    context.
- * @param  identifier [`AstNode *`] Pointer to the identifier node.
- * @param  stat       [`int`] Status of the function execution.
- * @return AstNode*   Pointer to the type node.
- */
-AstNode *parser_get_type(ParsingContext *context, AstNode *identifier,
-                         int *stat);
-
-/**
- * @brief  Searches the parsing contexts, for a type func based
- *         on the identifier.
- *
- * @param  Env_to_get [`ParsingContext *`] Pointer to the ParsingContext
- *                    context.
- * @param  identifier [`AstNode *`] Pointer to the identifier node.
- * @param  stat       [`int`] Status of the function execution.
- * @return AstNode*   Pointer to the type node.
- */
-AstNode *parser_get_func(ParsingContext *context, AstNode *identifier,
-                         int *stat);
-
-/**
  * @brief  Creates a parsing context, without any types.
  *
  * @param  [`ParsingContext *`] Pointer to the parent context.
@@ -141,6 +115,8 @@ void add_parsing_context_child(ParsingContext **root,
  */
 void lex_and_parse(char *file_dest, ParsingContext **curr_context,
                    AstNode **program);
+
+void print_parsing_context(ParsingContext *context, int indent);
 
 int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token,
                           ParsingContext **context, long *running_precedence,

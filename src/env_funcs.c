@@ -88,3 +88,18 @@ AstNode *parser_get_func(ParsingContext *context, AstNode *identifier,
     *stat = 0;
     return res;
 }
+
+void print_env(Env *env, int indent) {
+    IdentifierBind *curr_bind = env->binding;
+    int temp_indent = indent;
+    while (curr_bind != NULL) {
+        temp_indent = indent;
+        while (temp_indent != 0) {
+            putchar(' ');
+            temp_indent--;
+        }
+        printf("%s -> ", get_node_str(curr_bind->identifier));
+        printf("%s\n", get_node_str(curr_bind->id_val));
+        curr_bind = curr_bind->next_id_bind;
+    }
+}

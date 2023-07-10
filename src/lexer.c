@@ -13,6 +13,8 @@ int strncmp_lexed_token(LexedToken *curr_token, char *str_to_cmp) {
         return 0;
     }
     int len = curr_token->token_length;
+    if (len != (int)strlen(str_to_cmp))
+        return 0;
     char *temp = curr_token->token_start;
     while (len != 0) {
         if (*temp != *str_to_cmp)

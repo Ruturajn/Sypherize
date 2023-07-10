@@ -20,6 +20,8 @@ int main(int argc, char **argv) {
     // Open the file, lex and parse the file.
     lex_and_parse(argv[1], &curr_context, &program);
 
+    print_parsing_context(curr_context, 0);
+
     // Type check the program.
     type_check_prog(curr_context, program);
 

@@ -3,51 +3,59 @@
 #include "../inc/lexer.h"
 #include "../inc/parser.h"
 
+char node_buf[NODE_BUF_SIZE] = {0};
+
+char *get_node_str(AstNode *node) {
+    switch (node->type) {
+    case TYPE_NULL:
+        snprintf(node_buf, NODE_BUF_SIZE, "NULL");
+        break;
+    case TYPE_PROGRAM:
+        snprintf(node_buf, NODE_BUF_SIZE, "PROGRAM");
+        break;
+    case TYPE_ROOT:
+        snprintf(node_buf, NODE_BUF_SIZE, "ROOT");
+        break;
+    case TYPE_INT:
+        snprintf(node_buf, NODE_BUF_SIZE, "INT : %ld", node->ast_val.val);
+        break;
+    case TYPE_BINARY_OPERATOR:
+        snprintf(node_buf, NODE_BUF_SIZE, "BINARY OP : %s",
+                 node->ast_val.node_symbol);
+        break;
+    case TYPE_VAR_DECLARATION:
+        snprintf(node_buf, NODE_BUF_SIZE, "VAR DECL");
+        break;
+    case TYPE_VAR_INIT:
+        snprintf(node_buf, NODE_BUF_SIZE, "VAR INIT");
+        break;
+    case TYPE_SYM:
+        snprintf(node_buf, NODE_BUF_SIZE, "SYM : %s",
+                 node->ast_val.node_symbol);
+        break;
+    case TYPE_VAR_REASSIGNMENT:
+        snprintf(node_buf, NODE_BUF_SIZE, "VAR REASSIGNMENT");
+        break;
+    case TYPE_FUNCTION:
+        snprintf(node_buf, NODE_BUF_SIZE, "FUNCTION");
+        break;
+    case TYPE_FUNCTION_CALL:
+        snprintf(node_buf, NODE_BUF_SIZE, "FUNCTION CALL");
+        break;
+    default:
+        snprintf(node_buf, NODE_BUF_SIZE, "Unknown TYPE");
+        break;
+    }
+    return node_buf;
+}
+
 void print_ast_node(AstNode *root_node, int indent) {
     if (root_node == NULL) {
         return;
     }
     for (int i = 0; i < indent; i++)
         putchar(' ');
-    switch (root_node->type) {
-    case TYPE_NULL:
-        printf("NULL");
-        break;
-    case TYPE_PROGRAM:
-        printf("PROGRAM");
-        break;
-    case TYPE_ROOT:
-        printf("ROOT");
-        break;
-    case TYPE_INT:
-        printf("INT : %ld", root_node->ast_val.val);
-        break;
-    case TYPE_BINARY_OPERATOR:
-        printf("BINARY OP : %s", root_node->ast_val.node_symbol);
-        break;
-    case TYPE_VAR_DECLARATION:
-        printf("VAR DECL");
-        break;
-    case TYPE_VAR_INIT:
-        printf("VAR INIT");
-        break;
-    case TYPE_SYM:
-        printf("SYM : %s", root_node->ast_val.node_symbol);
-        break;
-    case TYPE_VAR_REASSIGNMENT:
-        printf("VAR REASSIGNMENT");
-        break;
-    case TYPE_FUNCTION:
-        printf("FUNCTION");
-        break;
-    case TYPE_FUNCTION_CALL:
-        printf("FUNCTION CALL");
-        break;
-    default:
-        printf("Unknown TYPE");
-        break;
-    }
-    putchar('\n');
+    printf("%s\n", get_node_str(root_node));
     AstNode *child_node = root_node->child;
     while (child_node != NULL) {
         print_ast_node(child_node, indent + 4);
