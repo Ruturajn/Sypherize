@@ -18,7 +18,7 @@ typedef enum NodeType {
     TYPE_INT,              ///< Node of type integer.
     TYPE_BINARY_OPERATOR,  ///< Node that represents a binary operator.
     TYPE_VAR_DECLARATION,  ///< Node that represents a variable declaration.
-    TYPE_VAR_INIT,         ///< Node that represents variable initialization.
+    TYPE_VAR_ACCESS,       ///< Node that represents variable access.
     TYPE_SYM,              ///< Node for a symbol.
     TYPE_VAR_REASSIGNMENT, ///< Node for variable reassignment.
     TYPE_FUNCTION,         ///< Node for storing functions.

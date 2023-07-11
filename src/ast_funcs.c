@@ -26,8 +26,9 @@ char *get_node_str(AstNode *node) {
     case TYPE_VAR_DECLARATION:
         snprintf(node_buf, NODE_BUF_SIZE, "VAR DECL");
         break;
-    case TYPE_VAR_INIT:
-        snprintf(node_buf, NODE_BUF_SIZE, "VAR INIT");
+    case TYPE_VAR_ACCESS:
+        snprintf(node_buf, NODE_BUF_SIZE, "VAR ACCESS : %s",
+                 node->ast_val.node_symbol);
         break;
     case TYPE_SYM:
         snprintf(node_buf, NODE_BUF_SIZE, "SYM : %s",
@@ -91,8 +92,8 @@ int node_cmp(AstNode *node1, AstNode *node2) {
     case TYPE_VAR_DECLARATION:
         printf("TODO : VAR DECLARATION!\n");
         break;
-    case TYPE_VAR_INIT:
-        printf("TODO : VAR INIT!\n");
+    case TYPE_VAR_ACCESS:
+        printf("TODO : VAR ACCESS!\n");
         break;
     case TYPE_SYM:
         if (node1->ast_val.node_symbol != NULL &&

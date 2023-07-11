@@ -636,11 +636,27 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                                         sym_node->ast_val.node_symbol, 0);
                         }
                     }
-                    // if ((*context)->parent_ctx == NULL)
+
+                    // If the parsing flow reaches here, it means that we
+                    // can check a variable access.
+                    ParsingContext *temp_ctx = *context;
+                    while (temp_ctx != NULL) {
+                        status = -1;
+                        get_env(temp_ctx->vars, sym_node, &status);
+                        if (status)
+                            break;
+                        temp_ctx = temp_ctx->parent_ctx;
+                    }
+                    // if (!status)
                     //     print_error(ERR_COMMON,
                     //                 "Undefined symbol :"
                     //                 "`%s`",
                     //                 sym_node->ast_val.node_symbol, 0);
+                    AstNode *node_var_access = node_alloc();
+                    node_var_access->type = TYPE_VAR_ACCESS;
+                    node_var_access->ast_val.node_symbol =
+                        strdup(sym_node->ast_val.node_symbol);
+                    *running_expr = *node_var_access;
                 }
             }
         }
@@ -662,8 +678,11 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
         if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
             if (strncmp_lexed_token(curr_token, "}") ||
                 check_next_token("}", temp_file_data, &curr_token)) {
+                if ((*context)->parent_ctx == NULL)
+                    break;
                 *context = (*context)->parent_ctx;
-                break;
+                if ((*context)->parent_ctx == NULL)
+                    (*context)->res = *curr_expr;
             }
         }
 
@@ -672,11 +691,13 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 check_next_token("}", temp_file_data, &curr_token)) {
                 if (strncmp_lexed_token(curr_token, "]") ||
                     check_next_token("]", temp_file_data, &curr_token)) {
+                    if ((*context)->parent_ctx == NULL)
+                        break;
                     *context = (*context)->parent_ctx;
-                    break;
-                }
-                print_error(ERR_SYNTAX, "Couldn't find `[` for lambda function",
-                            NULL, 0);
+                } else
+                    print_error(ERR_SYNTAX,
+                                "Couldn't find `]` for lambda function", NULL,
+                                0);
             }
         }
 
