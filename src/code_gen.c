@@ -207,6 +207,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                 local_var_name = get_env(cg_ctx->local_env, curr_expr, &stat);
                 if (stat)
                     break;
+                temp_cg_ctx = temp_cg_ctx->parent_ctx;
             }
             if (stat == -1)
                 print_error(ERR_COMMON,

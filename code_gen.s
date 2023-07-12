@@ -7,6 +7,7 @@ push %rbp
 mov %rsp, %rbp
 sub $32, %rsp
 sub $8, %rsp
+mov 0(%rbp), %rax
 add $40, %rsp
 add $32, %rsp
 pop %rbp
@@ -17,16 +18,16 @@ main:
 push %rbp
 mov %rsp, %rbp
 sub $32, %rsp
-movq $-2, %rax
-movq $3, %r10
-imul %rax, %r10
-movq $1, %rax
-add %r10, %rax
-movq $2, %r10
-sub %rax, %r10
+movq $-2, %r10
+movq $3, %r11
+imul %r10, %r11
+movq $1, %r10
+add %r11, %r10
+movq $2, %r11
+sub %r10, %r11
 sub $8, %rsp
-mov $a(%rip), %r10
-mov %r10, %rax
+mov $a(%rip), %r11
+mov %r11, %rax
 add $40, %rsp
 add $32, %rsp
 pop %rbp
