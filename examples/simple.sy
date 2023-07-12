@@ -28,10 +28,16 @@ def_func add_int(int: a, int: x) ~ int {
     a := 10;
 }
 
-! [int (int: w) { w := 10 }]
+[int (int: w) { w := 10 }]
 
 add_int(13, 94);
 
 int: test := 17;
 
 test := 14 + 12
+
+2 * 3 / 2 + 1
+
+int : a := 10;
+
+a

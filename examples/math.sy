@@ -1,1 +1,17 @@
 -2 * 3 + 1 - 2
+
+def_func add_int(int: a, int: x) ~ int {
+    x := 33;
+    a := 99
+    x := 10
+    a := 100;
+    func : bar := [int (int: w) { w }]
+    a := 10;
+    x
+}
+
+[int (int: w) { w := 10 }]
+
+int : a := 10;
+
+a

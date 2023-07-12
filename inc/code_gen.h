@@ -40,6 +40,7 @@ typedef enum TargetType {
 typedef struct CGContext {
     struct CGContext *parent_ctx;
     Env *local_env;
+    long local_offset;
 } CGContext;
 
 // Create a new register with 'reg_name' and allocate memory for it.
@@ -64,7 +65,7 @@ void reg_dealloc(Reg *reg_head, RegDescriptor reg_desc);
 // Generate labels for lambda functions.
 char *gen_label();
 
-char *map_sym_to_addr_win(AstNode *sym_node);
+char *map_sym_to_addr_win(CGContext *cg_ctx, AstNode *sym_node);
 
 void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                                     AstNode *curr_expr, CGContext *cg_ctx,
