@@ -1,34 +1,34 @@
 .section .data
+z: .space 8
 a: .space 8
 .section .text
-jmp afteradd_int
-add_int:
+jmp afterbar
+bar:
 push %rbp
 mov %rsp, %rbp
 sub $32, %rsp
-sub $8, %rsp
-mov 0(%rbp), %rax
-add $40, %rsp
+mov 16(%rbp), %rax
+movq $10, %r10
+movq $3, %r11
+imul %r10, %r11
+add %rax, %r11
+mov %r11, 16(%rbp)
+mov 16(%rbp), %rax
 add $32, %rsp
 pop %rbp
 ret
-afteradd_int:
+afterbar:
 .global main
 main:
 push %rbp
 mov %rsp, %rbp
 sub $32, %rsp
-movq $-2, %r10
-movq $3, %r11
-imul %r10, %r11
-movq $1, %r10
-add %r11, %r10
-movq $2, %r11
-sub %r10, %r11
-sub $8, %rsp
-mov $a(%rip), %r11
-mov %r11, %rax
-add $40, %rsp
+movq $10, a(%rip)
+movq $99, z(%rip)
+movq $8, %rax
+pushq %rax
+call bar
+add $8, %rsp
 add $32, %rsp
 pop %rbp
 ret

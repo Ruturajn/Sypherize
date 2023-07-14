@@ -1,18 +1,22 @@
 ! This is a variable declaration, with initialization.
-int: a := 340;
 
-a:= 10;
+int: a;
 
-` This is a variable declaration
-int: new_val;
+a := 10
 
-! Assigning value to a variable.
-new_val := 100;
+int: z;
+
+z := 99
 
 ` This is a function call.
-def_func add_int(int: a, int: b) ~ int {
+def_func bar(int: a) ~ int {
     ! Do something here.
+    ! func : foo := [int (int: w) { w }]
+    ! foo
+    a := a + 10 * 3
+    a
 }
 
-! Function call.
-add_int(a, new_val);
+! 2 * 3 / 2 + 1
+
+bar(8)

@@ -15,7 +15,6 @@ typedef struct ParsingContext ParsingContext;
 #define SYM_ARR_SIZE 1024
 
 #define FUNC_FOOTER_x86_64                                                     \
-    "add $32, %rsp\n"                                                          \
     "pop %rbp\n"                                                               \
     "ret\n"
 

@@ -681,8 +681,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 if ((*context)->parent_ctx == NULL)
                     break;
                 *context = (*context)->parent_ctx;
-                if ((*context)->parent_ctx == NULL)
+                if ((*context)->parent_ctx == NULL) {
                     (*context)->res = *curr_expr;
+                    break;
+                }
             }
         }
 
@@ -694,6 +696,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                     if ((*context)->parent_ctx == NULL)
                         break;
                     *context = (*context)->parent_ctx;
+                    if ((*context)->parent_ctx == NULL) {
+                        (*context)->res = *curr_expr;
+                        break;
+                    }
                 } else
                     print_error(ERR_SYNTAX,
                                 "Couldn't find `]` for lambda function", NULL,

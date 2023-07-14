@@ -153,6 +153,8 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                                     FILE *fptr_code) {
     switch (curr_expr->type) {
     case TYPE_VAR_DECLARATION:;
+        if (cg_ctx->parent_ctx == NULL)
+            break;
         AstNode *var_node = NULL;
         ParsingContext *temp_ctx = context;
         int stat = -1;
@@ -180,13 +182,13 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
                         type_node->ast_val.node_symbol, 0);
         fprintf(fptr_code, "sub $%ld, %%rsp\n", type_node->child->ast_val.val);
+        cg_ctx->local_offset -= type_node->child->ast_val.val;
         if (!set_env(&cg_ctx->local_env, curr_expr->child,
                      create_node_int(cg_ctx->local_offset)))
             print_error(ERR_COMMON,
                         "Unable to set locals environment in code gen context "
                         "for : `%s`",
                         curr_expr->child->ast_val.node_symbol, 0);
-        cg_ctx->local_offset -= type_node->child->ast_val.val;
         break;
     case TYPE_INT:
         curr_expr->result_reg_desc = reg_alloc(reg_head);
@@ -196,20 +198,21 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
     case TYPE_VAR_ACCESS:
         curr_expr->result_reg_desc = reg_alloc(reg_head);
         if (cg_ctx->parent_ctx == NULL) {
-            fprintf(fptr_code, "mov $%s(%%rip), %s\n",
+            fprintf(fptr_code, "mov %s(%%rip), %s\n",
                     curr_expr->ast_val.node_symbol,
                     get_reg_name(curr_expr->result_reg_desc, reg_head));
         } else {
-            CGContext *temp_cg_ctx = cg_ctx;
-            AstNode *local_var_name = NULL;
+            // CGContext *temp_cg_ctx = cg_ctx;
+            // while (temp_cg_ctx != NULL) {
+            //     local_var_name = get_env(cg_ctx->local_env, curr_expr,
+            //     &stat); if (stat)
+            //         break;
+            //     temp_cg_ctx = temp_cg_ctx->parent_ctx;
+            // }
             stat = -1;
-            while (temp_cg_ctx != NULL) {
-                local_var_name = get_env(cg_ctx->local_env, curr_expr, &stat);
-                if (stat)
-                    break;
-                temp_cg_ctx = temp_cg_ctx->parent_ctx;
-            }
-            if (stat == -1)
+            AstNode *local_var_name =
+                get_env_from_sym(cg_ctx->local_env, curr_expr, &stat);
+            if (!stat)
                 print_error(ERR_COMMON,
                             "Unable to find information regarding local "
                             "variable offset for: `%s`",
@@ -263,6 +266,21 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
         }
         break;
+    case TYPE_FUNCTION_CALL:;
+        AstNode *call_params = curr_expr->child->next_child->child;
+        int param_count = 0;
+        while (call_params != NULL) {
+            target_x86_64_win_codegen_expr(reg_head, context, call_params,
+                                           cg_ctx, fptr_code);
+            fprintf(fptr_code, "pushq %s\n",
+                    get_reg_name(call_params->result_reg_desc, reg_head));
+            reg_dealloc(reg_head, call_params->result_reg_desc);
+            call_params = call_params->next_child;
+            param_count++;
+        }
+        fprintf(fptr_code, "call %s\n", curr_expr->child->ast_val.node_symbol);
+        fprintf(fptr_code, "add $%d, %%rsp\n", param_count * 8);
+        break;
     case TYPE_FUNCTION:;
         if (cg_ctx->parent_ctx == NULL) {
             break;
@@ -274,6 +292,15 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
     case TYPE_VAR_REASSIGNMENT:
         if (cg_ctx->parent_ctx != NULL) {
             // print_error("Local variable code gen not implemented", 1, NULL);
+            target_x86_64_win_codegen_expr(reg_head, context,
+                                           curr_expr->child->next_child, cg_ctx,
+                                           fptr_code);
+            char *res_reg = get_reg_name(
+                curr_expr->child->next_child->result_reg_desc, reg_head);
+            fprintf(fptr_code, "mov %s, %s\n", res_reg,
+                    map_sym_to_addr_win(cg_ctx, curr_expr->child));
+            reg_dealloc(reg_head,
+                        curr_expr->child->next_child->result_reg_desc);
         } else {
             if (curr_expr->child->next_child->type == TYPE_INT) {
                 fprintf(fptr_code, "movq $%ld, %s\n",
@@ -328,7 +355,7 @@ void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx,
     while (func_param_list != NULL) {
         param_cnt++;
         if (!set_env(&(cg_ctx->local_env), func_param_list->child,
-                     create_node_int(-param_cnt * 8)))
+                     create_node_int(param_cnt * 8)))
             print_error(ERR_COMMON,
                         "Unable to set locals environment in code gen context "
                         "for : `%s`",
@@ -345,13 +372,19 @@ void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx,
     fprintf(fptr_code, "%s", FUNC_HEADER_x86_64);
 
     AstNode *temp_expr = func->child->next_child->next_child->child;
+    AstNode *last_expr = NULL;
     while (temp_expr != NULL) {
         target_x86_64_win_codegen_expr(reg_head, context, temp_expr, cg_ctx,
                                        fptr_code);
+        reg_dealloc(reg_head, temp_expr->result_reg_desc);
+        last_expr = temp_expr;
         temp_expr = temp_expr->next_child;
     }
 
     // Function footer.
+    if (strcmp(get_reg_name(last_expr->result_reg_desc, reg_head), "%rax"))
+        fprintf(fptr_code, "mov %s, %%rax\n",
+                get_reg_name(last_expr->result_reg_desc, reg_head));
     fprintf(fptr_code, "add $%ld, %%rsp\n", -cg_ctx->local_offset);
     fprintf(fptr_code, "%s", FUNC_FOOTER_x86_64);
 
@@ -395,7 +428,6 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
             reg_head, cg_ctx, context,
             temp_bind->identifier->ast_val.node_symbol, temp_bind->id_val,
             fptr_code);
-
         temp_bind = temp_bind->next_id_bind;
     }
 
@@ -410,6 +442,7 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
     while (curr_expr != NULL) {
         target_x86_64_win_codegen_expr(reg_head, context, curr_expr, cg_ctx,
                                        fptr_code);
+        reg_dealloc(reg_head, curr_expr->result_reg_desc);
         last_expr = curr_expr;
         curr_expr = curr_expr->next_child;
     }

@@ -8,9 +8,26 @@ int get_return_type(ParsingContext *context, AstNode *expr) {
     int ret_type = -1;
     int stat = -1;
     switch (expr->type) {
+    case TYPE_VAR_ACCESS:;
+        ParsingContext *temp_ctx = context;
+        while (temp_ctx->parent_ctx != NULL)
+            temp_ctx = temp_ctx->parent_ctx;
+        AstNode *sym_type = get_env_from_sym(temp_ctx->vars, expr, &stat);
+        if (!stat)
+            print_error(ERR_COMMON,
+                        "Couldn't find information for variable : `%s`",
+                        expr->ast_val.node_symbol, 0);
+        AstNode *type_node = parser_get_type(temp_ctx, sym_type, &stat);
+        if (!stat)
+            print_error(
+                ERR_COMMON,
+                "Couldn't find information for `type` of variable : `%s`",
+                expr->ast_val.node_symbol, 0);
+        ret_type = type_node->type;
+        break;
     case TYPE_BINARY_OPERATOR:
         type_check_expr(context, expr);
-        ParsingContext *temp_ctx = context;
+        temp_ctx = context;
         while (temp_ctx->parent_ctx != NULL)
             temp_ctx = temp_ctx->parent_ctx;
         AstNode *op_sym = create_node_symbol(expr->ast_val.node_symbol);

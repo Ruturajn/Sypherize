@@ -55,6 +55,22 @@ AstNode *get_env(Env *env_to_get, AstNode *identifier, int *stat) {
     return val;
 }
 
+AstNode *get_env_from_sym(Env *env_to_get, AstNode *identifier, int *stat) {
+    IdentifierBind *curr_bind = env_to_get->binding;
+    AstNode *val = node_alloc();
+    while (curr_bind != NULL) {
+        if (strcmp(curr_bind->identifier->ast_val.node_symbol,
+                   identifier->ast_val.node_symbol) == 0) {
+            *stat = 1;
+            copy_node(val, curr_bind->id_val);
+            return val;
+        }
+        curr_bind = curr_bind->next_id_bind;
+    }
+    *stat = 0;
+    return val;
+}
+
 AstNode *parser_get_type(ParsingContext *context, AstNode *identifier,
                          int *stat) {
     ParsingContext *temp_ctx = context;
