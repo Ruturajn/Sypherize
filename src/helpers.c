@@ -1,13 +1,14 @@
 #include "../inc/helpers.h"
 
-const char *err_strings[] = {"GENERIC",     "NUM ARGS",     "MEMORY ALLOCATION",
+const char *err_strings[] = {"GENERIC",     "ARGS",         "MEMORY ALLOCATION",
                              "FILE ACCESS", "FILE SIZE",    "FILE READ",
                              "SYNTAX",      "REDEFINITION", "EOF"};
 
 char *read_file_data(char *file_dest) {
     FILE *file_ptr = NULL;
     file_ptr = fopen(file_dest, "r");
-    CHECK_NULL(file_ptr, "Unable to open file : `%s`", file_dest);
+    if (file_ptr == NULL)
+        print_error(ERR_FILE_OPEN, "Unable to open file : `%s`", file_dest, 0);
 
     size_t file_sz = calculate_file_size(file_ptr);
 

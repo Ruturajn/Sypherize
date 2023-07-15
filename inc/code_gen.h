@@ -77,7 +77,8 @@ void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx,
 void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
                                     CGContext *cg_ctx, FILE *fptr_code);
 
-void target_codegen(ParsingContext *context, AstNode *program, TargetType type);
+void target_codegen(ParsingContext *context, AstNode *program,
+                    char *output_file_path, TargetType type);
 
 #ifdef __cplusplus
 }

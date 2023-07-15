@@ -17,6 +17,6 @@ def_func bar(int: a) ~ int {
     a
 }
 
-! 2 * 3 / 2 + 1
+2 * 3 / 2 + 1
 
 bar(8)

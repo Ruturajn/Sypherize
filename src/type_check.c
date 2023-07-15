@@ -149,13 +149,13 @@ void type_check_expr(ParsingContext *context, AstNode *expr) {
             func_call_params = func_call_params->next_child;
         }
         if (func_param_list != NULL) {
-            print_error(ERR_NUM_ARGS,
+            print_error(ERR_ARGS,
                         "Too few arguments for function : "
                         "`%s`",
                         temp_expr->child->ast_val.node_symbol, 0);
         }
         if (func_call_params != NULL) {
-            print_error(ERR_NUM_ARGS,
+            print_error(ERR_ARGS,
                         "Too many arguments passed to function : "
                         "`%s`",
                         temp_expr->child->ast_val.node_symbol, 0);

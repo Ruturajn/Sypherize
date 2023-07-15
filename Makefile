@@ -56,7 +56,7 @@ docs:
 
 run: clean all
 	@echo "\033[1;33m[+] Running the executable ...\033[1;37m"
-	./$(BIN_DIR)/$(TARGET) $(FILE_PATH)
+	./$(BIN_DIR)/$(TARGET) -i $(FILE_PATH)
 
 clean_docs:
 	@echo "\033[1;33m[+] Cleaning generated docs ...\033[1;37m"

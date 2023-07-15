@@ -25,6 +25,12 @@ mov %rsp, %rbp
 sub $32, %rsp
 movq $10, a(%rip)
 movq $99, z(%rip)
+movq $2, %rax
+movq $3, %r10
+imul %rax, %r10
+movq $2, %rax
+movq $1, %r11
+add %rax, %r11
 movq $8, %rax
 pushq %rax
 call bar

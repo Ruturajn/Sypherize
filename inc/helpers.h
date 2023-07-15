@@ -9,6 +9,39 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
+#define USAGE_STRING                                                           \
+    "Sypherize 0.1\n"                                                          \
+    "Ruturajn <nanotiruturaj@gmail.com>\n"                                     \
+    "Compiler for Sypher\n"                                                    \
+    "\n"                                                                       \
+    "USAGE:\n"                                                                 \
+    "    sypherize [OPTIONS] INPUT_FILE [OPTIONS]\n"                           \
+    "\n"                                                                       \
+    "OPTIONS:\n"                                                               \
+    "    -i, --input <INPUT_FILE_PATH>\n"                                      \
+    "            Path to the input file\n"                                     \
+    "\n"                                                                       \
+    "    -o, --output <OUTPUT_FILE_PATH>\n"                                    \
+    "            Path to the output file\n"                                    \
+    "\n"                                                                       \
+    "    -f, --format <OUTPUT_FORMAT>\n"                                       \
+    "            A valid output format for code generation\n"                  \
+    "            VALID FORMATS:\n"                                             \
+    "            - `x86_64-windows`\n"                                         \
+    "            - `default`\n"                                                \
+    "\n"                                                                       \
+    "    -V, --verbose\n"                                                      \
+    "            Print out extra debugging information\n"                      \
+    "\n"                                                                       \
+    "    -h, --help\n"                                                         \
+    "            Print this help information\n"                                \
+    "\n"                                                                       \
+    "    -v, --version\n"                                                      \
+    "            Print out current version of Sypherize\n"                     \
+    "\n"
+
+#define VERSION_STRING "Sypherize 0.1\n"
+
 /**
  * @brief Checks if a `ptr` is NULL, is so calls `print_error`, with exit
  *        enabled.
@@ -33,7 +66,7 @@ extern "C" {
 
 typedef enum ErrType {
     ERR_COMMON = 0,
-    ERR_NUM_ARGS,
+    ERR_ARGS,
     ERR_MEM,
     ERR_FILE_OPEN,
     ERR_FILE_SIZE,

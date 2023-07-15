@@ -457,14 +457,28 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
 }
 
 void target_codegen(ParsingContext *context, AstNode *program,
-                    TargetType type) {
+                    char *output_file_path, TargetType type) {
     if (context == NULL || program == NULL)
         print_error(ERR_COMMON,
                     "NULL program node passed for code generation to "
                     "`target_codegen()`",
                     NULL, 0);
 
-    FILE *fptr_code = fopen("code_gen.s", "w");
+    FILE *fptr_code = NULL;
+    if (output_file_path == NULL) {
+        fptr_code = fopen("code_gen.s", "w");
+        if (fptr_code == NULL)
+            print_error(
+                ERR_FILE_OPEN,
+                "Unable to open default file for code generation : `%s`",
+                "code_gen.s", 0);
+    } else {
+        fptr_code = fopen(output_file_path, "w");
+        if (fptr_code == NULL)
+            print_error(ERR_FILE_OPEN,
+                        "Unable to open file for code generation : `%s`",
+                        output_file_path, 0);
+    }
 
     CGContext *cg_ctx = create_codegen_context(NULL);
 

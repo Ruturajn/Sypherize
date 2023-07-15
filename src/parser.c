@@ -23,13 +23,22 @@ int parse_int(LexedToken *token, AstNode *node) {
     return 1;
 }
 
+ParsingStack *create_parsing_stack(ParsingStack *parent_stack) {
+    ParsingStack *new_stack = NULL;
+    new_stack = (ParsingStack *)calloc(1, sizeof(ParsingStack));
+    CHECK_NULL(new_stack, "Unable to allocate memory for new parsing stack",
+               NULL);
+    new_stack->parent_stack = parent_stack;
+    new_stack->op = NULL;
+    new_stack->res = NULL;
+    return new_stack;
+}
+
 ParsingContext *create_parsing_context(ParsingContext *parent_ctx) {
     ParsingContext *new_context = NULL;
     new_context = (ParsingContext *)calloc(1, sizeof(ParsingContext));
     CHECK_NULL(new_context, "Unable to allocate memory for new parsing context",
                NULL);
-    new_context->op = NULL;
-    new_context->res = NULL;
     new_context->child = NULL;
     new_context->next_child = NULL;
     new_context->parent_ctx = parent_ctx;
@@ -249,13 +258,13 @@ void lex_and_parse(char *file_dest, ParsingContext **curr_context,
         free_node(curr_expr);
     }
 
-    print_ast_node(*program, 0);
     free(file_data);
 }
 
 char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                    AstNode **curr_expr, ParsingContext **context) {
 
+    ParsingStack *curr_stack = NULL;
     AstNode *running_expr = *curr_expr;
     long running_precedence = 0;
     for (;;) {
@@ -331,8 +340,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                         0);
 
                 *context = create_parsing_context(*context);
-                (*context)->op = create_node_symbol("lambda");
-
                 AstNode *params = func_node->child->child;
                 while (params != NULL) {
                     if (!set_env(&((*context)->vars), params->child,
@@ -350,7 +357,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 add_ast_node_child(func_body, func_expr);
                 add_ast_node_child(func_node, func_body);
 
-                (*context)->res = func_expr;
+                curr_stack = create_parsing_stack(curr_stack);
+                curr_stack->op = create_node_symbol("lambda");
+                curr_stack->res = func_expr;
+
                 *running_expr = *func_node;
                 running_expr = func_expr;
                 continue;
@@ -445,7 +455,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                         func_name->ast_val.node_symbol, 0);
 
                 *context = create_parsing_context(*context);
-                (*context)->op = create_node_symbol("def_func");
 
                 AstNode *params = func_node->child->child;
                 while (params != NULL) {
@@ -464,7 +473,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 add_ast_node_child(func_body, func_expr);
                 add_ast_node_child(func_node, func_body);
 
-                (*context)->res = func_expr;
+                curr_stack = create_parsing_stack(curr_stack);
+                curr_stack->op = create_node_symbol("def_func");
+                curr_stack->res = func_expr;
+
                 *running_expr = *func_node;
                 running_expr = func_expr;
                 continue;
@@ -625,9 +637,9 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                             add_ast_node_child(running_expr, arg_list);
                             running_expr = curr_arg;
 
-                            *context = create_parsing_context(*context);
-                            (*context)->op = create_node_symbol("func_call");
-                            (*context)->res = running_expr;
+                            curr_stack = create_parsing_stack(curr_stack);
+                            curr_stack->op = create_node_symbol("func_call");
+                            curr_stack->res = running_expr;
                             continue;
                         } else {
                             print_error(ERR_COMMON,
@@ -667,24 +679,28 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                                   &running_expr))
             continue;
 
-        if ((*context)->parent_ctx == NULL)
+        if (curr_stack == NULL)
             break;
 
-        AstNode *op = (*context)->op;
-        if (op->type != TYPE_SYM)
+        AstNode *op = (curr_stack == NULL) ? NULL : curr_stack->op;
+        if (op == NULL || op->type != TYPE_SYM)
             print_error(ERR_COMMON, "Compiler - Context operator not a symbol",
                         NULL, 0);
 
         if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
             if (strncmp_lexed_token(curr_token, "}") ||
                 check_next_token("}", temp_file_data, &curr_token)) {
-                if ((*context)->parent_ctx == NULL)
-                    break;
+                curr_stack = curr_stack->parent_stack;
                 *context = (*context)->parent_ctx;
-                if ((*context)->parent_ctx == NULL) {
-                    (*context)->res = *curr_expr;
+                if (curr_stack == NULL)
                     break;
-                }
+                // if ((*context)->parent_ctx == NULL)
+                //     break;
+                // *context = (*context)->parent_ctx;
+                // if ((*context)->parent_ctx == NULL) {
+                //     curr_stack->res = *curr_expr;
+                //     break;
+                // }
             }
         }
 
@@ -693,11 +709,12 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 check_next_token("}", temp_file_data, &curr_token)) {
                 if (strncmp_lexed_token(curr_token, "]") ||
                     check_next_token("]", temp_file_data, &curr_token)) {
-                    if ((*context)->parent_ctx == NULL)
-                        break;
+                    // if ((*context)->parent_ctx == NULL)
+                    //     break;
                     *context = (*context)->parent_ctx;
-                    if ((*context)->parent_ctx == NULL) {
-                        (*context)->res = *curr_expr;
+                    curr_stack = curr_stack->parent_stack;
+                    if (curr_stack == NULL) {
+                        // curr_stack->res = *curr_expr;
                         break;
                     }
                 } else
@@ -710,8 +727,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
         if (strcmp(op->ast_val.node_symbol, "func_call") == 0) {
             if (strncmp_lexed_token(curr_token, ")") ||
                 check_next_token(")", temp_file_data, &curr_token)) {
-                running_expr = (*context)->res;
-                *context = (*context)->parent_ctx;
+                running_expr = curr_stack->res;
+                curr_stack = curr_stack->parent_stack;
+                // if ((*context)->parent_ctx != NULL)
+                //     *context = (*context)->parent_ctx;
                 if (parse_binary_infix_op(temp_file_data, &curr_token, context,
                                           &running_precedence, curr_expr,
                                           &running_expr))
@@ -719,16 +738,19 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 break;
             } else if (strncmp_lexed_token(curr_token, ",") ||
                        check_next_token(",", temp_file_data, &curr_token)) {
-                (*context)->res->next_child = node_alloc();
-                (*context)->res = (*context)->res->next_child;
-                running_expr = (*context)->res;
+                curr_stack->res->next_child = node_alloc();
+                curr_stack->res = curr_stack->res->next_child;
+                running_expr = curr_stack->res;
                 continue;
             }
         }
 
-        (*context)->res->next_child = node_alloc();
-        (*context)->res = (*context)->res->next_child;
-        running_expr = (*context)->res;
+        if ((*context)->parent_ctx == NULL)
+            break;
+
+        curr_stack->res->next_child = node_alloc();
+        curr_stack->res = curr_stack->res->next_child;
+        running_expr = curr_stack->res;
         continue;
     }
     return *temp_file_data;

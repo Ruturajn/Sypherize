@@ -46,6 +46,14 @@ typedef struct AstNode {
                                 ///< rersult.
 } AstNode;
 
+typedef struct ParsingStack {
+    struct ParsingStack *parent_stack; ///< Pointer to the parent stack.
+    AstNode *op;  ///< Pointer to an operator that caused the increase in
+                  ///< the stack.
+    AstNode *res; ///< Pointer to an AstNode to keep track of the list
+                  ///< of expressions in a function body.
+} ParsingStack;
+
 /**
  * @brief Structure defining a parsing context, which contains an environment
  *        with types, and variables. This enables scoped access to variables.
@@ -54,11 +62,7 @@ typedef struct ParsingContext {
     struct ParsingContext *child;
     struct ParsingContext *next_child;
     struct ParsingContext *parent_ctx; ///< Pointer to the parent context.
-    AstNode *op;     ///< Pointer to an operator that caused the increase in
-                     ///< the stack.
-    AstNode *res;    ///< Pointer to an AstNode to keep track of the list
-                     ///< of expressions in a function body.
-    Env *env_type;   ///< Pointer to an environment for types.
+    Env *env_type;                     ///< Pointer to an environment for types.
     Env *vars;       ///< Pointer to an environment for varaibles.
     Env *funcs;      ///< Pointer to an environment for functions.
     Env *binary_ops; ///< Pointer to an environment for binary operators.
@@ -75,6 +79,8 @@ typedef struct ParsingContext {
  * @return int  `1` for success, and `0` for failure.
  */
 int parse_int(LexedToken *token, AstNode *node);
+
+ParsingStack *create_parsing_stack(ParsingStack *parent_stack);
 
 /**
  * @brief  Creates a parsing context, without any types.
