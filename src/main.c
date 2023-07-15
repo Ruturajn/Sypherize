@@ -7,7 +7,8 @@
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        print_error(ERR_ARGS, "Invalid number of arguments : %d", NULL, argc);
+        printf("\nSee `%s --help`\n\n", argv[0]);
+        print_error(ERR_ARGS, "Invalid number of arguments", NULL, 0);
     }
 
     int out_file_idx = -1;
@@ -21,46 +22,60 @@ int main(int argc, char **argv) {
         } else if (strcmp(argv[i], "-i") == 0 ||
                    strcmp(argv[i], "--input") == 0) {
             i = i + 1;
-            if (i > argc)
+            if (i > argc) {
+                printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS, "Expected Input file path after %s",
                             argv[i - 1], 0);
-            if (*argv[i] == '-')
+            }
+            if (*argv[i] == '-') {
+                printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS,
                             "Expected valid input file path got another "
                             "possible command line option : `%s`",
                             argv[i], 0);
+            }
             in_file_idx = i;
         } else if (strcmp(argv[i], "-o") == 0 ||
                    strcmp(argv[i], "--output") == 0) {
             i = i + 1;
-            if (i > argc)
+            if (i > argc) {
+                printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS, "Expected Output file path after %s",
                             argv[i - 1], 0);
-            if (*argv[i] == '-')
+            }
+            if (*argv[i] == '-') {
+                printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS,
                             "Expected valid file path got another possible "
                             "command line option : `%s`",
                             argv[i], 0);
+            }
             out_file_idx = i;
         } else if (strcmp(argv[i], "-f") == 0 ||
                    strcmp(argv[i], "--format") == 0) {
             i = i + 1;
-            if (i > argc)
+            if (i > argc) {
+                printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS, "Expected Output format after : `%s`",
                             argv[i - 1], 0);
-            if (*argv[i] == '-')
+            }
+            if (*argv[i] == '-') {
+                printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS,
                             "Expected valid output format got another possible "
                             "command line option : `%s`",
                             argv[i], 0);
+            }
             if (strcmp(argv[i], "default") == 0)
                 out_fmt = TARGET_DEFAULT;
             else if (strcmp(argv[i], "x86_64-windows") == 0)
                 out_fmt = TARGET_x86_64_WIN;
-            else
+            else {
+                printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS,
                             "Expected valid output format, got : `%s`", argv[i],
                             0);
+            }
         } else if (strcmp(argv[i], "-V") == 0 ||
                    strcmp(argv[i], "--verbose") == 0) {
             is_verbose = 1;
