@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
         print_error(ERR_ARGS, "Expected valid input file path", NULL, 0);
     lex_and_parse(argv[in_file_idx], &curr_context, &program);
 
-    if (is_verbose) {
+    if (is_verbose == 1) {
         print_ast_node(program, 0);
         print_parsing_context(curr_context, 0);
     }
@@ -91,11 +91,11 @@ int main(int argc, char **argv) {
     type_check_prog(curr_context, program);
 
     // Start Code generation.
-    if (is_verbose)
+    if (is_verbose == 1)
         printf("\n[+]CODE GENERATION BEGIN...\n");
     char *file_name = (out_file_idx == -1) ? "code_gen.s" : argv[out_file_idx];
     target_codegen(curr_context, program, file_name, out_fmt);
-    if (is_verbose)
+    if (is_verbose == 1)
         printf("[+]CODE GENERATION COMPLETE\n");
 
     free_node(program);
