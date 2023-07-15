@@ -83,6 +83,19 @@ int main(int argc, char **argv) {
                    strcmp(argv[i], "--version") == 0) {
             printf("%s", VERSION_STRING);
             return 0;
+        } else {
+            if (*argv[i] == '-') {
+                printf("\nSee `%s --help`\n\n", argv[0]);
+                print_error(ERR_ARGS,
+                            "Expected valid output format got another possible "
+                            "command line option : `%s`",
+                            argv[i], 0);
+            }
+            if (in_file_idx != -1)
+                print_warning(ERR_ARGS,
+                              "Got multiple source files,uUsing latest : `%s`",
+                              argv[i], 0);
+            in_file_idx = i;
         }
     }
 

@@ -43,6 +43,20 @@ void print_error(ErrType err, char *fmt, char *str, int val) {
     exit(EXIT_FAILURE);
 }
 
+void print_warning(ErrType err, char *fmt, char *str, int val) {
+    printf("\033[1;32m[WARN]\033[1;37m ");
+    printf("%s :: ", err_strings[err]);
+    if (val != 0)
+        printf((const char *)fmt, val);
+    else {
+        if (str != NULL)
+            printf((const char *)fmt, str);
+        else
+            printf("%s", fmt);
+    }
+    printf("!\n");
+}
+
 size_t calculate_file_size(FILE *file_ptr) {
     if (file_ptr == NULL) {
         return 0;

@@ -38,6 +38,8 @@ extern "C" {
     "\n"                                                                       \
     "    -v, --version\n"                                                      \
     "            Print out current version of Sypherize\n"                     \
+    "\n"                                                                       \
+    "NOTE - Everything else is treated as an input file\n"                     \
     "\n"
 
 #define VERSION_STRING "Sypherize 0.1\n"
@@ -90,6 +92,8 @@ extern const char *err_strings[];
  *                 printed out.
  */
 void print_error(ErrType err, char *fmt, char *str, int val);
+
+void print_warning(ErrType err, char *fmt, char *str, int val);
 
 char *read_file_data(char *file_dest);
 
