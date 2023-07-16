@@ -280,6 +280,13 @@ stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
             (*curr_stack)->res->next_child = if_then_body;
             AstNode *if_expr_list = node_alloc();
             add_ast_node_child(if_then_body, if_expr_list);
+            if (check_next_token("}", temp_file_data, curr_token)) {
+                *curr_stack = (*curr_stack)->parent_stack;
+                if (*curr_stack == NULL)
+                    return STACK_OP_BREAK;
+                else
+                    return STACK_OP_CONT_CHECK;
+            }
             *running_expr = if_expr_list;
             (*curr_stack)->op = create_node_symbol("if-then-body");
             (*curr_stack)->res = *running_expr;
@@ -776,8 +783,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
             }
         }
 
-        if (!strncmp_lexed_token(curr_token, ")") &&
-            parse_binary_infix_op(temp_file_data, &curr_token, context,
+        if (parse_binary_infix_op(temp_file_data, &curr_token, context,
                                   &running_precedence, curr_expr,
                                   &running_expr))
             continue;
@@ -795,6 +801,11 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
             continue;
         else if (stack_op_ret == STACK_OP_BREAK)
             break;
+        else if (stack_op_ret == STACK_OP_INVALID)
+            print_error(
+                ERR_COMMON,
+                "Compiler Error - Stack operator not being handled correctly",
+                NULL, 0);
     }
     return *temp_file_data;
 }
