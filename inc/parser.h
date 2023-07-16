@@ -23,6 +23,7 @@ typedef enum NodeType {
     TYPE_VAR_REASSIGNMENT, ///< Node for variable reassignment.
     TYPE_FUNCTION,         ///< Node for storing functions.
     TYPE_FUNCTION_CALL,    ///< Node for storing function calls.
+    TYPE_IF_CONDITION,     ///< Node for storing if-else statements.
 } NodeType;
 
 /**
@@ -67,6 +68,13 @@ typedef struct ParsingContext {
     Env *funcs;      ///< Pointer to an environment for functions.
     Env *binary_ops; ///< Pointer to an environment for binary operators.
 } ParsingContext;
+
+typedef enum StackOpRetVal {
+    STACK_OP_BREAK = 0,
+    STACK_OP_CONT_PARSE,
+    STACK_OP_CONT_CHECK,
+    STACK_OP_INVALID,
+} StackOpRetVal;
 
 /**
  * @brief Parses an integer from a token, and stores it in
@@ -128,6 +136,11 @@ int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token,
                           ParsingContext **context, long *running_precedence,
                           AstNode **curr_expr, AstNode **running_expr);
 
+StackOpRetVal
+stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
+                        AstNode **running_expr, char **temp_file_data,
+                        ParsingContext **context, long *running_precedence,
+                        AstNode **curr_expr);
 /**
  * @brief Parses tokens (TODO!!), and advances the pointer that
  *        points to the file data stream.

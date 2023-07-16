@@ -15,7 +15,7 @@ extern "C" {
     "Compiler for Sypher\n"                                                    \
     "\n"                                                                       \
     "USAGE:\n"                                                                 \
-    "    sypherize [OPTIONS]\n"                                                \
+    "    sypherize [OPTIONS] INPUT_FILE\n"                                     \
     "\n"                                                                       \
     "OPTIONS:\n"                                                               \
     "    -i, --input <INPUT_FILE_PATH>\n"                                      \

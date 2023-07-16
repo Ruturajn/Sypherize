@@ -43,6 +43,9 @@ char *get_node_str(AstNode *node) {
     case TYPE_FUNCTION_CALL:
         snprintf(node_buf, NODE_BUF_SIZE, "FUNCTION CALL");
         break;
+    case TYPE_IF_CONDITION:
+        snprintf(node_buf, NODE_BUF_SIZE, "IF CONDITION");
+        break;
     default:
         snprintf(node_buf, NODE_BUF_SIZE, "Unknown TYPE");
         break;
@@ -113,6 +116,9 @@ int node_cmp(AstNode *node1, AstNode *node2) {
         break;
     case TYPE_FUNCTION_CALL:
         printf("TODO : FUNCTION CALL!\n");
+        break;
+    case TYPE_IF_CONDITION:
+        printf("TODO : IF CONDITION!\n");
         break;
     default:
         break;

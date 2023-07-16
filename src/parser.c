@@ -8,7 +8,7 @@ int parse_int(LexedToken *token, AstNode *node) {
     if (token == NULL || node == NULL) {
         return 2;
     }
-    if (token->token_length == 0 && *(token->token_start) == '0') {
+    if (token->token_length == 1 && *(token->token_start) == '0') {
         node->type = TYPE_INT;
         node->ast_val.val = 0;
     } else {
@@ -261,6 +261,95 @@ void lex_and_parse(char *file_dest, ParsingContext **curr_context,
     free(file_data);
 }
 
+StackOpRetVal
+stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
+                        AstNode **running_expr, char **temp_file_data,
+                        ParsingContext **context, long *running_precedence,
+                        AstNode **curr_expr) {
+    if (*curr_stack == NULL)
+        return STACK_OP_BREAK;
+
+    AstNode *op = (*curr_stack == NULL) ? NULL : (*curr_stack)->op;
+    if (op == NULL || op->type != TYPE_SYM)
+        print_error(ERR_COMMON, "Compiler - Context operator not a symbol",
+                    NULL, 0);
+
+    if (strcmp(op->ast_val.node_symbol, "if-cond") == 0) {
+        if (check_next_token("{", temp_file_data, curr_token)) {
+            AstNode *if_then_body = node_alloc();
+            (*curr_stack)->res->next_child = if_then_body;
+            AstNode *if_expr_list = node_alloc();
+            add_ast_node_child(if_then_body, if_expr_list);
+            *running_expr = if_expr_list;
+            (*curr_stack)->op = create_node_symbol("if-then-body");
+            (*curr_stack)->res = *running_expr;
+            return STACK_OP_CONT_PARSE;
+        } else
+            print_error(ERR_COMMON, "Expected body after the `if` statement",
+                        NULL, 0);
+    }
+
+    if (strcmp(op->ast_val.node_symbol, "if-then-body") == 0) {
+        if (check_next_token("}", temp_file_data, curr_token)) {
+            *curr_stack = (*curr_stack)->parent_stack;
+            if (*curr_stack == NULL)
+                return STACK_OP_BREAK;
+            else
+                return STACK_OP_CONT_CHECK;
+        }
+    }
+
+    if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
+        if (check_next_token("}", temp_file_data, curr_token)) {
+            *curr_stack = (*curr_stack)->parent_stack;
+            *context = (*context)->parent_ctx;
+            if (*curr_stack == NULL)
+                return STACK_OP_BREAK;
+            else
+                return STACK_OP_CONT_CHECK;
+        }
+    }
+
+    if (strcmp(op->ast_val.node_symbol, "lambda") == 0) {
+        if (check_next_token("}", temp_file_data, curr_token)) {
+            if (strncmp_lexed_token(*curr_token, "]") ||
+                check_next_token("]", temp_file_data, curr_token)) {
+                *context = (*context)->parent_ctx;
+                *curr_stack = (*curr_stack)->parent_stack;
+                if (*curr_stack == NULL)
+                    return STACK_OP_BREAK;
+                else
+                    return STACK_OP_CONT_CHECK;
+            } else
+                print_error(ERR_SYNTAX, "Couldn't find `]` for lambda function",
+                            NULL, 0);
+        }
+    }
+
+    if (strcmp(op->ast_val.node_symbol, "func_call") == 0) {
+        if (check_next_token(")", temp_file_data, curr_token)) {
+            *running_expr = (*curr_stack)->res;
+            *curr_stack = (*curr_stack)->parent_stack;
+            if (parse_binary_infix_op(temp_file_data, curr_token, context,
+                                      running_precedence, curr_expr,
+                                      running_expr))
+                return STACK_OP_CONT_PARSE;
+            return STACK_OP_CONT_CHECK;
+        } else if (strncmp_lexed_token(*curr_token, ",") ||
+                   check_next_token(",", temp_file_data, curr_token)) {
+            (*curr_stack)->res->next_child = node_alloc();
+            (*curr_stack)->res = (*curr_stack)->res->next_child;
+            *running_expr = (*curr_stack)->res;
+            return STACK_OP_CONT_PARSE;
+        }
+    }
+
+    (*curr_stack)->res->next_child = node_alloc();
+    (*curr_stack)->res = (*curr_stack)->res->next_child;
+    *running_expr = (*curr_stack)->res;
+    return STACK_OP_CONT_PARSE;
+}
+
 char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                    AstNode **curr_expr, ParsingContext **context) {
 
@@ -277,6 +366,22 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
         if (!parse_int(curr_token, running_expr)) {
             // If the token was not an integer, check if it is
             // variable declaration, assignment, etc.
+
+            if (strncmp_lexed_token(curr_token, "if")) {
+                AstNode *if_node = node_alloc();
+                if_node->type = TYPE_IF_CONDITION;
+
+                AstNode *if_expr = node_alloc();
+                add_ast_node_child(if_node, if_expr);
+
+                *running_expr = *if_node;
+                running_expr = if_expr;
+
+                curr_stack = create_parsing_stack(curr_stack);
+                curr_stack->op = create_node_symbol("if-cond");
+                curr_stack->res = if_expr;
+                continue;
+            }
 
             if (strncmp_lexed_token(curr_token, "[")) {
                 AstNode *func_node = node_alloc();
@@ -482,8 +587,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                 continue;
             } else {
                 /**
-                 * Parser High level design.
-                 *
                  * int a := 340;
                  *
                  * PROGRAM
@@ -659,11 +762,11 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                             break;
                         temp_ctx = temp_ctx->parent_ctx;
                     }
-                    // if (!status)
-                    //     print_error(ERR_COMMON,
-                    //                 "Undefined symbol :"
-                    //                 "`%s`",
-                    //                 sym_node->ast_val.node_symbol, 0);
+                    if (!status)
+                        print_error(ERR_COMMON,
+                                    "Undefined symbol :"
+                                    "`%s`",
+                                    sym_node->ast_val.node_symbol, 0);
                     AstNode *node_var_access = node_alloc();
                     node_var_access->type = TYPE_VAR_ACCESS;
                     node_var_access->ast_val.node_symbol =
@@ -682,76 +785,16 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
         if (curr_stack == NULL)
             break;
 
-        AstNode *op = (curr_stack == NULL) ? NULL : curr_stack->op;
-        if (op == NULL || op->type != TYPE_SYM)
-            print_error(ERR_COMMON, "Compiler - Context operator not a symbol",
-                        NULL, 0);
-
-        if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
-            if (strncmp_lexed_token(curr_token, "}") ||
-                check_next_token("}", temp_file_data, &curr_token)) {
-                curr_stack = curr_stack->parent_stack;
-                *context = (*context)->parent_ctx;
-                if (curr_stack == NULL)
-                    break;
-                // if ((*context)->parent_ctx == NULL)
-                //     break;
-                // *context = (*context)->parent_ctx;
-                // if ((*context)->parent_ctx == NULL) {
-                //     curr_stack->res = *curr_expr;
-                //     break;
-                // }
-            }
-        }
-
-        if (strcmp(op->ast_val.node_symbol, "lambda") == 0) {
-            if (strncmp_lexed_token(curr_token, "}") ||
-                check_next_token("}", temp_file_data, &curr_token)) {
-                if (strncmp_lexed_token(curr_token, "]") ||
-                    check_next_token("]", temp_file_data, &curr_token)) {
-                    // if ((*context)->parent_ctx == NULL)
-                    //     break;
-                    *context = (*context)->parent_ctx;
-                    curr_stack = curr_stack->parent_stack;
-                    if (curr_stack == NULL) {
-                        // curr_stack->res = *curr_expr;
-                        break;
-                    }
-                } else
-                    print_error(ERR_SYNTAX,
-                                "Couldn't find `]` for lambda function", NULL,
-                                0);
-            }
-        }
-
-        if (strcmp(op->ast_val.node_symbol, "func_call") == 0) {
-            if (strncmp_lexed_token(curr_token, ")") ||
-                check_next_token(")", temp_file_data, &curr_token)) {
-                running_expr = curr_stack->res;
-                curr_stack = curr_stack->parent_stack;
-                // if ((*context)->parent_ctx != NULL)
-                //     *context = (*context)->parent_ctx;
-                if (parse_binary_infix_op(temp_file_data, &curr_token, context,
-                                          &running_precedence, curr_expr,
-                                          &running_expr))
-                    continue;
-                break;
-            } else if (strncmp_lexed_token(curr_token, ",") ||
-                       check_next_token(",", temp_file_data, &curr_token)) {
-                curr_stack->res->next_child = node_alloc();
-                curr_stack->res = curr_stack->res->next_child;
-                running_expr = curr_stack->res;
-                continue;
-            }
-        }
-
-        if ((*context)->parent_ctx == NULL)
+        StackOpRetVal stack_op_ret = STACK_OP_INVALID;
+        do {
+            stack_op_ret = stack_operator_continue(
+                &curr_stack, &curr_token, &running_expr, temp_file_data,
+                context, &running_precedence, curr_expr);
+        } while (stack_op_ret == STACK_OP_CONT_CHECK);
+        if (stack_op_ret == STACK_OP_CONT_PARSE)
+            continue;
+        else if (stack_op_ret == STACK_OP_BREAK)
             break;
-
-        curr_stack->res->next_child = node_alloc();
-        curr_stack->res = curr_stack->res->next_child;
-        running_expr = curr_stack->res;
-        continue;
     }
     return *temp_file_data;
 }

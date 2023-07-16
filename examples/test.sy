@@ -2,7 +2,7 @@
 
 int: a;
 
-a := 10
+a := 39
 
 int: z;
 
@@ -19,4 +19,5 @@ def_func bar(int: a) ~ int {
 
 2 * 3 / 2 + 1
 
-bar(8)
+bar(a)
+a := bar(a);
