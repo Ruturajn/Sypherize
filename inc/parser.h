@@ -134,7 +134,8 @@ void print_parsing_context(ParsingContext *context, int indent);
 
 int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token,
                           ParsingContext **context, long *running_precedence,
-                          AstNode **curr_expr, AstNode **running_expr);
+                          AstNode **curr_expr, AstNode **running_expr,
+                          ParsingStack *curr_stack);
 
 StackOpRetVal
 stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,

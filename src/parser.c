@@ -56,8 +56,11 @@ ParsingContext *create_default_parsing_context() {
     ast_add_type_node(&new_context->env_type, TYPE_INT, sym_node, sizeof(long));
     ast_add_type_node(&new_context->env_type, TYPE_FUNCTION,
                       create_node_symbol("func"), sizeof(long));
+    ast_add_binary_ops(&new_context, "=", 3, "int", "int", "int");
+
     ast_add_binary_ops(&new_context, "+", 5, "int", "int", "int");
     ast_add_binary_ops(&new_context, "-", 5, "int", "int", "int");
+
     ast_add_binary_ops(&new_context, "*", 10, "int", "int", "int");
     ast_add_binary_ops(&new_context, "/", 10, "int", "int", "int");
     return new_context;
@@ -129,7 +132,8 @@ void add_parsing_context_child(ParsingContext **root,
 
 int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token,
                           ParsingContext **context, long *running_precedence,
-                          AstNode **curr_expr, AstNode **running_expr) {
+                          AstNode **curr_expr, AstNode **running_expr,
+                          ParsingStack *curr_stack) {
     char *tmp_data = *temp_file_data;
     LexedToken *tmp_token = NULL;
     tmp_data = lex_token(&tmp_data, &tmp_token);
@@ -151,6 +155,11 @@ int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token,
             // and it needs to become a child of this new node, because
             // we encountered something of lower precedence, and hence
             // this node will have a binary operator node as a child.
+            AstNode *temp_curr_expr = *curr_expr;
+            if (curr_stack != NULL) {
+                *curr_expr = curr_stack->res;
+            }
+
             AstNode *temp_expr_copy = node_alloc();
             copy_node(temp_expr_copy, *curr_expr);
             add_ast_node_child(node_bin_op_body, temp_expr_copy);
@@ -164,6 +173,8 @@ int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token,
             **curr_expr = *node_bin_op_body;
             **running_expr = **curr_expr;
             *running_expr = rhs_node;
+            if (curr_stack != NULL)
+                *curr_expr = temp_curr_expr;
         } else {
             // Here `running_expr` needs to change, and will store the
             // value of the next integer that needs to be used for the
@@ -339,7 +350,7 @@ stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
             *curr_stack = (*curr_stack)->parent_stack;
             if (parse_binary_infix_op(temp_file_data, curr_token, context,
                                       running_precedence, curr_expr,
-                                      running_expr))
+                                      running_expr, *curr_stack))
                 return STACK_OP_CONT_PARSE;
             return STACK_OP_CONT_CHECK;
         } else if (strncmp_lexed_token(*curr_token, ",") ||
@@ -630,7 +641,15 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                                         "Redefinition of variable : `%s`",
                                         curr_sym->ast_val.node_symbol, 0);
 
+                        AstNode *sym_name = node_alloc();
+                        copy_node(sym_name, curr_sym);
                         add_ast_node_child(curr_var_decl, curr_sym);
+                        if (!set_env(&((*context)->vars), sym_name, sym_node)) {
+                            print_error(ERR_COMMON,
+                                        "Unable to set environment binding for "
+                                        "variable : `%s`",
+                                        sym_name->ast_val.node_symbol, 0);
+                        }
 
                         // Lex again to look forward.
                         if (check_next_token(":", temp_file_data,
@@ -646,20 +665,25 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                                           "declaration : `%s`",
                                           curr_sym->ast_val.node_symbol);
 
-                                AstNode *new_expr = node_alloc();
-                                add_ast_node_child(curr_var_decl, new_expr);
-                                AstNode *sym_name = node_alloc();
-                                copy_node(sym_name, curr_sym);
-                                if (!set_env(&((*context)->vars), sym_name,
-                                             sym_node)) {
-                                    print_error(
-                                        ERR_COMMON,
-                                        "Unable to set environment binding for "
-                                        "variable : `%s`",
-                                        sym_name->ast_val.node_symbol, 0);
-                                }
+                                // AstNode **temp_res = curr_expr;
+                                // if (curr_stack != NULL)
+                                //     *temp_res = curr_stack->res;
+
+                                AstNode *var_reassign = node_alloc();
+                                var_reassign->type = TYPE_VAR_REASSIGNMENT;
+                                AstNode *new_val = node_alloc();
+                                add_ast_node_child(var_reassign, sym_name);
+                                add_ast_node_child(var_reassign, new_val);
+
+                                curr_var_decl->next_child = var_reassign;
+
+                                // (*temp_res)->next_child = var_reassign;
+                                // *temp_res = var_reassign;
+                                if (curr_stack != NULL)
+                                    curr_stack->res = curr_var_decl;
+
                                 *running_expr = *curr_var_decl;
-                                running_expr = new_expr;
+                                running_expr = new_val;
                                 continue;
                             }
                         }
@@ -667,21 +691,22 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                         // variable declaration without intiialization.
 
                         // Initialize the value of the variable to NULL.
-                        AstNode *sym_name_node = node_alloc();
-                        copy_node(sym_name_node, curr_sym);
+                        // AstNode *sym_name_node = node_alloc();
+                        // copy_node(sym_name_node, curr_sym);
 
-                        AstNode *init_val = create_node_none();
-                        // init_val->type = res->type;
+                        // AstNode *init_val = create_node_none();
+                        // // init_val->type = res->type;
 
-                        add_ast_node_child(curr_var_decl, init_val);
+                        // add_ast_node_child(curr_var_decl, init_val);
 
-                        if (!set_env(&((*context)->vars), sym_name_node,
-                                     sym_node)) {
-                            print_error(ERR_COMMON,
-                                        "Unable to set environment binding for "
-                                        "variable : `%s`",
-                                        sym_name_node->ast_val.node_symbol, 0);
-                        }
+                        // if (!set_env(&((*context)->vars), sym_name_node,
+                        //              sym_node)) {
+                        //     print_error(ERR_COMMON,
+                        //                 "Unable to set environment binding
+                        //                 for " "variable : `%s`",
+                        //                 sym_name_node->ast_val.node_symbol,
+                        //                 0);
+                        // }
                         *running_expr = *curr_var_decl;
                     } else
                         print_error(ERR_SYNTAX,
@@ -784,8 +809,8 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
         }
 
         if (parse_binary_infix_op(temp_file_data, &curr_token, context,
-                                  &running_precedence, curr_expr,
-                                  &running_expr))
+                                  &running_precedence, curr_expr, &running_expr,
+                                  curr_stack))
             continue;
 
         if (curr_stack == NULL)

@@ -94,11 +94,11 @@ void reg_dealloc(Reg *reg_head, RegDescriptor reg_desc) {
 
 char *gen_label() {
     char *label = label_arr + label_idx;
-    label_idx = snprintf(label, LABEL_ARR_SIZE - label_idx, ".L%d", label_cnt);
+    label_idx += snprintf(label, LABEL_ARR_SIZE - label_idx, ".L%d", label_cnt);
     label_idx++;
     if (label_idx > LABEL_ARR_SIZE) {
         label_idx = 0;
-        label = gen_label();
+        return gen_label();
     }
     label_cnt++;
     return label;
@@ -236,7 +236,24 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             get_reg_name(curr_expr->child->result_reg_desc, reg_head);
         char *reg_rhs = get_reg_name(
             curr_expr->child->next_child->result_reg_desc, reg_head);
-        if (strcmp(curr_expr->ast_val.node_symbol, "+") == 0) {
+        if (strcmp(curr_expr->ast_val.node_symbol, "=") == 0) {
+            curr_expr->result_reg_desc = reg_alloc(reg_head);
+            RegDescriptor true_reg = reg_alloc(reg_head);
+
+            fprintf(fptr_code, "mov $0, %s\n",
+                    get_reg_name(curr_expr->result_reg_desc, reg_head));
+            fprintf(fptr_code, "mov $1, %s\n",
+                    get_reg_name(true_reg, reg_head));
+            fprintf(fptr_code, "cmp %s, %s\n", reg_lhs, reg_rhs);
+            fprintf(fptr_code, "cmove %s, %s\n",
+                    get_reg_name(true_reg, reg_head),
+                    get_reg_name(curr_expr->result_reg_desc, reg_head));
+
+            reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+            reg_dealloc(reg_head,
+                        curr_expr->child->next_child->result_reg_desc);
+            reg_dealloc(reg_head, true_reg);
+        } else if (strcmp(curr_expr->ast_val.node_symbol, "+") == 0) {
             curr_expr->result_reg_desc =
                 curr_expr->child->next_child->result_reg_desc;
             // Add those registers and save the result in the RHS register.
@@ -280,6 +297,10 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         }
         fprintf(fptr_code, "call %s\n", curr_expr->child->ast_val.node_symbol);
         fprintf(fptr_code, "add $%d, %%rsp\n", param_count * 8);
+
+        curr_expr->result_reg_desc = reg_alloc(reg_head);
+        fprintf(fptr_code, "mov %%rax, %s\n",
+                get_reg_name(curr_expr->result_reg_desc, reg_head));
         break;
     case TYPE_FUNCTION:;
         if (cg_ctx->parent_ctx == NULL) {
@@ -318,6 +339,42 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                             curr_expr->child->next_child->result_reg_desc);
             }
         }
+        break;
+    case TYPE_IF_CONDITION:;
+        target_x86_64_win_codegen_expr(reg_head, context, curr_expr->child,
+                                       cg_ctx, fptr_code);
+        char *res_reg =
+            get_reg_name(curr_expr->child->result_reg_desc, reg_head);
+        char *else_label = gen_label();
+        char *after_else_label = gen_label();
+        fprintf(fptr_code, "test %s, %s\n", res_reg, res_reg);
+        fprintf(fptr_code, "jz %s\n", else_label);
+        reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+        // The if body comes here.
+        AstNode *last_expr = NULL;
+        AstNode *if_expr = curr_expr->child->next_child->child;
+        while (if_expr != NULL) {
+            target_x86_64_win_codegen_expr(reg_head, context, if_expr, cg_ctx,
+                                           fptr_code);
+            if (last_expr != NULL)
+                reg_dealloc(reg_head, last_expr->result_reg_desc);
+            last_expr = if_expr;
+            if_expr = if_expr->next_child;
+        }
+
+        curr_expr->result_reg_desc = reg_alloc(reg_head);
+        fprintf(fptr_code, "mov %s, %s\n",
+                get_reg_name(last_expr->result_reg_desc, reg_head),
+                get_reg_name(curr_expr->result_reg_desc, reg_head));
+        reg_dealloc(reg_head, last_expr->result_reg_desc);
+        fprintf(fptr_code, "jmp %s\n", after_else_label);
+
+        fprintf(fptr_code, "%s:\n", else_label);
+
+        fprintf(fptr_code, "mov $0, %s\n",
+                get_reg_name(curr_expr->result_reg_desc, reg_head));
+        fprintf(fptr_code, "%s:\n", after_else_label);
+
         break;
     default:
         break;
@@ -371,6 +428,10 @@ void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx,
     // Function header.
     fprintf(fptr_code, "%s", FUNC_HEADER_x86_64);
 
+    fprintf(fptr_code, "push %%rbx\n"
+                       "push %%rsi\n"
+                       "push %%rdi\n");
+
     AstNode *temp_expr = func->child->next_child->next_child->child;
     AstNode *last_expr = NULL;
     while (temp_expr != NULL) {
@@ -385,6 +446,11 @@ void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx,
     if (strcmp(get_reg_name(last_expr->result_reg_desc, reg_head), "%rax"))
         fprintf(fptr_code, "mov %s, %%rax\n",
                 get_reg_name(last_expr->result_reg_desc, reg_head));
+
+    fprintf(fptr_code, "pop %%rbx\n"
+                       "pop %%rsi\n"
+                       "pop %%rdi\n");
+
     fprintf(fptr_code, "add $%ld, %%rsp\n", -cg_ctx->local_offset);
     fprintf(fptr_code, "%s", FUNC_FOOTER_x86_64);
 
@@ -399,6 +465,9 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
     Reg *reg_head = reg_create_new("%rax");
     reg_add_new(&reg_head, "%r10");
     reg_add_new(&reg_head, "%r11");
+    reg_add_new(&reg_head, "%rbx");
+    reg_add_new(&reg_head, "%rsi");
+    reg_add_new(&reg_head, "%rdi");
 
     fprintf(fptr_code, ".section .data\n");
 
@@ -440,6 +509,10 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
     AstNode *curr_expr = program->child;
     AstNode *last_expr = NULL;
     while (curr_expr != NULL) {
+        if (curr_expr->type == TYPE_NULL) {
+            curr_expr = curr_expr->next_child;
+            continue;
+        }
         target_x86_64_win_codegen_expr(reg_head, context, curr_expr, cg_ctx,
                                        fptr_code);
         reg_dealloc(reg_head, curr_expr->result_reg_desc);
