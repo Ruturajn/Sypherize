@@ -1,19 +1,13 @@
 # Sypherize
 
-**Sypherize** (with an *S*) is a compiler written in C, for a C like language
-called **Sypher**.
+**Sypherize** (with an *S*) is a compiler written in C, for a C-like language
+called **Sypher**. See Usage for more details.
 
 ## Overwiew
 
-I will be developing this project by following
-[`Lens_r's`](https://www.youtube.com/playlist?list=PLysa8wRFCssxGKj_RxBWr3rwmjEYlJIpa)
+This project is my take on [`Lens_r's`](https://www.youtube.com/playlist?list=PLysa8wRFCssxGKj_RxBWr3rwmjEYlJIpa)
 playlist on youtube which outlines the complete process
 of designing and implementing a compiler.
-
-The file [`ROAD_MAP.md`](https://github.com/Ruturajn/Sypherize/blob/main/ROAD_MAP.md)
-is a summary of what I picked up from the playlist, which includes a set of
-steps, that describe the whole design. It's mainly for my understanding, but
-you can definitely give it a read if you like.
 
 
 ## Build Instructions
@@ -42,7 +36,7 @@ Compiling this project:
 
 Using `gcc`:
 ```
-$ gcc code_gen.S -o code_gen
+$ gcc code_gen.s -o code_gen
 ```
 <!--
 - Use an assembler and linker:
@@ -55,3 +49,45 @@ $ gcc code_gen.S -o code_gen
       $ ld code_gen.o -subsystem-console -o code_gen
       ```
 -->
+
+## Usage
+
+```
+Sypherize 0.1
+Ruturajn <nanotiruturaj@gmail.com>
+Compiler for Sypher
+
+USAGE:
+    sypherize [OPTIONS] INPUT_FILE
+
+OPTIONS:
+    -i, --input <INPUT_FILE_PATH>
+            Path to the input file
+
+    -o, --output <OUTPUT_FILE_PATH>
+            Path to the output file
+
+    -f, --format <OUTPUT_FORMAT>
+            A valid output format for code generation
+            VALID FORMATS:
+            - `x86_64-windows`
+            - `default`
+
+    -V, --verbose
+            Print out extra debugging information
+
+    -h, --help
+            Print this help information
+
+    -v, --version
+            Print out current version of Sypherize
+
+NOTE - Everything else is treated as an input file
+```
+
+## Miscellaneous
+
+The file [`ROAD_MAP.md`](https://github.com/Ruturajn/Sypherize/blob/main/ROAD_MAP.md)
+is a summary of what I picked up from the playlist, which includes a set of
+steps, that describe the whole design. It's mainly for my understanding, but
+you can definitely give it a read if you like.
