@@ -11,7 +11,7 @@ extern "C" {
  * @brief String containing all the the delimeters used
  *        for tokenizing.
  */
-#define DELIMS " :=,;~()[]{}\r\n"
+#define DELIMS " :=,;~()[]{}<>-+*/\r\n"
 
 /**
  * @brief String containing all the the whitespace characters

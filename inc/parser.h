@@ -53,6 +53,7 @@ typedef struct ParsingStack {
                   ///< the stack.
     AstNode *res; ///< Pointer to an AstNode to keep track of the list
                   ///< of expressions in a function body.
+    AstNode *body;
 } ParsingStack;
 
 /**

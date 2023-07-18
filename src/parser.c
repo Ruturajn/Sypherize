@@ -31,6 +31,7 @@ ParsingStack *create_parsing_stack(ParsingStack *parent_stack) {
     new_stack->parent_stack = parent_stack;
     new_stack->op = NULL;
     new_stack->res = NULL;
+    new_stack->body = NULL;
     return new_stack;
 }
 
@@ -57,6 +58,8 @@ ParsingContext *create_default_parsing_context() {
     ast_add_type_node(&new_context->env_type, TYPE_FUNCTION,
                       create_node_symbol("func"), sizeof(long));
     ast_add_binary_ops(&new_context, "=", 3, "int", "int", "int");
+    ast_add_binary_ops(&new_context, "<", 3, "int", "int", "int");
+    ast_add_binary_ops(&new_context, ">", 3, "int", "int", "int");
 
     ast_add_binary_ops(&new_context, "+", 5, "int", "int", "int");
     ast_add_binary_ops(&new_context, "-", 5, "int", "int", "int");
@@ -301,13 +304,46 @@ stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
             *running_expr = if_expr_list;
             (*curr_stack)->op = create_node_symbol("if-then-body");
             (*curr_stack)->res = *running_expr;
+            (*curr_stack)->body = if_then_body;
             return STACK_OP_CONT_PARSE;
         } else
-            print_error(ERR_COMMON, "Expected body after the `if` statement",
+            print_error(ERR_SYNTAX, "Expected body after the `if` statement",
                         NULL, 0);
     }
 
     if (strcmp(op->ast_val.node_symbol, "if-then-body") == 0) {
+        if (check_next_token("}", temp_file_data, curr_token)) {
+
+            if (check_next_token("else", temp_file_data, curr_token)) {
+                if (check_next_token("{", temp_file_data, curr_token)) {
+
+                    print_ast_node((*curr_stack)->res, 0);
+                    AstNode *if_else_body = node_alloc();
+                    AstNode *if_expr_list = node_alloc();
+                    add_ast_node_child(if_else_body, if_expr_list);
+
+                    (*curr_stack)->body->next_child = if_else_body;
+                    (*curr_stack)->body = if_else_body;
+
+                    *running_expr = if_expr_list;
+                    (*curr_stack)->op = create_node_symbol("if-else-body");
+                    (*curr_stack)->res = *running_expr;
+                    return STACK_OP_CONT_PARSE;
+
+                } else
+                    print_error(ERR_SYNTAX,
+                                "Expected body after the `else` statement",
+                                NULL, 0);
+            }
+            *curr_stack = (*curr_stack)->parent_stack;
+            if (*curr_stack == NULL)
+                return STACK_OP_BREAK;
+            else
+                return STACK_OP_CONT_CHECK;
+        }
+    }
+
+    if (strcmp(op->ast_val.node_symbol, "if-else-body") == 0) {
         if (check_next_token("}", temp_file_data, curr_token)) {
             *curr_stack = (*curr_stack)->parent_stack;
             if (*curr_stack == NULL)
@@ -689,24 +725,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                         }
                         // If the control flow is here, it means that it is a
                         // variable declaration without intiialization.
-
-                        // Initialize the value of the variable to NULL.
-                        // AstNode *sym_name_node = node_alloc();
-                        // copy_node(sym_name_node, curr_sym);
-
-                        // AstNode *init_val = create_node_none();
-                        // // init_val->type = res->type;
-
-                        // add_ast_node_child(curr_var_decl, init_val);
-
-                        // if (!set_env(&((*context)->vars), sym_name_node,
-                        //              sym_node)) {
-                        //     print_error(ERR_COMMON,
-                        //                 "Unable to set environment binding
-                        //                 for " "variable : `%s`",
-                        //                 sym_name_node->ast_val.node_symbol,
-                        //                 0);
-                        // }
                         *running_expr = *curr_var_decl;
                     } else
                         print_error(ERR_SYNTAX,

@@ -72,11 +72,11 @@ void type_check_expr(ParsingContext *context, AstNode *expr) {
     AstNode *temp_expr = expr;
     int stat = -1;
 
-    AstNode *expr_child = expr->child;
-    while (expr_child != NULL) {
-        type_check_expr(context, expr_child);
-        expr_child = expr_child->next_child;
-    }
+    // AstNode *expr_child = expr->child;
+    // while (expr_child != NULL) {
+    //     type_check_expr(context, expr_child);
+    //     expr_child = expr_child->next_child;
+    // }
 
     switch (temp_expr->type) {
     case TYPE_BINARY_OPERATOR:;
