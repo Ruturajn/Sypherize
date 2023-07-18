@@ -1,11 +1,11 @@
 # Sypherize
 
 **Sypherize** (with an *S*) is a compiler written in C, for a C-like language
-called **Sypher**. See Usage for more details.
+called **Sypher**. See [`Usage`](https://github.com/Ruturajn/Sypherize/tree/main#usage) for more details.
 
 ## Overwiew
 
-This project is my take on [`Lens_r's`](https://www.youtube.com/playlist?list=PLysa8wRFCssxGKj_RxBWr3rwmjEYlJIpa)
+This project is my take on writing a compiler by following [`Lens_r's`](https://www.youtube.com/playlist?list=PLysa8wRFCssxGKj_RxBWr3rwmjEYlJIpa)
 playlist on youtube which outlines the complete process
 of designing and implementing a compiler.
 
