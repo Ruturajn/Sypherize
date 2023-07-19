@@ -1,3 +1,5 @@
+! This file contains some samples for if-else statements.
+
 if 1 {
     42
 } else {

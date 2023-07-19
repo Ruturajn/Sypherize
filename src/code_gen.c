@@ -257,7 +257,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                     get_reg_name(curr_expr->result_reg_desc, reg_head));
             fprintf(fptr_code, "mov $1, %s\n",
                     get_reg_name(true_reg, reg_head));
-            fprintf(fptr_code, "cmp %s, %s\n", reg_lhs, reg_rhs);
+            fprintf(fptr_code, "cmp %s, %s\n", reg_rhs, reg_lhs);
             fprintf(fptr_code, "cmovg %s, %s\n",
                     get_reg_name(true_reg, reg_head),
                     get_reg_name(curr_expr->result_reg_desc, reg_head));
@@ -274,7 +274,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                     get_reg_name(curr_expr->result_reg_desc, reg_head));
             fprintf(fptr_code, "mov $1, %s\n",
                     get_reg_name(true_reg, reg_head));
-            fprintf(fptr_code, "cmp %s, %s\n", reg_lhs, reg_rhs);
+            fprintf(fptr_code, "cmp %s, %s\n", reg_rhs, reg_lhs);
             fprintf(fptr_code, "cmovl %s, %s\n",
                     get_reg_name(true_reg, reg_head),
                     get_reg_name(curr_expr->result_reg_desc, reg_head));
@@ -311,13 +311,12 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         } else if (strcmp(curr_expr->ast_val.node_symbol, "-") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
             // Subtract those registers and save the result in the LHS register.
-            // `sub` operation subtracts the second operand from the first
-            // operand, and stores it in the first operand.
-            fprintf(fptr_code, "sub %s, %s\n", reg_lhs, reg_rhs);
+            // `sub` operation subtracts the first operand from the second
+            // operand, and stores it in the second operand.
+            fprintf(fptr_code, "sub %s, %s\n", reg_rhs, reg_lhs);
 
-            // De-allocate the RHS register since it is not in use anymore.
-            reg_dealloc(reg_head,
-                        curr_expr->child->next_child->result_reg_desc);
+            // De-allocate the LHS register since it is not in use anymore.
+            reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
         } else if (strcmp(curr_expr->ast_val.node_symbol, "*") == 0) {
             curr_expr->result_reg_desc =
                 curr_expr->child->next_child->result_reg_desc;
@@ -334,6 +333,11 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Function Call : `%s`\n",
                     curr_expr->child->ast_val.node_symbol);
+
+        // Save RAX because, it may not be preserved after the function call,
+        // because the return value is always placed into RAX.
+        fprintf(fptr_code, "pushq %%rax\n");
+
         AstNode *call_params = curr_expr->child->next_child->child;
         int param_count = 0;
         while (call_params != NULL) {
@@ -367,9 +371,14 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
 
         curr_expr->result_reg_desc = reg_alloc(reg_head);
         if (strcmp(get_reg_name(curr_expr->result_reg_desc, reg_head),
-                   "%rax") != 0)
+                   "%rax") != 0) {
             fprintf(fptr_code, "mov %%rax, %s\n",
                     get_reg_name(curr_expr->result_reg_desc, reg_head));
+
+            // Restore the value for RAX from stack.
+            fprintf(fptr_code, "pop %%rax\n");
+        } else
+            fprintf(fptr_code, "add $8, %%rsp\n");
         break;
     case TYPE_FUNCTION:;
         if (codegen_verbose)

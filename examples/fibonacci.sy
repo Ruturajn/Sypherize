@@ -1,5 +1,5 @@
 def_func fib(int: a) ~ int {
-    if a < 1 {
+    if a < 2 {
         1
     }
     else {

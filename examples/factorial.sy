@@ -1,0 +1,9 @@
+def_func fact(int: a) ~ int {
+    if a < 2 {
+        1
+    } else {
+        a * fact(a - 1);
+    }
+}
+
+fact(5);
