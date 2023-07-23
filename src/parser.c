@@ -755,29 +755,29 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
 
                 // If the parsing flow reaches here, it means that we
                 // can check a variable access.
-                // AstNode *node_var_access = NULL;
-                // if (!check_if_delims(curr_token)) {
-                //     ParsingContext *temp_ctx = *context;
-                //     while (temp_ctx != NULL) {
-                //         status = -1;
-                //         get_env(temp_ctx->vars, sym_node, &status);
-                //         if (status)
-                //             break;
-                //         temp_ctx = temp_ctx->parent_ctx;
-                //     }
-                //     // if (!status)
-                //     //     print_error(ERR_COMMON,
-                //     //                 "Undefined symbol :"
-                //     //                 "`%s`",
-                //     //                 sym_node->ast_val.node_symbol, 0);
-                //     if (status) {
-                //         node_var_access = node_alloc();
-                //         node_var_access->type = TYPE_VAR_ACCESS;
-                //         node_var_access->ast_val.node_symbol =
-                //             strdup(sym_node->ast_val.node_symbol);
-                //         *running_expr = *node_var_access;
-                //     }
-                // }
+                AstNode *node_var_access = NULL;
+                if (!check_if_delims(curr_token)) {
+                    ParsingContext *temp_ctx = *context;
+                    while (temp_ctx != NULL) {
+                        status = -1;
+                        get_env(temp_ctx->vars, sym_node, &status);
+                        if (status)
+                            break;
+                        temp_ctx = temp_ctx->parent_ctx;
+                    }
+                    // if (!status)
+                    //     print_error(ERR_COMMON,
+                    //                 "Undefined symbol :"
+                    //                 "`%s`",
+                    //                 sym_node->ast_val.node_symbol, 0);
+                    if (status) {
+                        node_var_access = node_alloc();
+                        node_var_access->type = TYPE_VAR_ACCESS;
+                        node_var_access->ast_val.node_symbol =
+                            strdup(sym_node->ast_val.node_symbol);
+                        *running_expr = *node_var_access;
+                    }
+                }
 
                 // Lex again to look forward.
                 if (check_next_token(":", temp_file_data, &curr_token)) {
@@ -830,7 +830,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                         print_error(ERR_COMMON, "Undefined variable : `%s`",
                                     sym_node->ast_val.node_symbol, 0);
                     free_node(var_bind);
-                    // return *temp_file_data;
                 } else {
                     if (check_next_token("(", temp_file_data, &curr_token)) {
                         status = -1;
@@ -855,26 +854,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                                         sym_node->ast_val.node_symbol, 0);
                         }
                     }
-
-                    // If the parsing flow reaches here, it means that we
-                    // can check a variable access.
-                    ParsingContext *temp_ctx = *context;
-                    while (temp_ctx != NULL) {
-                        status = -1;
-                        get_env(temp_ctx->vars, sym_node, &status);
-                        if (status)
-                            break;
-                        temp_ctx = temp_ctx->parent_ctx;
-                    }
-                    // if (!status)
-                    //     print_error(ERR_COMMON,
-                    //                 "Undefined symbol :"
-                    //                 "`%s`",
-                    //                 sym_node->ast_val.node_symbol, 0);
-                    AstNode *node_var_access = node_alloc();
-                    node_var_access->type = TYPE_VAR_ACCESS;
-                    node_var_access->ast_val.node_symbol = strdup(sym_node->ast_val.node_symbol);
-                    *running_expr = *node_var_access;
                 }
             }
         }

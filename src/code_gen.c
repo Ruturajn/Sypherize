@@ -363,8 +363,9 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
             target_x86_64_win_codegen_expr(reg_head, context, curr_expr->child->next_child, cg_ctx,
                                            fptr_code);
             char *res_reg = get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head);
-            fprintf(fptr_code, "mov %s, %s\n", res_reg,
-                    map_sym_to_addr_win(cg_ctx, curr_expr->child));
+            if (curr_expr->child->type != TYPE_DEREFERENCE)
+                fprintf(fptr_code, "mov %s, %s\n", res_reg,
+                        map_sym_to_addr_win(cg_ctx, curr_expr->child));
             reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
         } else {
             if (curr_expr->child->next_child->type == TYPE_INT) {
@@ -439,6 +440,10 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
 
         fprintf(fptr_code, "%s:\n", after_else_label);
 
+        break;
+    case TYPE_DEREFERENCE:
+        break;
+    case TYPE_ADDROF:
         break;
     default:
         break;
