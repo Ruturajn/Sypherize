@@ -398,6 +398,12 @@ stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
         }
     }
 
+    if ((*curr_stack)->res->next_child != NULL) {
+        (*curr_stack)->res->next_child->next_child = node_alloc();
+        (*curr_stack)->res = (*curr_stack)->res->next_child->next_child;
+        *running_expr = (*curr_stack)->res;
+        return STACK_OP_CONT_PARSE;
+    }
     (*curr_stack)->res->next_child = node_alloc();
     (*curr_stack)->res = (*curr_stack)->res->next_child;
     *running_expr = (*curr_stack)->res;
@@ -701,10 +707,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                                           "declaration : `%s`",
                                           curr_sym->ast_val.node_symbol);
 
-                                // AstNode **temp_res = curr_expr;
-                                // if (curr_stack != NULL)
-                                //     *temp_res = curr_stack->res;
-
                                 AstNode *var_reassign = node_alloc();
                                 var_reassign->type = TYPE_VAR_REASSIGNMENT;
                                 AstNode *new_val = node_alloc();
@@ -713,11 +715,8 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
 
                                 curr_var_decl->next_child = var_reassign;
 
-                                // (*temp_res)->next_child = var_reassign;
-                                // *temp_res = var_reassign;
                                 if (curr_stack != NULL)
-                                    curr_stack->res = curr_var_decl;
-
+                                    *curr_stack->res = *curr_var_decl;
                                 *running_expr = *curr_var_decl;
                                 running_expr = new_val;
                                 continue;
@@ -725,6 +724,25 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                         }
                         // If the control flow is here, it means that it is a
                         // variable declaration without intiialization.
+                        if (curr_stack != NULL) {
+                            *curr_stack->res = *curr_var_decl;
+                            StackOpRetVal stack_op_ret = STACK_OP_INVALID;
+                            do {
+                                stack_op_ret = stack_operator_continue(
+                                    &curr_stack, &curr_token, &running_expr, temp_file_data,
+                                    context, &running_precedence, curr_expr);
+                            } while (stack_op_ret == STACK_OP_CONT_CHECK);
+                            if (stack_op_ret == STACK_OP_CONT_PARSE)
+                                continue;
+                            else if (stack_op_ret == STACK_OP_BREAK)
+                                break;
+                            else if (stack_op_ret == STACK_OP_INVALID)
+                                print_error(
+                                    ERR_COMMON,
+                                    "Compiler Error - Stack operator not being handled correctly",
+                                    NULL, 0);
+                            continue;
+                        }
                         *running_expr = *curr_var_decl;
                     } else
                         print_error(ERR_SYNTAX,
@@ -776,7 +794,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                         print_error(ERR_COMMON, "Undefined symbol after : `%s`",
                                     sym_node->ast_val.node_symbol, 0);
                     free_node(var_bind);
-                    return *temp_file_data;
+                    // return *temp_file_data;
                 } else {
                     if (check_next_token("(", temp_file_data, &curr_token)) {
                         status = -1;
@@ -812,11 +830,11 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
                             break;
                         temp_ctx = temp_ctx->parent_ctx;
                     }
-                    if (!status)
-                        print_error(ERR_COMMON,
-                                    "Undefined symbol :"
-                                    "`%s`",
-                                    sym_node->ast_val.node_symbol, 0);
+                    // if (!status)
+                    //     print_error(ERR_COMMON,
+                    //                 "Undefined symbol :"
+                    //                 "`%s`",
+                    //                 sym_node->ast_val.node_symbol, 0);
                     AstNode *node_var_access = node_alloc();
                     node_var_access->type = TYPE_VAR_ACCESS;
                     node_var_access->ast_val.node_symbol =

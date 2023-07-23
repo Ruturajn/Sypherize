@@ -12,6 +12,8 @@ def_func bar(int: a) ~ int {
     ! Do something here.
     ! func : foo := [int (int: w) { w }]
     ! foo
+    int: test := 10;
+    int: xyz;
     a := a + 10 * 3
     a
 }
