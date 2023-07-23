@@ -55,12 +55,11 @@ AstNode *get_env(Env *env_to_get, AstNode *identifier, int *stat) {
     return val;
 }
 
-AstNode *get_env_from_sym(Env *env_to_get, AstNode *identifier, int *stat) {
+AstNode *get_env_from_sym(Env *env_to_get, char *identifier, int *stat) {
     IdentifierBind *curr_bind = env_to_get->binding;
     AstNode *val = node_alloc();
     while (curr_bind != NULL) {
-        if (strcmp(curr_bind->identifier->ast_val.node_symbol,
-                   identifier->ast_val.node_symbol) == 0) {
+        if (strcmp(curr_bind->identifier->ast_val.node_symbol, identifier) == 0) {
             *stat = 1;
             copy_node(val, curr_bind->id_val);
             return val;
@@ -71,10 +70,10 @@ AstNode *get_env_from_sym(Env *env_to_get, AstNode *identifier, int *stat) {
     return val;
 }
 
-AstNode *parser_get_type(ParsingContext *context, AstNode *identifier,
-                         int *stat) {
+AstNode *parser_get_type(ParsingContext *context, AstNode *identifier, int *stat) {
     ParsingContext *temp_ctx = context;
     int status = -1;
+
     while (temp_ctx != NULL) {
         AstNode *res = get_env(temp_ctx->env_type, identifier, &status);
         if (status) {
@@ -88,8 +87,24 @@ AstNode *parser_get_type(ParsingContext *context, AstNode *identifier,
     return res;
 }
 
-AstNode *parser_get_func(ParsingContext *context, AstNode *identifier,
-                         int *stat) {
+AstNode *parser_get_var(ParsingContext *context, AstNode *identifier, int *stat) {
+    ParsingContext *temp_ctx = context;
+    int status = -1;
+
+    while (temp_ctx != NULL) {
+        AstNode *res = get_env(temp_ctx->vars, identifier, &status);
+        if (status) {
+            *stat = 1;
+            return res;
+        }
+        temp_ctx = temp_ctx->parent_ctx;
+    }
+    AstNode *res = create_node_none();
+    *stat = 0;
+    return res;
+}
+
+AstNode *parser_get_func(ParsingContext *context, AstNode *identifier, int *stat) {
     ParsingContext *temp_ctx = context;
     int status = -1;
     while (temp_ctx != NULL) {

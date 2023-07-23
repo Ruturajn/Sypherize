@@ -1,4 +1,4 @@
-! This file contains some samples for if-else statements.
+# This file contains some samples for if-else statements.
 
 if 1 {
     42
@@ -6,32 +6,32 @@ if 1 {
     69
 }
 
-! int: a := 69;
-! a := 42
-! if 1 + 1 {
-!     69
-!     if a = 42 {
-!         5
-!     }
-! }
+# int: a := 69;
+# a := 42
+# if 1 + 1 {
+#     69
+#     if a = 42 {
+#         5
+#     }
+# }
 
-! int : z;
-! int : test;
-! int : b;
-! a := 23;
-! a
-! 
-! if 0 {
-!     69
-!     test := 100;
-!     b : = 82;
-! }
+# int : z;
+# int : test;
+# int : b;
+# a := 23;
+# a
+# 
+# if 0 {
+#     69
+#     test := 100;
+#     b : = 82;
+# }
 
 `if 1 {}
 
-! if 1 + 1 {
-!     69
-!     if a = 10 {
-!         49
-!     }
-! }
+# if 1 + 1 {
+#     69
+#     if a = 10 {
+#         49
+#     }
+# }

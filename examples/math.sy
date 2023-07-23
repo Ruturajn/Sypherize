@@ -1,4 +1,4 @@
-! This is a basic math expression
+# This is a basic math expression
 2 * 3 + 1 - 2
 
 def_func test_function(int: a, int: x) ~ int {
@@ -6,7 +6,7 @@ def_func test_function(int: a, int: x) ~ int {
     a := 99
     x := 10
     a := 100;
-    ! Following is the syntax for a lambda function.
+    # Following is the syntax for a lambda function.
     func : bar := [int (int: w) { w }]
     a := 10;
     x

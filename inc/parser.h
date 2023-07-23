@@ -24,6 +24,10 @@ typedef enum NodeType {
     TYPE_FUNCTION,         ///< Node for storing functions.
     TYPE_FUNCTION_CALL,    ///< Node for storing function calls.
     TYPE_IF_CONDITION,     ///< Node for storing if-else statements.
+    TYPE_POINTER,          ///< Node for a pointer.
+    TYPE_ADDROF,           ///< Node for storing address of a variable.
+    TYPE_DEREFERENCE,      ///< Node for storing the dereferenced value of a
+                           ///< pointer.
 } NodeType;
 
 /**
@@ -49,10 +53,10 @@ typedef struct AstNode {
 
 typedef struct ParsingStack {
     struct ParsingStack *parent_stack; ///< Pointer to the parent stack.
-    AstNode *op;  ///< Pointer to an operator that caused the increase in
-                  ///< the stack.
-    AstNode *res; ///< Pointer to an AstNode to keep track of the list
-                  ///< of expressions in a function body.
+    AstNode *op;                       ///< Pointer to an operator that caused the increase in
+                                       ///< the stack.
+    AstNode *res;                      ///< Pointer to an AstNode to keep track of the list
+                                       ///< of expressions in a function body.
     AstNode *body;
 } ParsingStack;
 
@@ -65,9 +69,9 @@ typedef struct ParsingContext {
     struct ParsingContext *next_child;
     struct ParsingContext *parent_ctx; ///< Pointer to the parent context.
     Env *env_type;                     ///< Pointer to an environment for types.
-    Env *vars;       ///< Pointer to an environment for varaibles.
-    Env *funcs;      ///< Pointer to an environment for functions.
-    Env *binary_ops; ///< Pointer to an environment for binary operators.
+    Env *vars;                         ///< Pointer to an environment for varaibles.
+    Env *funcs;                        ///< Pointer to an environment for functions.
+    Env *binary_ops;                   ///< Pointer to an environment for binary operators.
 } ParsingContext;
 
 typedef enum StackOpRetVal {
@@ -114,35 +118,34 @@ ParsingContext *create_default_parsing_context();
  * @param sym       [`AstNode *`] Symbol for the new type.
  * @param byte_size [`long`] Size in bytes of the new type.
  */
-void ast_add_type_node(Env **env_type, int node_type, AstNode *sym,
-                       long byte_size);
+void ast_add_type_node(Env **env_type, int node_type, AstNode *sym, long byte_size);
 
-void ast_add_binary_ops(ParsingContext **context, char *bin_op, int precedence,
-                        char *ret_type, char *lhs_type, char *rhs_type);
+void ast_add_binary_ops(ParsingContext **context, char *bin_op, int precedence, char *ret_type,
+                        char *lhs_type, char *rhs_type);
 
-void add_parsing_context_child(ParsingContext **root,
-                               ParsingContext *child_to_add);
+void add_parsing_context_child(ParsingContext **root, ParsingContext *child_to_add);
 
 /**
  * @brief Lexes and parses a complete file.
  *
  * @param file_data   [`char *`] pointer to the data stream.
  */
-void lex_and_parse(char *file_dest, ParsingContext **curr_context,
-                   AstNode **program);
+void lex_and_parse(char *file_dest, ParsingContext **curr_context, AstNode **program);
+
+int check_if_delims(LexedToken *token);
 
 void print_parsing_context(ParsingContext *context, int indent);
 
-int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token,
-                          ParsingContext **context, long *running_precedence,
-                          AstNode **curr_expr, AstNode **running_expr,
+int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token, ParsingContext **context,
+                          long *running_precedence, AstNode **curr_expr, AstNode **running_expr,
                           ParsingStack *curr_stack);
 
-StackOpRetVal
-stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
-                        AstNode **running_expr, char **temp_file_data,
-                        ParsingContext **context, long *running_precedence,
-                        AstNode **curr_expr);
+StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
+                                      AstNode **running_expr, char **temp_file_data,
+                                      ParsingContext **context, long *running_precedence,
+                                      AstNode **curr_expr);
+
+int check_if_type(char *temp_file_data, ParsingContext *context);
 /**
  * @brief Parses tokens (TODO!!), and advances the pointer that
  *        points to the file data stream.
@@ -157,8 +160,8 @@ stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
  *                       the current context.
  * @return char*         Pointer to the file data stream.
  */
-char *parse_tokens(char **temp_file_data, LexedToken *curr_token,
-                   AstNode **curr_expr, ParsingContext **context);
+char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr_expr,
+                   ParsingContext **context);
 
 #ifdef __cplusplus
 }

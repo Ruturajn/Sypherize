@@ -1,4 +1,4 @@
-! This is a variable declaration, without initialization.
+# This is a variable declaration, without initialization.
 int: a;
 
 a := 39

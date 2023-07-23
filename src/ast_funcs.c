@@ -20,19 +20,16 @@ char *get_node_str(AstNode *node) {
         snprintf(node_buf, NODE_BUF_SIZE, "INT : %ld", node->ast_val.val);
         break;
     case TYPE_BINARY_OPERATOR:
-        snprintf(node_buf, NODE_BUF_SIZE, "BINARY OP : %s",
-                 node->ast_val.node_symbol);
+        snprintf(node_buf, NODE_BUF_SIZE, "BINARY OP : %s", node->ast_val.node_symbol);
         break;
     case TYPE_VAR_DECLARATION:
         snprintf(node_buf, NODE_BUF_SIZE, "VAR DECL");
         break;
     case TYPE_VAR_ACCESS:
-        snprintf(node_buf, NODE_BUF_SIZE, "VAR ACCESS : %s",
-                 node->ast_val.node_symbol);
+        snprintf(node_buf, NODE_BUF_SIZE, "VAR ACCESS : %s", node->ast_val.node_symbol);
         break;
     case TYPE_SYM:
-        snprintf(node_buf, NODE_BUF_SIZE, "SYM : %s",
-                 node->ast_val.node_symbol);
+        snprintf(node_buf, NODE_BUF_SIZE, "SYM : %s", node->ast_val.node_symbol);
         break;
     case TYPE_VAR_REASSIGNMENT:
         snprintf(node_buf, NODE_BUF_SIZE, "VAR REASSIGNMENT");
@@ -45,6 +42,15 @@ char *get_node_str(AstNode *node) {
         break;
     case TYPE_IF_CONDITION:
         snprintf(node_buf, NODE_BUF_SIZE, "IF CONDITION");
+        break;
+    case TYPE_POINTER:
+        snprintf(node_buf, NODE_BUF_SIZE, "POINTER");
+        break;
+    case TYPE_ADDROF:
+        snprintf(node_buf, NODE_BUF_SIZE, "ADDRESS OF");
+        break;
+    case TYPE_DEREFERENCE:
+        snprintf(node_buf, NODE_BUF_SIZE, "DEREFERENCE");
         break;
     default:
         snprintf(node_buf, NODE_BUF_SIZE, "Unknown TYPE");
@@ -99,13 +105,10 @@ int node_cmp(AstNode *node1, AstNode *node2) {
         printf("TODO : VAR ACCESS!\n");
         break;
     case TYPE_SYM:
-        if (node1->ast_val.node_symbol != NULL &&
-            node2->ast_val.node_symbol != NULL &&
-            (strcmp(node1->ast_val.node_symbol, node2->ast_val.node_symbol) ==
-             0))
+        if (node1->ast_val.node_symbol != NULL && node2->ast_val.node_symbol != NULL &&
+            (strcmp(node1->ast_val.node_symbol, node2->ast_val.node_symbol) == 0))
             return 1;
-        else if (node1->ast_val.node_symbol == NULL &&
-                 node2->ast_val.node_symbol == NULL)
+        else if (node1->ast_val.node_symbol == NULL && node2->ast_val.node_symbol == NULL)
             return 1;
         break;
     case TYPE_VAR_REASSIGNMENT:
@@ -119,6 +122,15 @@ int node_cmp(AstNode *node1, AstNode *node2) {
         break;
     case TYPE_IF_CONDITION:
         printf("TODO : IF CONDITION!\n");
+        break;
+    case TYPE_POINTER:
+        printf("TODO : POINTER!\n");
+        break;
+    case TYPE_ADDROF:
+        printf("TODO : ADDROF!\n");
+        break;
+    case TYPE_DEREFERENCE:
+        printf("TODO : DEREFERENCE!\n");
         break;
     default:
         break;
@@ -192,8 +204,7 @@ AstNode *node_symbol_from_token_create(LexedToken *token) {
 
     AstNode *node = node_alloc();
     char *symbol_str = (char *)calloc(token->token_length + 1, sizeof(char));
-    CHECK_NULL(symbol_str, "Unable to allocate memory for a new symbol node",
-               NULL);
+    CHECK_NULL(symbol_str, "Unable to allocate memory for a new symbol node", NULL);
     memcpy(symbol_str, token->token_start, token->token_length);
     symbol_str[token->token_length] = '\0';
     node->ast_val.node_symbol = symbol_str;

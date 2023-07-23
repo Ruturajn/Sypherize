@@ -12,17 +12,14 @@ int get_return_type(ParsingContext *context, AstNode *expr) {
         ParsingContext *temp_ctx = context;
         while (temp_ctx->parent_ctx != NULL)
             temp_ctx = temp_ctx->parent_ctx;
-        AstNode *sym_type = get_env_from_sym(temp_ctx->vars, expr, &stat);
+        AstNode *sym_type = get_env_from_sym(temp_ctx->vars, expr->ast_val.node_symbol, &stat);
         if (!stat)
-            print_error(ERR_COMMON,
-                        "Couldn't find information for variable : `%s`",
+            print_error(ERR_COMMON, "Couldn't find information for variable : `%s`",
                         expr->ast_val.node_symbol, 0);
         AstNode *type_node = parser_get_type(temp_ctx, sym_type, &stat);
         if (!stat)
-            print_error(
-                ERR_COMMON,
-                "Couldn't find information for `type` of variable : `%s`",
-                expr->ast_val.node_symbol, 0);
+            print_error(ERR_COMMON, "Couldn't find information for `type` of variable : `%s`",
+                        expr->ast_val.node_symbol, 0);
         ret_type = type_node->type;
         break;
     case TYPE_BINARY_OPERATOR:
@@ -33,11 +30,9 @@ int get_return_type(ParsingContext *context, AstNode *expr) {
         AstNode *op_sym = create_node_symbol(expr->ast_val.node_symbol);
         AstNode *op_data = get_env(temp_ctx->binary_ops, op_sym, &stat);
         if (!stat)
-            print_error(
-                ERR_COMMON, "Couldn't find information for type : `%s`",
-                op_data->child->next_child->next_child->ast_val.node_symbol, 0);
-        AstNode *op_decl_ret_type =
-            parser_get_type(temp_ctx, op_data->child->next_child, &stat);
+            print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
+                        op_data->child->next_child->next_child->ast_val.node_symbol, 0);
+        AstNode *op_decl_ret_type = parser_get_type(temp_ctx, op_data->child->next_child, &stat);
         if (!stat)
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
                         op_data->child->next_child->ast_val.node_symbol, 0);
@@ -52,8 +47,7 @@ int get_return_type(ParsingContext *context, AstNode *expr) {
                         "Function definition not found :"
                         "`%s`",
                         expr->child->ast_val.node_symbol, 0);
-        AstNode *func_ret =
-            parser_get_type(context, func_body->child->next_child, &stat);
+        AstNode *func_ret = parser_get_type(context, func_body->child->next_child, &stat);
         if (!stat)
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
                         func_body->child->next_child->ast_val.node_symbol, 0);
@@ -86,35 +80,27 @@ void type_check_expr(ParsingContext *context, AstNode *expr) {
         AstNode *op_sym = create_node_symbol(temp_expr->ast_val.node_symbol);
         AstNode *op_data = get_env(temp_ctx->binary_ops, op_sym, &stat);
         if (!stat)
-            print_error(ERR_COMMON,
-                        "Couldn't find information for operator : `%s`",
+            print_error(ERR_COMMON, "Couldn't find information for operator : `%s`",
                         temp_expr->ast_val.node_symbol, 0);
 
         int op_used_lhs_type = get_return_type(context, expr->child);
-        AstNode *op_decl_lhs_type = parser_get_type(
-            temp_ctx, op_data->child->next_child->next_child, &stat);
-        if (!stat)
-            print_error(
-                ERR_COMMON, "Couldn't find information for type : `%s`",
-                op_data->child->next_child->next_child->ast_val.node_symbol, 0);
-        if (op_used_lhs_type != op_decl_lhs_type->type)
-            print_error(ERR_COMMON,
-                        "Found Mismatched LHS type for operator : `%s`",
-                        temp_expr->ast_val.node_symbol, 0);
-
-        int op_used_rhs_type =
-            get_return_type(context, expr->child->next_child);
-        AstNode *op_decl_rhs_type = parser_get_type(
-            temp_ctx, op_data->child->next_child->next_child->next_child,
-            &stat);
+        AstNode *op_decl_lhs_type =
+            parser_get_type(temp_ctx, op_data->child->next_child->next_child, &stat);
         if (!stat)
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
-                        op_data->child->next_child->next_child->next_child
-                            ->ast_val.node_symbol,
-                        0);
+                        op_data->child->next_child->next_child->ast_val.node_symbol, 0);
+        if (op_used_lhs_type != op_decl_lhs_type->type)
+            print_error(ERR_COMMON, "Found Mismatched LHS type for operator : `%s`",
+                        temp_expr->ast_val.node_symbol, 0);
+
+        int op_used_rhs_type = get_return_type(context, expr->child->next_child);
+        AstNode *op_decl_rhs_type =
+            parser_get_type(temp_ctx, op_data->child->next_child->next_child->next_child, &stat);
+        if (!stat)
+            print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
+                        op_data->child->next_child->next_child->next_child->ast_val.node_symbol, 0);
         if (op_used_rhs_type != op_decl_rhs_type->type)
-            print_error(ERR_COMMON,
-                        "Found Mismatched RHS type for operator : `%s`",
+            print_error(ERR_COMMON, "Found Mismatched RHS type for operator : `%s`",
                         temp_expr->ast_val.node_symbol, 0);
 
         free_node(op_sym);
@@ -135,14 +121,12 @@ void type_check_expr(ParsingContext *context, AstNode *expr) {
         AstNode *param_list_type = NULL;
         int param_call_type = -1;
         while (func_call_params != NULL && func_param_list != NULL) {
-            param_list_type = parser_get_type(
-                context, func_param_list->child->next_child, &stat);
+            param_list_type = parser_get_type(context, func_param_list->child->next_child, &stat);
             param_call_type = get_return_type(context, func_call_params);
             if (param_call_type == TYPE_NULL)
                 break;
             if (param_call_type != param_list_type->type) {
-                print_error(ERR_SYNTAX,
-                            "Mismatched argument type for function call : `%s`",
+                print_error(ERR_SYNTAX, "Mismatched argument type for function call : `%s`",
                             temp_expr->child->ast_val.node_symbol, 0);
             }
             func_param_list = func_param_list->next_child;

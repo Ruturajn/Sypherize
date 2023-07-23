@@ -11,7 +11,7 @@ extern "C" {
  * @brief String containing all the the delimeters used
  *        for tokenizing.
  */
-#define DELIMS " :=,;~()[]{}<>-+*/\r\n"
+#define DELIMS " :=,;~()[]{}<>-+/*&@\r\n"
 
 /**
  * @brief String containing all the the whitespace characters
@@ -23,7 +23,7 @@ extern "C" {
  * @brief String containing all the comment delimeters used
  *        for tokenizing.
  */
-#define COMMENTS_DELIMS "`!"
+#define COMMENTS_DELIMS "`#"
 
 /**
  * @brief Structure defining a token.
@@ -94,8 +94,7 @@ char *lex_token(char **file_data, LexedToken **curr_token);
  *                        stores the next token.
  * @return int            `1` for success, and `0` for failure.
  */
-int check_next_token(char *string_to_cmp, char **temp_file_data,
-                     LexedToken **token);
+int check_next_token(char *string_to_cmp, char **temp_file_data, LexedToken **token);
 
 #ifdef __cplusplus
 }
