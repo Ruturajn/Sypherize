@@ -221,11 +221,10 @@ a basic compiler.
   with a type `int` in the function's scope. Finally, we also bind
   the function name with the actual function node in the AST within
   the *functions* environment.
-  
+
+### Type Checker
 
 ### Code Generation - Assembly (x86_64)
-
-
 
 ## References
 
