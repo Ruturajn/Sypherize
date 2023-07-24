@@ -103,14 +103,15 @@ char *gen_label() {
 }
 
 char *map_sym_to_addr_win(CGContext *cg_ctx, AstNode *sym_node) {
+    // if (sym_node == NULL || sym_node->ast_val.node_symbol == NULL || cg_ctx == NULL)
+    //     return NULL;
     char *sym = sym_arr + sym_idx;
     if (cg_ctx->parent_ctx == NULL)
         sym_idx +=
             snprintf(sym, SYM_ARR_SIZE - sym_idx, "%s(%%rip)", sym_node->ast_val.node_symbol);
     else {
         int stat = -1;
-        AstNode *var_stack_offset =
-            get_env_from_sym(cg_ctx->local_env, sym_node->ast_val.node_symbol, &stat);
+        AstNode *var_stack_offset = get_env(cg_ctx->local_env, sym_node, &stat);
         if (!stat)
             print_error(ERR_COMMON,
                         "Unable to get information from locals environment in "
@@ -151,7 +152,8 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
     switch (curr_expr->type) {
     case TYPE_VAR_DECLARATION:
         if (codegen_verbose)
-            fprintf(fptr_code, ";#; Variable Declaration\n");
+            fprintf(fptr_code, ";#; Variable Declaration : `%s`\n",
+                    curr_expr->child->ast_val.node_symbol);
         if (cg_ctx->parent_ctx == NULL)
             break;
         AstNode *var_node = NULL;
@@ -173,12 +175,20 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
                 print_error(ERR_COMMON, "Unable to find variable in environment : `%s`",
                             curr_expr->child->ast_val.node_symbol, 0);
         }
-        AstNode *type_node = parser_get_type(context, var_node, &stat);
+        AstNode *type_node = NULL;
+        long size_in_bytes = 0;
+        if (var_node->type == TYPE_POINTER)
+            size_in_bytes = 8;
+        else {
+            type_node = parser_get_type(context, var_node, &stat);
+            size_in_bytes = type_node->child->ast_val.val;
+        }
         if (!stat)
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
                         type_node->ast_val.node_symbol, 0);
-        fprintf(fptr_code, "sub $%ld, %%rsp\n", type_node->child->ast_val.val);
-        cg_ctx->local_offset -= type_node->child->ast_val.val;
+
+        fprintf(fptr_code, "sub $%ld, %%rsp\n", size_in_bytes);
+        cg_ctx->local_offset -= size_in_bytes;
         if (!set_env(&cg_ctx->local_env, curr_expr->child, create_node_int(cg_ctx->local_offset)))
             print_error(ERR_COMMON,
                         "Unable to set locals environment in code gen context "
@@ -357,15 +367,20 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
         break;
     case TYPE_VAR_REASSIGNMENT:
         if (codegen_verbose)
-            fprintf(fptr_code, ";#; Variable Re-assignment\n");
+            fprintf(fptr_code, ";#; Variable Re-assignment : `%s`\n",
+                    curr_expr->child->ast_val.node_symbol);
         if (cg_ctx->parent_ctx != NULL) {
             // print_error("Local variable code gen not implemented", 1, NULL);
             target_x86_64_win_codegen_expr(reg_head, context, curr_expr->child->next_child, cg_ctx,
                                            fptr_code);
             char *res_reg = get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head);
-            if (curr_expr->child->type != TYPE_DEREFERENCE)
-                fprintf(fptr_code, "mov %s, %s\n", res_reg,
-                        map_sym_to_addr_win(cg_ctx, curr_expr->child));
+            AstNode *var_name = curr_expr->child;
+            while (var_name != NULL) {
+                if ((var_name->type == TYPE_VAR_ACCESS || var_name->type == TYPE_SYM))
+                    break;
+                var_name = var_name->child;
+            }
+            fprintf(fptr_code, "mov %s, %s\n", res_reg, map_sym_to_addr_win(cg_ctx, var_name));
             reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
         } else {
             if (curr_expr->child->next_child->type == TYPE_INT) {

@@ -79,6 +79,12 @@ int node_cmp(AstNode *node1, AstNode *node2) {
     if ((node1 == NULL && node2 != NULL) || (node1 != NULL && node2 == NULL))
         return 0;
 
+    if ((node1->type == TYPE_VAR_ACCESS || node1->type == TYPE_SYM) &&
+        (node2->type == TYPE_VAR_ACCESS || node2->type == TYPE_SYM)) {
+        if (strcmp(node1->ast_val.node_symbol, node2->ast_val.node_symbol) == 0)
+            return 1;
+    }
+
     if (node1->type != node2->type) {
         return 0;
     }

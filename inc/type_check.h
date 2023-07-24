@@ -8,11 +8,13 @@ extern "C" {
 typedef struct ParsingContext ParsingContext;
 typedef struct AstNode AstNode;
 
-int get_return_type(ParsingContext *context, AstNode *expr);
+int cmp_type(AstNode *node1, AstNode *node2);
+
+AstNode *get_return_type(ParsingContext *context, ParsingContext **context_to_enter, AstNode *expr);
 
 void type_check_prog(ParsingContext *context, AstNode *prog);
 
-void type_check_expr(ParsingContext *context, AstNode *expr);
+void type_check_expr(ParsingContext *context, ParsingContext **context_to_enter, AstNode *expr);
 
 #ifdef __cplusplus
 }

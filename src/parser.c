@@ -653,18 +653,19 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                  *            `-- INT (420) -> SYMBOL (a)
                  */
                 AstNode *sym_node = node_symbol_from_token_create(curr_token);
-                AstNode *res = node_alloc();
+                AstNode *type_node = node_alloc();
+                AstNode *temp_type_node = type_node;
                 while (*sym_node->ast_val.node_symbol == '@') {
-                    res->type = TYPE_POINTER;
+                    temp_type_node->type = TYPE_POINTER;
                     AstNode *res_child = node_alloc();
-                    res->child = res_child;
-                    res = res->child;
+                    temp_type_node->child = res_child;
+                    temp_type_node = temp_type_node->child;
                     *temp_file_data = lex_token(temp_file_data, &curr_token);
                     sym_node = node_symbol_from_token_create(curr_token);
                 }
 
                 int status = -1;
-                res = parser_get_type(*context, sym_node, &status);
+                AstNode *res = parser_get_type(*context, sym_node, &status);
                 if (status) {
                     AstNode *curr_var_decl = node_alloc();
                     curr_var_decl->type = TYPE_VAR_DECLARATION;
@@ -690,11 +691,21 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                         AstNode *sym_name = node_alloc();
                         copy_node(sym_name, curr_sym);
                         add_ast_node_child(curr_var_decl, curr_sym);
-                        if (!set_env(&((*context)->vars), sym_name, sym_node)) {
-                            print_error(ERR_COMMON,
-                                        "Unable to set environment binding for "
-                                        "variable : `%s`",
-                                        sym_name->ast_val.node_symbol, 0);
+                        if (type_node->type == TYPE_POINTER) {
+                            *temp_type_node = *sym_node;
+                            if (!set_env(&((*context)->vars), sym_name, type_node)) {
+                                print_error(ERR_COMMON,
+                                            "Unable to set environment binding for "
+                                            "variable : `%s`",
+                                            sym_name->ast_val.node_symbol, 0);
+                            }
+                        } else {
+                            if (!set_env(&((*context)->vars), sym_name, sym_node)) {
+                                print_error(ERR_COMMON,
+                                            "Unable to set environment binding for "
+                                            "variable : `%s`",
+                                            sym_name->ast_val.node_symbol, 0);
+                            }
                         }
 
                         // Lex again to look forward.
@@ -712,6 +723,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                                 AstNode *var_reassign = node_alloc();
                                 var_reassign->type = TYPE_VAR_REASSIGNMENT;
                                 AstNode *new_val = node_alloc();
+                                sym_name->type = TYPE_VAR_ACCESS;
                                 add_ast_node_child(var_reassign, sym_name);
                                 add_ast_node_child(var_reassign, new_val);
 

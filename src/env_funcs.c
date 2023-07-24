@@ -130,7 +130,16 @@ void print_env(Env *env, int indent) {
             temp_indent--;
         }
         printf("%s -> ", get_node_str(curr_bind->identifier));
-        printf("%s\n", get_node_str(curr_bind->id_val));
+        printf("%s", get_node_str(curr_bind->id_val));
+        AstNode *temp_val = curr_bind->id_val->child;
+        if (temp_val == NULL)
+            putchar('\n');
+        while (temp_val != NULL) {
+            printf(" -> %s", get_node_str(temp_val));
+            temp_val = temp_val->next_child;
+            if (temp_val == NULL)
+                putchar('\n');
+        }
         curr_bind = curr_bind->next_id_bind;
     }
 }

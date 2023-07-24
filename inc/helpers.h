@@ -9,37 +9,37 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
-#define USAGE_STRING                                                           \
-    "Sypherize 0.1\n"                                                          \
-    "Ruturajn <nanotiruturaj@gmail.com>\n"                                     \
-    "Compiler for Sypher\n"                                                    \
-    "\n"                                                                       \
-    "USAGE:\n"                                                                 \
-    "    sypherize [OPTIONS] INPUT_FILE\n"                                     \
-    "\n"                                                                       \
-    "OPTIONS:\n"                                                               \
-    "    -i, --input <INPUT_FILE_PATH>\n"                                      \
-    "            Path to the input file\n"                                     \
-    "\n"                                                                       \
-    "    -o, --output <OUTPUT_FILE_PATH>\n"                                    \
-    "            Path to the output file\n"                                    \
-    "\n"                                                                       \
-    "    -f, --format <OUTPUT_FORMAT>\n"                                       \
-    "            A valid output format for code generation\n"                  \
-    "            VALID FORMATS:\n"                                             \
-    "            - `x86_64-windows`\n"                                         \
-    "            - `default`\n"                                                \
-    "\n"                                                                       \
-    "    -V, --verbose\n"                                                      \
-    "            Print out extra debugging information\n"                      \
-    "\n"                                                                       \
-    "    -h, --help\n"                                                         \
-    "            Print this help information\n"                                \
-    "\n"                                                                       \
-    "    -v, --version\n"                                                      \
-    "            Print out current version of Sypherize\n"                     \
-    "\n"                                                                       \
-    "NOTE - Everything else is treated as an input file\n"                     \
+#define USAGE_STRING                                                                               \
+    "Sypherize 0.1\n"                                                                              \
+    "Ruturajn <nanotiruturaj@gmail.com>\n"                                                         \
+    "Compiler for Sypher\n"                                                                        \
+    "\n"                                                                                           \
+    "USAGE:\n"                                                                                     \
+    "    sypherize [OPTIONS] INPUT_FILE\n"                                                         \
+    "\n"                                                                                           \
+    "OPTIONS:\n"                                                                                   \
+    "    -i, --input <INPUT_FILE_PATH>\n"                                                          \
+    "            Path to the input file\n"                                                         \
+    "\n"                                                                                           \
+    "    -o, --output <OUTPUT_FILE_PATH>\n"                                                        \
+    "            Path to the output file\n"                                                        \
+    "\n"                                                                                           \
+    "    -f, --format <OUTPUT_FORMAT>\n"                                                           \
+    "            A valid output format for code generation\n"                                      \
+    "            VALID FORMATS:\n"                                                                 \
+    "            - `x86_64-windows`\n"                                                             \
+    "            - `default`\n"                                                                    \
+    "\n"                                                                                           \
+    "    -V, --verbose\n"                                                                          \
+    "            Print out extra debugging information\n"                                          \
+    "\n"                                                                                           \
+    "    -h, --help\n"                                                                             \
+    "            Print this help information\n"                                                    \
+    "\n"                                                                                           \
+    "    -v, --version\n"                                                                          \
+    "            Print out current version of Sypherize\n"                                         \
+    "\n"                                                                                           \
+    "NOTE - Everything else is treated as an input file\n"                                         \
     "\n"
 
 #define VERSION_STRING "Sypherize 0.1\n"
@@ -48,22 +48,22 @@ extern "C" {
  * @brief Checks if a `ptr` is NULL, is so calls `print_error`, with exit
  *        enabled.
  */
-#define CHECK_NULL(ptr, fmt, str)                                              \
-    {                                                                          \
-        if (ptr == NULL) {                                                     \
-            print_error(ERR_MEM, fmt, str, 0);                                 \
-        }                                                                      \
+#define CHECK_NULL(ptr, fmt, str)                                                                  \
+    {                                                                                              \
+        if (ptr == NULL) {                                                                         \
+            print_error(ERR_MEM, fmt, str, 0);                                                     \
+        }                                                                                          \
     }
 
 /**
  * @brief Checks if a `ptr` is at the end of file, is so calls `print_error`
  *        with exit enabled.
  */
-#define CHECK_END(ptr, fmt, str)                                               \
-    {                                                                          \
-        if (ptr == '\0') {                                                     \
-            print_error(ERR_EOF, fmt, str, 0);                                 \
-        }                                                                      \
+#define CHECK_END(ptr, fmt, str)                                                                   \
+    {                                                                                              \
+        if (ptr == '\0') {                                                                         \
+            print_error(ERR_EOF, fmt, str, 0);                                                     \
+        }                                                                                          \
     }
 
 typedef enum ErrType {
@@ -76,6 +76,7 @@ typedef enum ErrType {
     ERR_SYNTAX,
     ERR_REDEFINITION,
     ERR_EOF,
+    ERR_TYPE,
 } ErrType;
 
 extern const char *err_strings[];

@@ -4,26 +4,65 @@
 #include "../inc/helpers.h"
 #include "../inc/parser.h"
 
-int get_return_type(ParsingContext *context, AstNode *expr) {
-    int ret_type = -1;
+int cmp_type(AstNode *node1, AstNode *node2) {
+    if (node1->type != node2->type)
+        return 0;
+    AstNode *temp_node1 = node1->child;
+    AstNode *temp_node2 = node2->child;
+    while (temp_node1 != NULL && temp_node2 != NULL) {
+        if (cmp_type(temp_node1, temp_node2) == 0)
+            return 0;
+        temp_node1 = temp_node1->next_child;
+        temp_node2 = temp_node2->next_child;
+    }
+    if (temp_node1 == temp_node2)
+        return 1;
+    return 1;
+}
+
+AstNode *get_return_type(ParsingContext *context, ParsingContext **context_to_enter,
+                         AstNode *expr) {
+    AstNode *ret_type = node_alloc();
     int stat = -1;
     switch (expr->type) {
+    case TYPE_DEREFERENCE:;
+        type_check_expr(context, context_to_enter, expr);
+        type_check_expr(context, context_to_enter, expr->child);
+        ret_type = get_return_type(context, context_to_enter, expr->child);
+        memcpy(ret_type, ret_type->child, sizeof(AstNode));
+        break;
     case TYPE_VAR_ACCESS:;
         ParsingContext *temp_ctx = context;
-        while (temp_ctx->parent_ctx != NULL)
+        AstNode *sym_type = NULL;
+        while (temp_ctx->parent_ctx != NULL) {
+            sym_type = get_env_from_sym(temp_ctx->vars, expr->ast_val.node_symbol, &stat);
+            if (stat)
+                break;
             temp_ctx = temp_ctx->parent_ctx;
-        AstNode *sym_type = get_env_from_sym(temp_ctx->vars, expr->ast_val.node_symbol, &stat);
-        if (!stat)
+        }
+        if (stat == 0)
             print_error(ERR_COMMON, "Couldn't find information for variable : `%s`",
                         expr->ast_val.node_symbol, 0);
-        AstNode *type_node = parser_get_type(temp_ctx, sym_type, &stat);
-        if (!stat)
+
+        // sym_type POINTER
+        //          `-- SYM : int
+
+        // The above node needs to be converted to:
+        // POINTER
+        //       `-- INT : 0
+        copy_node(ret_type, sym_type);
+        AstNode *temp_node = ret_type;
+        while (temp_node->child != NULL)
+            temp_node = temp_node->child;
+
+        AstNode *type_node = parser_get_type(temp_ctx, temp_node, &stat);
+        if (stat == 0)
             print_error(ERR_COMMON, "Couldn't find information for `type` of variable : `%s`",
                         expr->ast_val.node_symbol, 0);
-        ret_type = type_node->type;
+        *temp_node = *type_node;
         break;
     case TYPE_BINARY_OPERATOR:
-        type_check_expr(context, expr);
+        type_check_expr(context, context_to_enter, expr);
         temp_ctx = context;
         while (temp_ctx->parent_ctx != NULL)
             temp_ctx = temp_ctx->parent_ctx;
@@ -36,7 +75,7 @@ int get_return_type(ParsingContext *context, AstNode *expr) {
         if (!stat)
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
                         op_data->child->next_child->ast_val.node_symbol, 0);
-        ret_type = op_decl_ret_type->type;
+        ret_type = op_decl_ret_type;
         free_node(op_sym);
         free_node(op_data);
         break;
@@ -51,18 +90,18 @@ int get_return_type(ParsingContext *context, AstNode *expr) {
         if (!stat)
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
                         func_body->child->next_child->ast_val.node_symbol, 0);
-        ret_type = func_ret->type;
-        free_node(func_ret);
+        ret_type = func_ret;
+        /* free_node(func_ret); */
         free_node(func_body);
         break;
     default:
-        ret_type = expr->type;
+        ret_type = expr;
         break;
     }
     return ret_type;
 }
 
-void type_check_expr(ParsingContext *context, AstNode *expr) {
+void type_check_expr(ParsingContext *context, ParsingContext **context_to_enter, AstNode *expr) {
     AstNode *temp_expr = expr;
     int stat = -1;
 
@@ -73,6 +112,29 @@ void type_check_expr(ParsingContext *context, AstNode *expr) {
     // }
 
     switch (temp_expr->type) {
+    case TYPE_DEREFERENCE:;
+        AstNode *deref_type = get_return_type(context, context_to_enter, expr->child);
+        if (deref_type->type != TYPE_POINTER)
+            print_error(ERR_TYPE, "Only pointer types can be dereferenced", NULL, 0);
+        break;
+    case TYPE_FUNCTION:;
+        ParsingContext *to_enter = (*context_to_enter)->child;
+        AstNode *function_body = temp_expr->child->next_child->next_child->child;
+        while (function_body != NULL) {
+            type_check_expr(*context_to_enter, &to_enter, function_body);
+            function_body = function_body->next_child;
+        }
+        (*context_to_enter) = (*context_to_enter)->next_child;
+        break;
+    case TYPE_VAR_REASSIGNMENT:;
+        // Get the return type of the left hand side of a variable declaration.
+        AstNode *lhs_ret_type = get_return_type(context, context_to_enter, temp_expr->child);
+        // Get the return type of the left hand side of a variable declaration.
+        AstNode *rhs_ret_type =
+            get_return_type(context, context_to_enter, temp_expr->child->next_child);
+        if (cmp_type(lhs_ret_type, rhs_ret_type) == 0)
+            print_error(ERR_TYPE, "Mismatched types for variable re-assignment", NULL, 0);
+        break;
     case TYPE_BINARY_OPERATOR:;
         ParsingContext *temp_ctx = context;
         while (temp_ctx->parent_ctx != NULL)
@@ -83,23 +145,24 @@ void type_check_expr(ParsingContext *context, AstNode *expr) {
             print_error(ERR_COMMON, "Couldn't find information for operator : `%s`",
                         temp_expr->ast_val.node_symbol, 0);
 
-        int op_used_lhs_type = get_return_type(context, expr->child);
+        AstNode *op_used_lhs_type = get_return_type(context, context_to_enter, expr->child);
         AstNode *op_decl_lhs_type =
             parser_get_type(temp_ctx, op_data->child->next_child->next_child, &stat);
         if (!stat)
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
                         op_data->child->next_child->next_child->ast_val.node_symbol, 0);
-        if (op_used_lhs_type != op_decl_lhs_type->type)
+        if (cmp_type(op_used_lhs_type, op_decl_lhs_type) == 0)
             print_error(ERR_COMMON, "Found Mismatched LHS type for operator : `%s`",
                         temp_expr->ast_val.node_symbol, 0);
 
-        int op_used_rhs_type = get_return_type(context, expr->child->next_child);
+        AstNode *op_used_rhs_type =
+            get_return_type(context, context_to_enter, expr->child->next_child);
         AstNode *op_decl_rhs_type =
             parser_get_type(temp_ctx, op_data->child->next_child->next_child->next_child, &stat);
         if (!stat)
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
                         op_data->child->next_child->next_child->next_child->ast_val.node_symbol, 0);
-        if (op_used_rhs_type != op_decl_rhs_type->type)
+        if (cmp_type(op_used_rhs_type, op_decl_rhs_type) == 0)
             print_error(ERR_COMMON, "Found Mismatched RHS type for operator : `%s`",
                         temp_expr->ast_val.node_symbol, 0);
 
@@ -119,13 +182,12 @@ void type_check_expr(ParsingContext *context, AstNode *expr) {
         AstNode *func_param_list = func_body->child->child;
         AstNode *func_call_params = temp_expr->child->next_child->child;
         AstNode *param_list_type = NULL;
-        int param_call_type = -1;
         while (func_call_params != NULL && func_param_list != NULL) {
             param_list_type = parser_get_type(context, func_param_list->child->next_child, &stat);
-            param_call_type = get_return_type(context, func_call_params);
-            if (param_call_type == TYPE_NULL)
+            AstNode *param_call_type = get_return_type(context, context_to_enter, func_call_params);
+            if (param_call_type->type == TYPE_NULL)
                 break;
-            if (param_call_type != param_list_type->type) {
+            if (cmp_type(param_call_type, param_list_type) == 0) {
                 print_error(ERR_SYNTAX, "Mismatched argument type for function call : `%s`",
                             temp_expr->child->ast_val.node_symbol, 0);
             }
@@ -155,8 +217,10 @@ void type_check_expr(ParsingContext *context, AstNode *expr) {
 void type_check_prog(ParsingContext *context, AstNode *prog) {
     AstNode *temp_expr = prog->child;
 
+    ParsingContext *context_to_enter = context->child;
+
     while (temp_expr != NULL) {
-        type_check_expr(context, temp_expr);
+        type_check_expr(context, &context_to_enter, temp_expr);
         temp_expr = temp_expr->next_child;
     }
 }
