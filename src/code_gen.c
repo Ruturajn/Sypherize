@@ -343,7 +343,8 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
          * to reach our argument, i.e. 3.
          */
         fprintf(fptr_code, "call %s\n", curr_expr->child->ast_val.node_symbol);
-        fprintf(fptr_code, "add $%d, %%rsp\n", param_count * 8);
+        if (param_count > 0)
+            fprintf(fptr_code, "add $%d, %%rsp\n", param_count * 8);
 
         curr_expr->result_reg_desc = reg_alloc(reg_head);
         if (strcmp(get_reg_name(curr_expr->result_reg_desc, reg_head), "%rax") != 0) {
@@ -370,18 +371,26 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
             fprintf(fptr_code, ";#; Variable Re-assignment : `%s`\n",
                     curr_expr->child->ast_val.node_symbol);
         if (cg_ctx->parent_ctx != NULL) {
-            // print_error("Local variable code gen not implemented", 1, NULL);
+            // Code gen RHS
             target_x86_64_win_codegen_expr(reg_head, context, curr_expr->child->next_child, cg_ctx,
                                            fptr_code);
-            char *res_reg = get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head);
-            AstNode *var_name = curr_expr->child;
-            while (var_name != NULL) {
-                if ((var_name->type == TYPE_VAR_ACCESS || var_name->type == TYPE_SYM))
-                    break;
-                var_name = var_name->child;
+            if (curr_expr->child->type == TYPE_DEREFERENCE) {
+                target_x86_64_win_codegen_expr(reg_head, context, curr_expr->child, cg_ctx,
+                                               fptr_code);
+                fprintf(fptr_code, "mov %s, (%s)\n",
+                        get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head),
+                        get_reg_name(curr_expr->child->result_reg_desc, reg_head));
+
+                reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
+                reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+            } else {
+                fprintf(fptr_code, "mov %s, %s\n",
+                        get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head),
+                        map_sym_to_addr_win(cg_ctx, curr_expr->child));
+
+                reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
+                reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
             }
-            fprintf(fptr_code, "mov %s, %s\n", res_reg, map_sym_to_addr_win(cg_ctx, var_name));
-            reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
         } else {
             if (curr_expr->child->next_child->type == TYPE_INT) {
                 fprintf(fptr_code, "movq $%ld, %s\n", curr_expr->child->next_child->ast_val.val,
@@ -457,8 +466,17 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
 
         break;
     case TYPE_DEREFERENCE:
+        if (codegen_verbose)
+            fprintf(fptr_code, ";#; Dereference\n");
+        target_x86_64_win_codegen_expr(reg_head, context, curr_expr->child, cg_ctx, fptr_code);
+        curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
         break;
     case TYPE_ADDROF:
+        if (codegen_verbose)
+            fprintf(fptr_code, ";#; AddressOf\n");
+        curr_expr->result_reg_desc = reg_alloc(reg_head);
+        fprintf(fptr_code, "lea %s, %s\n", map_sym_to_addr_win(cg_ctx, curr_expr->child),
+                get_reg_name(curr_expr->result_reg_desc, reg_head));
         break;
     default:
         break;

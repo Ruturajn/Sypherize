@@ -25,6 +25,12 @@ AstNode *get_return_type(ParsingContext *context, ParsingContext **context_to_en
     AstNode *ret_type = node_alloc();
     int stat = -1;
     switch (expr->type) {
+    case TYPE_ADDROF:;
+        type_check_expr(context, context_to_enter, expr);
+        AstNode *temp = get_return_type(context, context_to_enter, expr->child);
+        ret_type->type = TYPE_POINTER;
+        add_ast_node_child(ret_type, temp);
+        break;
     case TYPE_DEREFERENCE:;
         type_check_expr(context, context_to_enter, expr);
         type_check_expr(context, context_to_enter, expr->child);
@@ -34,16 +40,22 @@ AstNode *get_return_type(ParsingContext *context, ParsingContext **context_to_en
     case TYPE_VAR_ACCESS:;
         ParsingContext *temp_ctx = context;
         AstNode *sym_type = NULL;
-        while (temp_ctx->parent_ctx != NULL) {
+        if (temp_ctx->parent_ctx == NULL) {
             sym_type = get_env_from_sym(temp_ctx->vars, expr->ast_val.node_symbol, &stat);
-            if (stat)
-                break;
-            temp_ctx = temp_ctx->parent_ctx;
+            if (stat == 0)
+                print_error(ERR_COMMON, "Couldn't find information for variable : `%s`",
+                            expr->ast_val.node_symbol, 0);
+        } else {
+            while (temp_ctx->parent_ctx != NULL) {
+                sym_type = get_env_from_sym(temp_ctx->vars, expr->ast_val.node_symbol, &stat);
+                if (stat)
+                    break;
+                temp_ctx = temp_ctx->parent_ctx;
+            }
+            if (stat == 0)
+                print_error(ERR_COMMON, "Couldn't find information for variable : `%s`",
+                            expr->ast_val.node_symbol, 0);
         }
-        if (stat == 0)
-            print_error(ERR_COMMON, "Couldn't find information for variable : `%s`",
-                        expr->ast_val.node_symbol, 0);
-
         // sym_type POINTER
         //          `-- SYM : int
 
@@ -112,6 +124,11 @@ void type_check_expr(ParsingContext *context, ParsingContext **context_to_enter,
     // }
 
     switch (temp_expr->type) {
+    case TYPE_ADDROF:;
+        if (temp_expr->child->type != TYPE_VAR_ACCESS)
+            print_error(ERR_SYNTAX, "Expected valid variable access for AddressOf operator", NULL,
+                        0);
+        break;
     case TYPE_DEREFERENCE:;
         AstNode *deref_type = get_return_type(context, context_to_enter, expr->child);
         if (deref_type->type != TYPE_POINTER)
@@ -132,8 +149,15 @@ void type_check_expr(ParsingContext *context, ParsingContext **context_to_enter,
         // Get the return type of the left hand side of a variable declaration.
         AstNode *rhs_ret_type =
             get_return_type(context, context_to_enter, temp_expr->child->next_child);
-        if (cmp_type(lhs_ret_type, rhs_ret_type) == 0)
+        if (cmp_type(lhs_ret_type, rhs_ret_type) == 0) {
+            printf("Expression:\n");
+            print_ast_node(temp_expr, 0);
+            printf("LHS TYPE:\n");
+            print_ast_node(lhs_ret_type, 0);
+            printf("RHS TYPE:\n");
+            print_ast_node(rhs_ret_type, 0);
             print_error(ERR_TYPE, "Mismatched types for variable re-assignment", NULL, 0);
+        }
         break;
     case TYPE_BINARY_OPERATOR:;
         ParsingContext *temp_ctx = context;

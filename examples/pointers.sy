@@ -1,6 +1,8 @@
-def_func bar() ~ int {
-    @int : ptr;
+def_func bar() ~ int
+{
     int :a := 0;
+    @int : ptr;
+
     # Declare a pointer of type integer, and point it to the address of `a`.
     ptr := &a;
 
@@ -8,3 +10,7 @@ def_func bar() ~ int {
 
     a
 }
+
+int: d := 10;
+
+bar()

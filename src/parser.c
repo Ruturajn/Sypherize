@@ -850,11 +850,20 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                             running_expr->type = TYPE_FUNCTION_CALL;
                             add_ast_node_child(running_expr, sym_node);
                             AstNode *arg_list = node_alloc();
+
+                            if (check_next_token(")", temp_file_data, &curr_token)) {
+                                add_ast_node_child(running_expr, arg_list);
+                                if (parse_binary_infix_op(temp_file_data, &curr_token, context,
+                                                          &running_precedence, curr_expr,
+                                                          &running_expr, curr_stack))
+                                    continue;
+                                break;
+                            }
+
                             AstNode *curr_arg = node_alloc();
                             add_ast_node_child(arg_list, curr_arg);
                             add_ast_node_child(running_expr, arg_list);
                             running_expr = curr_arg;
-
                             curr_stack = create_parsing_stack(curr_stack);
                             curr_stack->op = create_node_symbol("func_call");
                             curr_stack->res = running_expr;
