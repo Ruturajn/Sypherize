@@ -1,0 +1,13 @@
+def_func gcd_euclid(int: num1, int: num2) ~ int {
+    if num1 = num2 {
+        num1
+    } else {
+        if num1 > num2 {
+            gcd_euclid(num1 - num2, num2)
+        } else {
+            gcd_euclid(num1, num2 - num1)
+        }
+    }
+}
+
+gcd_euclid(88, 32)
