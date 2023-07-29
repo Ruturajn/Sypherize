@@ -14,13 +14,13 @@ typedef struct ParsingContext ParsingContext;
 #define LABEL_ARR_SIZE 1024
 #define SYM_ARR_SIZE 1024
 
-#define FUNC_FOOTER_x86_64                                                     \
-    "pop %rbp\n"                                                               \
+#define FUNC_FOOTER_x86_64                                                                         \
+    "pop %rbp\n"                                                                                   \
     "ret\n"
 
-#define FUNC_HEADER_x86_64                                                     \
-    "push %rbp\n"                                                              \
-    "mov %rsp, %rbp\n"                                                         \
+#define FUNC_HEADER_x86_64                                                                         \
+    "push %rbp\n"                                                                                  \
+    "mov %rsp, %rbp\n"                                                                             \
     "sub $32, %rsp\n"
 
 typedef struct Reg {
@@ -66,19 +66,17 @@ char *gen_label();
 
 char *map_sym_to_addr_win(CGContext *cg_ctx, AstNode *sym_node);
 
-void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
-                                    AstNode *curr_expr, CGContext *cg_ctx,
-                                    FILE *fptr_code);
-
-void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx,
-                                    ParsingContext *context, char *func_name,
-                                    AstNode *func, FILE *fptr_code);
-
-void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
+void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstNode *curr_expr,
                                     CGContext *cg_ctx, FILE *fptr_code);
 
-void target_codegen(ParsingContext *context, AstNode *program,
-                    char *output_file_path, TargetType type);
+void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx, ParsingContext *context,
+                                    char *func_name, AstNode *func, FILE *fptr_code);
+
+void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, CGContext *cg_ctx,
+                                    FILE *fptr_code);
+
+void target_codegen(ParsingContext *context, AstNode *program, char *output_file_path,
+                    TargetType type);
 
 #ifdef __cplusplus
 }

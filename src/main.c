@@ -19,13 +19,11 @@ int main(int argc, char **argv) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             printf("%s", USAGE_STRING);
             return 0;
-        } else if (strcmp(argv[i], "-i") == 0 ||
-                   strcmp(argv[i], "--input") == 0) {
+        } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--input") == 0) {
             i = i + 1;
             if (i > argc) {
                 printf("\nSee `%s --help`\n\n", argv[0]);
-                print_error(ERR_ARGS, "Expected Input file path after %s",
-                            argv[i - 1], 0);
+                print_error(ERR_ARGS, "Expected Input file path after %s", argv[i - 1], 0);
             }
             if (*argv[i] == '-') {
                 printf("\nSee `%s --help`\n\n", argv[0]);
@@ -35,13 +33,11 @@ int main(int argc, char **argv) {
                             argv[i], 0);
             }
             in_file_idx = i;
-        } else if (strcmp(argv[i], "-o") == 0 ||
-                   strcmp(argv[i], "--output") == 0) {
+        } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
             i = i + 1;
             if (i > argc) {
                 printf("\nSee `%s --help`\n\n", argv[0]);
-                print_error(ERR_ARGS, "Expected Output file path after %s",
-                            argv[i - 1], 0);
+                print_error(ERR_ARGS, "Expected Output file path after %s", argv[i - 1], 0);
             }
             if (*argv[i] == '-') {
                 printf("\nSee `%s --help`\n\n", argv[0]);
@@ -51,13 +47,11 @@ int main(int argc, char **argv) {
                             argv[i], 0);
             }
             out_file_idx = i;
-        } else if (strcmp(argv[i], "-f") == 0 ||
-                   strcmp(argv[i], "--format") == 0) {
+        } else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--format") == 0) {
             i = i + 1;
             if (i > argc) {
                 printf("\nSee `%s --help`\n\n", argv[0]);
-                print_error(ERR_ARGS, "Expected Output format after : `%s`",
-                            argv[i - 1], 0);
+                print_error(ERR_ARGS, "Expected Output format after : `%s`", argv[i - 1], 0);
             }
             if (*argv[i] == '-') {
                 printf("\nSee `%s --help`\n\n", argv[0]);
@@ -72,15 +66,11 @@ int main(int argc, char **argv) {
                 out_fmt = TARGET_x86_64_WIN;
             else {
                 printf("\nSee `%s --help`\n\n", argv[0]);
-                print_error(ERR_ARGS,
-                            "Expected valid output format, got : `%s`", argv[i],
-                            0);
+                print_error(ERR_ARGS, "Expected valid output format, got : `%s`", argv[i], 0);
             }
-        } else if (strcmp(argv[i], "-V") == 0 ||
-                   strcmp(argv[i], "--verbose") == 0) {
+        } else if (strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--verbose") == 0) {
             is_verbose = 1;
-        } else if (strcmp(argv[i], "-v") == 0 ||
-                   strcmp(argv[i], "--version") == 0) {
+        } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
             printf("%s", VERSION_STRING);
             return 0;
         } else {
@@ -92,9 +82,8 @@ int main(int argc, char **argv) {
                             argv[i], 0);
             }
             if (in_file_idx != -1)
-                print_warning(ERR_ARGS,
-                              "Got multiple source files,uUsing latest : `%s`",
-                              argv[i], 0);
+                print_warning(ERR_ARGS, "Got multiple source files,uUsing latest : `%s`", argv[i],
+                              0);
             in_file_idx = i;
         }
     }
