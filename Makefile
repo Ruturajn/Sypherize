@@ -26,7 +26,7 @@ FILE_PATH=./examples/simple.sy
 
 #==============================================================================
 
-.PHONY: all clean build_and_bin_dir compile_msg run docs help clean_docs
+.PHONY: all clean build_and_bin_dir compile_msg run docs help clean_docs test
 
 all: build_and_bin_dir $(TARGET)
 
@@ -57,6 +57,10 @@ docs:
 run: clean all
 	@echo "\033[1;33m[+] Running the executable ...\033[1;37m"
 	./$(BIN_DIR)/$(TARGET) $(FILE_PATH) -V
+
+test:
+	@echo "\033[1;33m[+] Running the executable ...\033[1;37m"
+	./$(BIN_DIR)/$(TARGET) $(FILE_PATH)
 
 clean_docs:
 	@echo "\033[1;33m[+] Cleaning generated docs ...\033[1;37m"

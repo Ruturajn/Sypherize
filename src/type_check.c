@@ -205,9 +205,34 @@ void type_check_expr(ParsingContext *context, ParsingContext **context_to_enter,
         }
         AstNode *func_param_list = func_body->child->child;
         AstNode *func_call_params = temp_expr->child->next_child->child;
+        AstNode *param_list_type_sym = NULL;
         AstNode *param_list_type = NULL;
         while (func_call_params != NULL && func_param_list != NULL) {
-            param_list_type = parser_get_type(context, func_param_list->child->next_child, &stat);
+            if (context->parent_ctx == NULL && context->child != NULL) {
+                ParsingContext *tmp_ctx = context->child;
+                while (tmp_ctx != NULL) {
+                    param_list_type_sym = get_env(tmp_ctx->vars, func_param_list->child, &stat);
+                    if (stat)
+                        break;
+                    tmp_ctx = tmp_ctx->next_child;
+                }
+            } else {
+                ParsingContext *tmp_ctx = context;
+                while (tmp_ctx != NULL) {
+                    param_list_type_sym = get_env(tmp_ctx->vars, func_param_list->child, &stat);
+                    if (stat)
+                        break;
+                    tmp_ctx = tmp_ctx->parent_ctx;
+                }
+            }
+            if (stat == 1) {
+                param_list_type = parser_get_type(context, param_list_type_sym, &stat);
+                if (stat == 0)
+                    print_error(ERR_TYPE, "Unable to find type information for : `%s`",
+                                param_list_type->ast_val.node_symbol, 0);
+            } else
+                print_error(ERR_TYPE, "Unable to find type information for variable : `%s`",
+                            func_param_list->child->ast_val.node_symbol, 0);
             AstNode *param_call_type = get_return_type(context, context_to_enter, func_call_params);
             if (param_call_type->type == TYPE_NULL)
                 break;

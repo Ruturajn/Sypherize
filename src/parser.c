@@ -280,11 +280,14 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
     if (*curr_stack == NULL)
         return STACK_OP_BREAK;
 
+    int valid_op = 0;
+
     AstNode *op = (*curr_stack == NULL) ? NULL : (*curr_stack)->op;
     if (op == NULL || op->type != TYPE_SYM)
         print_error(ERR_COMMON, "Compiler - Context operator not a symbol", NULL, 0);
 
     if (strcmp(op->ast_val.node_symbol, "if-cond") == 0) {
+        valid_op = 1;
         if (check_next_token("{", temp_file_data, curr_token)) {
             AstNode *if_then_body = node_alloc();
             (*curr_stack)->res->next_child = if_then_body;
@@ -307,12 +310,11 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
     }
 
     if (strcmp(op->ast_val.node_symbol, "if-then-body") == 0) {
+        valid_op = 1;
         if (check_next_token("}", temp_file_data, curr_token)) {
 
             if (check_next_token("else", temp_file_data, curr_token)) {
                 if (check_next_token("{", temp_file_data, curr_token)) {
-
-                    print_ast_node((*curr_stack)->res, 0);
                     AstNode *if_else_body = node_alloc();
                     AstNode *if_expr_list = node_alloc();
                     add_ast_node_child(if_else_body, if_expr_list);
@@ -337,6 +339,7 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
     }
 
     if (strcmp(op->ast_val.node_symbol, "if-else-body") == 0) {
+        valid_op = 1;
         if (check_next_token("}", temp_file_data, curr_token)) {
             *curr_stack = (*curr_stack)->parent_stack;
             if (*curr_stack == NULL)
@@ -347,6 +350,7 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
     }
 
     if (strcmp(op->ast_val.node_symbol, "def_func") == 0) {
+        valid_op = 1;
         if (check_next_token("}", temp_file_data, curr_token)) {
             *curr_stack = (*curr_stack)->parent_stack;
             *context = (*context)->parent_ctx;
@@ -357,7 +361,62 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
         }
     }
 
+    if (strcmp(op->ast_val.node_symbol, "def_func_params") == 0) {
+        valid_op = 1;
+        if (check_next_token(")", temp_file_data, curr_token)) {
+            // Parse return type of the function.
+            if (!check_next_token("~", temp_file_data, curr_token))
+                print_error(ERR_SYNTAX, "Return type not specified for function", NULL, 0);
+
+            *temp_file_data = lex_token(temp_file_data, curr_token);
+            AstNode *return_type = node_symbol_from_token_create(*curr_token);
+            AstNode *type_node = node_alloc();
+            AstNode *temp_type_node = type_node;
+            while (*return_type->ast_val.node_symbol == '@') {
+                temp_type_node->type = TYPE_POINTER;
+                AstNode *res_child = node_alloc();
+                temp_type_node->child = res_child;
+                temp_type_node = temp_type_node->child;
+                *temp_file_data = lex_token(temp_file_data, curr_token);
+                return_type = node_symbol_from_token_create(*curr_token);
+            }
+
+            int status = -1;
+            parser_get_type(*context, return_type, &status);
+
+            if (status == 0)
+                print_error(ERR_TYPE, "Invalid return type for function", NULL, 0);
+            if (type_node->type == TYPE_POINTER) {
+                *temp_type_node = *return_type;
+                (*curr_stack)->body->next_child = type_node;
+            } else
+                (*curr_stack)->body->next_child = return_type;
+            (*curr_stack)->body = (*curr_stack)->body->next_child;
+            (*curr_stack)->res = (*curr_stack)->body;
+
+            // Parse function body.
+            if (!check_next_token("{", temp_file_data, curr_token))
+                print_error(ERR_SYNTAX, "Couldn't find body for function definition", NULL, 0);
+
+            (*curr_stack)->op = create_node_symbol("def_func");
+            AstNode *func_body = node_alloc();
+            AstNode *func_expr = node_alloc();
+            add_ast_node_child(func_body, func_expr);
+            (*curr_stack)->body->next_child = func_body;
+            (*curr_stack)->body = (*curr_stack)->body->next_child;
+            (*curr_stack)->res = func_expr;
+            *running_expr = func_expr;
+            return STACK_OP_CONT_PARSE;
+        } else {
+            // Parse function params
+            if (!check_next_token(",", temp_file_data, curr_token))
+                print_error(ERR_SYNTAX,
+                            "Could not find end of parameter list in function definition", NULL, 0);
+        }
+    }
+
     if (strcmp(op->ast_val.node_symbol, "lambda") == 0) {
+        valid_op = 1;
         if (check_next_token("}", temp_file_data, curr_token)) {
             if (strncmp_lexed_token(*curr_token, "]") ||
                 check_next_token("]", temp_file_data, curr_token)) {
@@ -373,6 +432,7 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
     }
 
     if (strcmp(op->ast_val.node_symbol, "func_call") == 0) {
+        valid_op = 1;
         if (check_next_token(")", temp_file_data, curr_token)) {
             *running_expr = (*curr_stack)->res;
             *curr_stack = (*curr_stack)->parent_stack;
@@ -389,12 +449,9 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
         }
     }
 
-    if ((*curr_stack)->res->next_child != NULL) {
-        (*curr_stack)->res->next_child->next_child = node_alloc();
-        (*curr_stack)->res = (*curr_stack)->res->next_child->next_child;
-        *running_expr = (*curr_stack)->res;
-        return STACK_OP_CONT_PARSE;
-    }
+    if (valid_op == 0)
+        return STACK_OP_INVALID;
+
     (*curr_stack)->res->next_child = node_alloc();
     (*curr_stack)->res = (*curr_stack)->res->next_child;
     *running_expr = (*curr_stack)->res;
@@ -559,55 +616,9 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                 AstNode *func_node = node_alloc();
                 func_node->type = TYPE_FUNCTION;
                 AstNode *func_name = node_symbol_from_token_create(curr_token);
-                // Function name should be put into the parsing context, not
+
+                // Function name should be put into the parsing context, and not
                 // into the AST.
-
-                if (!check_next_token("(", temp_file_data, &curr_token))
-                    print_error(ERR_SYNTAX, "Invalid function definition for : `%s`",
-                                func_name->ast_val.node_symbol, 0);
-
-                AstNode *param_list = node_alloc();
-                for (;;) {
-                    if (check_next_token(")", temp_file_data, &curr_token))
-                        break;
-
-                    *temp_file_data = lex_token(temp_file_data, &curr_token);
-                    AstNode *param_type = node_symbol_from_token_create(curr_token);
-
-                    if (!check_next_token(":", temp_file_data, &curr_token))
-                        print_error(ERR_SYNTAX, "Couldn't find `:` after parameter type : `%s`",
-                                    param_type->ast_val.node_symbol, 0);
-
-                    *temp_file_data = lex_token(temp_file_data, &curr_token);
-                    AstNode *param_name = node_symbol_from_token_create(curr_token);
-
-                    AstNode *param = node_alloc();
-
-                    add_ast_node_child(param, param_name);
-                    add_ast_node_child(param, param_type);
-
-                    add_ast_node_child(param_list, param);
-
-                    if (!check_next_token(",", temp_file_data, &curr_token)) {
-                        if (check_next_token(")", temp_file_data, &curr_token))
-                            break;
-                        print_error(ERR_SYNTAX, "Could not find end of function definition : `%s`",
-                                    func_name->ast_val.node_symbol, 0);
-                    }
-                }
-                CHECK_END(**temp_file_data, "End of file - Incomplete function definition : `%s`",
-                          func_name->ast_val.node_symbol);
-
-                if (!check_next_token("~", temp_file_data, &curr_token))
-                    print_error(ERR_SYNTAX, "Return type not specified for function : `%s`",
-                                func_name->ast_val.node_symbol, 0);
-
-                *temp_file_data = lex_token(temp_file_data, &curr_token);
-                AstNode *return_type = node_symbol_from_token_create(curr_token);
-
-                add_ast_node_child(func_node, param_list);
-                add_ast_node_child(func_node, return_type);
-
                 if (!set_env(&((*context)->funcs), func_name, func_node)) {
                     print_error(ERR_COMMON,
                                 "Unable to set environment binding for "
@@ -615,35 +626,80 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                                 func_name->ast_val.node_symbol, 0);
                 }
 
-                if (!check_next_token("{", temp_file_data, &curr_token))
-                    print_error(ERR_SYNTAX, "Function definition doesn't have a body : `%s`",
+                if (!check_next_token("(", temp_file_data, &curr_token))
+                    print_error(ERR_SYNTAX,
+                                "Invalid function definition for : `%s`"
+                                "- Expected opening parenthesis",
                                 func_name->ast_val.node_symbol, 0);
 
-                *context = create_parsing_context(*context);
-
-                AstNode *params = func_node->child->child;
-                while (params != NULL) {
-                    if (!set_env(&((*context)->vars), params->child, params->child->next_child)) {
-                        print_error(ERR_COMMON,
-                                    "Unable to set environment binding for "
-                                    "variable : `%s`",
-                                    params->child->ast_val.node_symbol, 0);
-                    }
-                    params = params->next_child;
-                }
-
-                AstNode *func_body = node_alloc();
-                AstNode *func_expr = node_alloc();
-                add_ast_node_child(func_body, func_expr);
-                add_ast_node_child(func_node, func_body);
+                AstNode *param_list = node_alloc();
+                add_ast_node_child(func_node, param_list);
 
                 curr_stack = create_parsing_stack(curr_stack);
-                curr_stack->op = create_node_symbol("def_func");
-                curr_stack->res = func_expr;
+                *context = create_parsing_context(*context);
 
-                *running_expr = *func_node;
-                running_expr = func_expr;
+                if (check_next_token(")", temp_file_data, &curr_token)) {
+                    CHECK_END(**temp_file_data,
+                              "End of file - Incomplete function definition : `%s`",
+                              func_name->ast_val.node_symbol);
+                    // Parse return type of the function.
+                    if (!check_next_token("~", temp_file_data, &curr_token))
+                        print_error(ERR_SYNTAX, "Return type not specified for function", NULL, 0);
+
+                    curr_stack->op = create_node_symbol("def_func");
+
+                    *temp_file_data = lex_token(temp_file_data, &curr_token);
+                    AstNode *return_type = node_symbol_from_token_create(curr_token);
+                    AstNode *type_node = node_alloc();
+                    AstNode *temp_type_node = type_node;
+                    while (*return_type->ast_val.node_symbol == '@') {
+                        temp_type_node->type = TYPE_POINTER;
+                        AstNode *res_child = node_alloc();
+                        temp_type_node->child = res_child;
+                        temp_type_node = temp_type_node->child;
+                        *temp_file_data = lex_token(temp_file_data, &curr_token);
+                        return_type = node_symbol_from_token_create(curr_token);
+                    }
+
+                    int status = -1;
+                    parser_get_type(*context, return_type, &status);
+
+                    if (status == 0)
+                        print_error(ERR_TYPE, "Invalid return type for function", NULL, 0);
+                    if (type_node->type == TYPE_POINTER) {
+                        *temp_type_node = *return_type;
+                        curr_stack->body = type_node;
+                    } else
+                        curr_stack->body = return_type;
+                    curr_stack->res = curr_stack->body;
+                    param_list->next_child = curr_stack->body;
+
+                    // Parse function body.
+                    if (!check_next_token("{", temp_file_data, &curr_token))
+                        print_error(ERR_SYNTAX, "Couldn't find body for function definition", NULL,
+                                    0);
+
+                    AstNode *func_body = node_alloc();
+                    AstNode *func_expr = node_alloc();
+                    add_ast_node_child(func_body, func_expr);
+                    add_ast_node_child(func_node, func_body);
+
+                    curr_stack->body->next_child = func_body;
+                    curr_stack->body = curr_stack->body->next_child;
+                    curr_stack->res = func_expr;
+                    *running_expr = *func_node;
+                    running_expr = func_expr;
+                } else {
+                    AstNode *param = node_alloc();
+                    add_ast_node_child(param_list, param);
+                    curr_stack->op = create_node_symbol("def_func_params");
+                    curr_stack->res = param;
+                    curr_stack->body = param_list;
+                    *running_expr = *func_node;
+                    running_expr = param;
+                }
                 continue;
+
             } else {
                 /**
                  * int a := 340;
@@ -723,16 +779,20 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                                 AstNode *var_reassign = node_alloc();
                                 var_reassign->type = TYPE_VAR_REASSIGNMENT;
                                 AstNode *new_val = node_alloc();
-                                sym_name->type = TYPE_VAR_ACCESS;
-                                add_ast_node_child(var_reassign, sym_name);
+                                AstNode *sym_name_copy = node_alloc();
+                                copy_node(sym_name_copy, sym_name);
+                                sym_name_copy->type = TYPE_VAR_ACCESS;
+                                add_ast_node_child(var_reassign, sym_name_copy);
                                 add_ast_node_child(var_reassign, new_val);
 
                                 curr_var_decl->next_child = var_reassign;
 
-                                if (curr_stack != NULL)
-                                    *curr_stack->res = *curr_var_decl;
                                 *running_expr = *curr_var_decl;
                                 running_expr = new_val;
+                                if (curr_stack != NULL) {
+                                    *curr_stack->res = *curr_var_decl;
+                                    curr_stack->res = var_reassign;
+                                }
                                 continue;
                             }
                         }

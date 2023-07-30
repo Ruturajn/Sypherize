@@ -24,7 +24,7 @@ def_func test_fn(int: a, int: x) ~ int {
     a := 99
     x := 10
     a := 100;
-    func : bar := [int (int: w) { w }]
+    # func : bar := [int (int: w) { w }]
     a := 10;
 }
 

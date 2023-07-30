@@ -1,0 +1,10 @@
+def_func foo(int: a, int: b) ~ int {
+    int: d := 10;
+    a := 13;
+}
+
+def_func bar(@int: ptr) ~ int {
+    @ptr := 41;
+}
+
+foo(12,3);
