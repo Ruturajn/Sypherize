@@ -12,5 +12,6 @@ def_func bar() ~ int
 }
 
 int: d := 10;
+d := 100;
 
 bar()
