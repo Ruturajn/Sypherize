@@ -27,16 +27,18 @@ int set_env(Env **env_to_set, AstNode *identifier_node, AstNode *id_val) {
         return 1;
     }
 
-    while (temp != NULL) {
+    while (temp->next_id_bind != NULL) {
         if (node_cmp(temp->identifier, identifier_node)) {
+            // Should binding over-write be allowed??
+            // print_error(ERR_COMMON,
+            //             "Redefining Binding in environment for : `%s`",
+            //             identifier_node->ast_val.node_symbol, 0);
             temp->id_val = id_val;
             return 1;
         }
         temp = temp->next_id_bind;
     }
-
-    binds->next_id_bind = (*env_to_set)->binding;
-    (*env_to_set)->binding = binds;
+    temp->next_id_bind = binds;
     return 1;
 }
 

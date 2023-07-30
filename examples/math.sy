@@ -7,7 +7,7 @@ def_func test_function(int: a, int: x) ~ int {
     x := 10
     a := 100;
     # Following is the syntax for a lambda function.
-    func : bar := [int (int: w) { w }]
+    # func : bar := [int (int: w) { w }]
     a := 10;
     x
 }
