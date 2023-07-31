@@ -371,26 +371,14 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
             *temp_file_data = lex_token(temp_file_data, curr_token);
             AstNode *return_type = node_symbol_from_token_create(*curr_token);
             AstNode *type_node = node_alloc();
-            AstNode *temp_type_node = type_node;
-            while (*return_type->ast_val.node_symbol == '@') {
-                temp_type_node->type = TYPE_POINTER;
-                AstNode *res_child = node_alloc();
-                temp_type_node->child = res_child;
-                temp_type_node = temp_type_node->child;
-                *temp_file_data = lex_token(temp_file_data, curr_token);
-                return_type = node_symbol_from_token_create(*curr_token);
-            }
 
             int status = -1;
-            parser_get_type(*context, return_type, &status);
+            parse_type(&type_node, curr_token, temp_file_data, *context, &return_type, &status);
 
             if (status == 0)
                 print_error(ERR_TYPE, "Invalid return type for function", NULL, 0);
-            if (type_node->type == TYPE_POINTER) {
-                *temp_type_node = *return_type;
-                (*curr_stack)->body->next_child = type_node;
-            } else
-                (*curr_stack)->body->next_child = return_type;
+
+            (*curr_stack)->body->next_child = type_node;
             (*curr_stack)->body = (*curr_stack)->body->next_child;
             (*curr_stack)->res = (*curr_stack)->body;
 
@@ -456,6 +444,29 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
     (*curr_stack)->res = (*curr_stack)->res->next_child;
     *running_expr = (*curr_stack)->res;
     return STACK_OP_CONT_PARSE;
+}
+
+AstNode *parse_type(AstNode **type_node, LexedToken **curr_token, char **temp_file_data,
+                    ParsingContext *context, AstNode **sym_node, int *status) {
+    AstNode *temp_type_node = *type_node;
+    while (*((*sym_node)->ast_val.node_symbol) == '@') {
+        temp_type_node->type = TYPE_POINTER;
+        AstNode *res_child = node_alloc();
+        temp_type_node->child = res_child;
+        temp_type_node = temp_type_node->child;
+        *temp_file_data = lex_token(temp_file_data, curr_token);
+        *sym_node = node_symbol_from_token_create(*curr_token);
+    }
+
+    AstNode *res = parser_get_type(context, *sym_node, status);
+    if (*status) {
+        if ((*type_node)->type == TYPE_POINTER)
+            *temp_type_node = **sym_node;
+        else
+            copy_node(*type_node, *sym_node);
+        return res;
+    }
+    return NULL;
 }
 
 int check_if_type(char *temp_file_data, ParsingContext *context) {
@@ -651,26 +662,15 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                     *temp_file_data = lex_token(temp_file_data, &curr_token);
                     AstNode *return_type = node_symbol_from_token_create(curr_token);
                     AstNode *type_node = node_alloc();
-                    AstNode *temp_type_node = type_node;
-                    while (*return_type->ast_val.node_symbol == '@') {
-                        temp_type_node->type = TYPE_POINTER;
-                        AstNode *res_child = node_alloc();
-                        temp_type_node->child = res_child;
-                        temp_type_node = temp_type_node->child;
-                        *temp_file_data = lex_token(temp_file_data, &curr_token);
-                        return_type = node_symbol_from_token_create(curr_token);
-                    }
 
                     int status = -1;
-                    parser_get_type(*context, return_type, &status);
+                    parse_type(&type_node, &curr_token, temp_file_data, *context, &return_type,
+                               &status);
 
                     if (status == 0)
                         print_error(ERR_TYPE, "Invalid return type for function", NULL, 0);
-                    if (type_node->type == TYPE_POINTER) {
-                        *temp_type_node = *return_type;
-                        curr_stack->body = type_node;
-                    } else
-                        curr_stack->body = return_type;
+
+                    curr_stack->body = type_node;
                     curr_stack->res = curr_stack->body;
                     param_list->next_child = curr_stack->body;
 
@@ -710,18 +710,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                  */
                 AstNode *sym_node = node_symbol_from_token_create(curr_token);
                 AstNode *type_node = node_alloc();
-                AstNode *temp_type_node = type_node;
-                while (*sym_node->ast_val.node_symbol == '@') {
-                    temp_type_node->type = TYPE_POINTER;
-                    AstNode *res_child = node_alloc();
-                    temp_type_node->child = res_child;
-                    temp_type_node = temp_type_node->child;
-                    *temp_file_data = lex_token(temp_file_data, &curr_token);
-                    sym_node = node_symbol_from_token_create(curr_token);
-                }
 
                 int status = -1;
-                AstNode *res = parser_get_type(*context, sym_node, &status);
+                AstNode *res = parse_type(&type_node, &curr_token, temp_file_data, *context,
+                                          &sym_node, &status);
                 if (status) {
                     AstNode *curr_var_decl = node_alloc();
                     curr_var_decl->type = TYPE_VAR_DECLARATION;
@@ -747,21 +739,11 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                         AstNode *sym_name = node_alloc();
                         copy_node(sym_name, curr_sym);
                         add_ast_node_child(curr_var_decl, curr_sym);
-                        if (type_node->type == TYPE_POINTER) {
-                            *temp_type_node = *sym_node;
-                            if (!set_env(&((*context)->vars), sym_name, type_node)) {
-                                print_error(ERR_COMMON,
-                                            "Unable to set environment binding for "
-                                            "variable : `%s`",
-                                            sym_name->ast_val.node_symbol, 0);
-                            }
-                        } else {
-                            if (!set_env(&((*context)->vars), sym_name, sym_node)) {
-                                print_error(ERR_COMMON,
-                                            "Unable to set environment binding for "
-                                            "variable : `%s`",
-                                            sym_name->ast_val.node_symbol, 0);
-                            }
+                        if (!set_env(&((*context)->vars), sym_name, type_node)) {
+                            print_error(ERR_COMMON,
+                                        "Unable to set environment binding for "
+                                        "variable : `%s`",
+                                        sym_name->ast_val.node_symbol, 0);
                         }
 
                         // Lex again to look forward.

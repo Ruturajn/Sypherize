@@ -8,3 +8,10 @@ def_func bar(@int: ptr) ~ int {
 }
 
 foo(12,3);
+
+int : d := 10;
+@int : pointer;
+pointer := &d;
+@pointer := 22;
+# bar(pointer);
+d

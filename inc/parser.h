@@ -145,6 +145,9 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
                                       ParsingContext **context, long *running_precedence,
                                       AstNode **curr_expr);
 
+AstNode *parse_type(AstNode **temp_type_node, LexedToken **curr_token, char **temp_file_data,
+                    ParsingContext *context, AstNode **sym_node, int *status);
+
 int check_if_type(char *temp_file_data, ParsingContext *context);
 /**
  * @brief Parses tokens (TODO!!), and advances the pointer that

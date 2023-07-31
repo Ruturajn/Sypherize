@@ -208,6 +208,8 @@ void type_check_expr(ParsingContext *context, ParsingContext **context_to_enter,
         AstNode *param_list_type_sym = NULL;
         AstNode *param_list_type = NULL;
         while (func_call_params != NULL && func_param_list != NULL) {
+            // This is a temporary solution for getting the types of variables
+            // inside the function body.
             if (context->parent_ctx == NULL && context->child != NULL) {
                 ParsingContext *tmp_ctx = context->child;
                 while (tmp_ctx != NULL) {
@@ -226,6 +228,14 @@ void type_check_expr(ParsingContext *context, ParsingContext **context_to_enter,
                 }
             }
             if (stat == 1) {
+                // if (param_list_type_sym->child != NULL) {
+                //     param_list_type = parser_get_type(context, param_list_type_sym->child,
+                //     &stat);
+                //     *(param_list_type_sym->child) = *param_list_type;
+                //     *param_list_type = *param_list_type_sym;
+                // }
+                // else
+                //     param_list_type = parser_get_type(context, param_list_type_sym, &stat);
                 param_list_type = parser_get_type(context, param_list_type_sym, &stat);
                 if (stat == 0)
                     print_error(ERR_TYPE, "Unable to find type information for : `%s`",

@@ -368,43 +368,44 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
         break;
     case TYPE_VAR_REASSIGNMENT:
         if (codegen_verbose)
-            fprintf(fptr_code, ";#; Variable Re-assignment : `%s`\n",
-                    curr_expr->child->ast_val.node_symbol);
-        if (cg_ctx->parent_ctx != NULL) {
-            // Code gen RHS
-            target_x86_64_win_codegen_expr(reg_head, context, curr_expr->child->next_child, cg_ctx,
-                                           fptr_code);
-            if (curr_expr->child->type == TYPE_DEREFERENCE) {
-                target_x86_64_win_codegen_expr(reg_head, context, curr_expr->child, cg_ctx,
-                                               fptr_code);
-                fprintf(fptr_code, "mov %s, (%s)\n",
-                        get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head),
-                        get_reg_name(curr_expr->child->result_reg_desc, reg_head));
+            fprintf(fptr_code, ";#; Variable Re-assignment\n");
+        AstNode *temp_sym = curr_expr->child;
+        while (temp_sym != NULL && temp_sym->type != TYPE_VAR_ACCESS)
+            temp_sym = temp_sym->child;
+        if (temp_sym == NULL)
+            print_error(ERR_COMMON,
+                        "Unable to find valid variable access in a variable Re-assignment", NULL,
+                        0);
+        target_x86_64_win_codegen_expr(reg_head, context, curr_expr->child->next_child, cg_ctx,
+                                       fptr_code);
 
-                reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
-                reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
-            } else {
-                fprintf(fptr_code, "mov %s, %s\n",
-                        get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head),
-                        map_sym_to_addr_win(cg_ctx, curr_expr->child));
-
-                reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
-                reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
-            }
+        char *res_string = NULL;
+        char res_string_free = 0;
+        if (curr_expr->child->type == TYPE_VAR_ACCESS) {
+            res_string = map_sym_to_addr_win(cg_ctx, temp_sym);
         } else {
-            if (curr_expr->child->next_child->type == TYPE_INT) {
-                fprintf(fptr_code, "movq $%ld, %s\n", curr_expr->child->next_child->ast_val.val,
-                        map_sym_to_addr_win(cg_ctx, curr_expr->child));
-            } else {
-                target_x86_64_win_codegen_expr(reg_head, context, curr_expr->child->next_child,
-                                               cg_ctx, fptr_code);
-                char *res_reg =
-                    get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head);
-                fprintf(fptr_code, "mov %s, %s\n", res_reg,
-                        map_sym_to_addr_win(cg_ctx, curr_expr->child));
-                reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
-            }
+            res_string_free = 1;
+            target_x86_64_win_codegen_expr(reg_head, context, curr_expr->child, cg_ctx, fptr_code);
+            res_string = get_reg_name(curr_expr->child->result_reg_desc, reg_head);
+            char *res_string_copy = strdup(res_string);
+            size_t total_len = strlen(res_string) + 3;
+            res_string = calloc(total_len, sizeof(char));
+            snprintf(res_string, total_len, "(%s)", res_string_copy);
+            res_string[total_len] = '\0';
+            free(res_string_copy);
         }
+
+        fprintf(fptr_code, "mov %s, %s\n",
+                get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head), res_string);
+        // De-allocate RHS result register.
+        reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
+
+        if (res_string_free) {
+            free(res_string);
+            // De-allocate LHS result register.
+            reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+        }
+
         break;
     case TYPE_IF_CONDITION:;
         if (codegen_verbose)
@@ -570,12 +571,16 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
     fprintf(fptr_code, ".section .data\n");
 
     IdentifierBind *temp_var_bind = context->vars->binding;
+    AstNode *temp_var_id = NULL;
     int status = -1;
     while (temp_var_bind != NULL) {
-        AstNode *var = get_env(context->env_type, temp_var_bind->id_val, &status);
+        temp_var_id = temp_var_bind->id_val;
+        while (temp_var_id != NULL && temp_var_id->ast_val.node_symbol == NULL)
+            temp_var_id = temp_var_id->child;
+        AstNode *var = get_env(context->env_type, temp_var_id, &status);
         if (!status)
             print_error(ERR_COMMON, "Unable to retrieve value from environment for : `%s`",
-                        temp_var_bind->id_val->ast_val.node_symbol, 0);
+                        temp_var_id->ast_val.node_symbol, 0);
 
         fprintf(fptr_code, "%s: .space %ld\n", temp_var_bind->identifier->ast_val.node_symbol,
                 var->child->ast_val.val);
