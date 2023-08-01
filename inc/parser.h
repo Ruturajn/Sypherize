@@ -134,6 +134,8 @@ void lex_and_parse(char *file_dest, ParsingContext **curr_context, AstNode **pro
 
 int check_if_delims(LexedToken *token);
 
+int check_valid_var_access(ParsingContext *context, AstNode *sym_node);
+
 void print_parsing_context(ParsingContext *context, int indent);
 
 int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token, ParsingContext **context,

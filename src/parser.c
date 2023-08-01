@@ -273,6 +273,25 @@ int check_if_delims(LexedToken *token) {
     return 0;
 }
 
+int check_valid_var_access(ParsingContext *context, AstNode *sym_node) {
+    int status = -1;
+    ParsingContext *temp_ctx = context;
+    while (temp_ctx != NULL) {
+        status = -1;
+        get_env(temp_ctx->funcs, sym_node, &status);
+        if (status)
+            return 1;
+        get_env(temp_ctx->env_type, sym_node, &status);
+        if (status)
+            return 1;
+        temp_ctx = temp_ctx->parent_ctx;
+    }
+    if (strcmp(sym_node->ast_val.node_symbol, "else") == 0 ||
+        strcmp(sym_node->ast_val.node_symbol, "if") == 0)
+        return 1;
+    return 0;
+}
+
 StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
                                       AstNode **running_expr, char **temp_file_data,
                                       ParsingContext **context, long *running_precedence,
@@ -294,6 +313,7 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
             AstNode *if_expr_list = node_alloc();
             add_ast_node_child(if_then_body, if_expr_list);
             if (check_next_token("}", temp_file_data, curr_token)) {
+                *context = (*context)->parent_ctx;
                 *curr_stack = (*curr_stack)->parent_stack;
                 if (*curr_stack == NULL)
                     return STACK_OP_BREAK;
@@ -312,12 +332,17 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
     if (strcmp(op->ast_val.node_symbol, "if-then-body") == 0) {
         valid_op = 1;
         if (check_next_token("}", temp_file_data, curr_token)) {
+            // Move up a context, because 'if' is done.
+            *context = (*context)->parent_ctx;
 
             if (check_next_token("else", temp_file_data, curr_token)) {
                 if (check_next_token("{", temp_file_data, curr_token)) {
                     AstNode *if_else_body = node_alloc();
                     AstNode *if_expr_list = node_alloc();
                     add_ast_node_child(if_else_body, if_expr_list);
+
+                    // Create a new context for 'else'.
+                    *context = create_parsing_context(*context);
 
                     (*curr_stack)->body->next_child = if_else_body;
                     (*curr_stack)->body = if_else_body;
@@ -341,6 +366,7 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
     if (strcmp(op->ast_val.node_symbol, "if-else-body") == 0) {
         valid_op = 1;
         if (check_next_token("}", temp_file_data, curr_token)) {
+            *context = (*context)->parent_ctx;
             *curr_stack = (*curr_stack)->parent_stack;
             if (*curr_stack == NULL)
                 return STACK_OP_BREAK;
@@ -529,6 +555,8 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
 
                 *running_expr = *if_node;
                 running_expr = if_expr;
+
+                *context = create_parsing_context(*context);
 
                 curr_stack = create_parsing_stack(curr_stack);
                 curr_stack->op = create_node_symbol("if-cond");
@@ -810,7 +838,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                 // If the parsing flow reaches here, it means that we
                 // can check a variable access.
                 AstNode *node_var_access = NULL;
-                if (!check_if_delims(curr_token)) {
+                if (!check_if_delims(curr_token) && !check_valid_var_access(*context, sym_node)) {
                     ParsingContext *temp_ctx = *context;
                     while (temp_ctx != NULL) {
                         status = -1;
@@ -819,18 +847,16 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                             break;
                         temp_ctx = temp_ctx->parent_ctx;
                     }
-                    // if (!status)
-                    //     print_error(ERR_COMMON,
-                    //                 "Undefined symbol :"
-                    //                 "`%s`",
-                    //                 sym_node->ast_val.node_symbol, 0);
-                    if (status) {
-                        node_var_access = node_alloc();
-                        node_var_access->type = TYPE_VAR_ACCESS;
-                        node_var_access->ast_val.node_symbol =
-                            strdup(sym_node->ast_val.node_symbol);
-                        *running_expr = *node_var_access;
-                    }
+                    if (status == 0)
+                        print_error(ERR_COMMON,
+                                    "Undefined symbol :"
+                                    "`%s`",
+                                    sym_node->ast_val.node_symbol, 0);
+
+                    node_var_access = node_alloc();
+                    node_var_access->type = TYPE_VAR_ACCESS;
+                    node_var_access->ast_val.node_symbol = strdup(sym_node->ast_val.node_symbol);
+                    *running_expr = *node_var_access;
                 }
 
                 // Lex again to look forward.

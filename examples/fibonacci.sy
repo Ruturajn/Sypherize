@@ -3,7 +3,7 @@ def_func fib(int: a) ~ int {
         1
     }
     else {
-        fib(a-1) + fib(a-2);
+        fib(a-1) + fib(a-2)
     }
 }
 
