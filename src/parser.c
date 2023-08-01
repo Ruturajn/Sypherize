@@ -273,7 +273,7 @@ int check_if_delims(LexedToken *token) {
     return 0;
 }
 
-int check_valid_var_access(ParsingContext *context, AstNode *sym_node) {
+int check_invalid_var_access(ParsingContext *context, AstNode *sym_node) {
     int status = -1;
     ParsingContext *temp_ctx = context;
     while (temp_ctx != NULL) {
@@ -838,7 +838,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                 // If the parsing flow reaches here, it means that we
                 // can check a variable access.
                 AstNode *node_var_access = NULL;
-                if (!check_if_delims(curr_token) && !check_valid_var_access(*context, sym_node)) {
+                if (!check_if_delims(curr_token) && !check_invalid_var_access(*context, sym_node)) {
                     ParsingContext *temp_ctx = *context;
                     while (temp_ctx != NULL) {
                         status = -1;
