@@ -446,8 +446,6 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
             fprintf(fptr_code, ";#; Else Body\n");
         fprintf(fptr_code, "%s:\n", else_label);
 
-        fprintf(fptr_code, "mov $0, %s\n", get_reg_name(curr_expr->result_reg_desc, reg_head));
-
         // Else body
         last_expr = NULL;
         AstNode *else_expr = curr_expr->child->next_child->next_child;
@@ -464,6 +462,10 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
             fprintf(fptr_code, "mov %s, %s\n", get_reg_name(last_expr->result_reg_desc, reg_head),
                     get_reg_name(curr_expr->result_reg_desc, reg_head));
             reg_dealloc(reg_head, last_expr->result_reg_desc);
+        } else {
+            // If there is an 'if' statement with no else we need to set the
+            // result register for the 'if' statement.
+            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(curr_expr->result_reg_desc, reg_head));
         }
 
         fprintf(fptr_code, "%s:\n", after_else_label);
