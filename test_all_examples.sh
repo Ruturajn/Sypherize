@@ -1,4 +1,4 @@
-#!/ bin / bash
+#!/bin/bash
 
 #Save current working directory.
 CWD=$(pwd)
@@ -10,13 +10,11 @@ make clean all
 printf "\n\n"
 
 for file in ./examples/* ; do
-    if [[ "${file}" != "./examples/test_all_files.sh" ]] ; then
-        make test FILE_PATH="${file}"
-        if [[ $? -ne 0 ]] ; then
-            echo -e "\e[0;31m\nERROR : Failed Test - ${file}\e[0;37m"
-            cd "${CWD}"
-            exit 1
-        fi
+    make test FILE_PATH="${file}"
+    if [[ $? -ne 0 ]] ; then
+        echo -e "\e[0;31m\nERROR : Failed Test - ${file}\e[0;37m"
+        cd "${CWD}"
+        exit 1
     fi
 done
 

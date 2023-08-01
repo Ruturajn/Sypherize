@@ -450,18 +450,21 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
 
         // Else body
         last_expr = NULL;
-        AstNode *else_expr = curr_expr->child->next_child->next_child->child;
-        while (else_expr != NULL) {
-            target_x86_64_win_codegen_expr(reg_head, context, else_expr, cg_ctx, fptr_code);
-            if (last_expr != NULL)
-                reg_dealloc(reg_head, last_expr->result_reg_desc);
-            last_expr = else_expr;
-            else_expr = else_expr->next_child;
-        }
+        AstNode *else_expr = curr_expr->child->next_child->next_child;
+        if (else_expr != NULL) {
+            else_expr = else_expr->child;
+            while (else_expr != NULL) {
+                target_x86_64_win_codegen_expr(reg_head, context, else_expr, cg_ctx, fptr_code);
+                if (last_expr != NULL)
+                    reg_dealloc(reg_head, last_expr->result_reg_desc);
+                last_expr = else_expr;
+                else_expr = else_expr->next_child;
+            }
 
-        fprintf(fptr_code, "mov %s, %s\n", get_reg_name(last_expr->result_reg_desc, reg_head),
-                get_reg_name(curr_expr->result_reg_desc, reg_head));
-        reg_dealloc(reg_head, last_expr->result_reg_desc);
+            fprintf(fptr_code, "mov %s, %s\n", get_reg_name(last_expr->result_reg_desc, reg_head),
+                    get_reg_name(curr_expr->result_reg_desc, reg_head));
+            reg_dealloc(reg_head, last_expr->result_reg_desc);
+        }
 
         fprintf(fptr_code, "%s:\n", after_else_label);
 

@@ -18,7 +18,7 @@ fi
 # If you want to allow non-ASCII filenames set this variable to true.
 allownonascii=$(git config --bool hooks.allownonascii)
 
-files_to_format=$(git diff --name-only --cached --diff-filter=d | grep -E '(.c|.h)$')
+files_to_format=$(git diff --name-only --cached --diff-filter=d | grep -E '(\.c|\.h)$')
 echo "${files_to_format}" | xargs -I {} clang-format -i {}
 git add $(echo ${format_file} | sed 's|^|./|')
 
