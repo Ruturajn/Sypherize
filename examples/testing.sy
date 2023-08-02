@@ -1,17 +1,20 @@
 def_func foo(int: a, int: b) ~ int {
     int: d := 10;
     a := 13;
-}
-
-def_func bar(@int: ptr) ~ int {
-    @ptr := 41;
+    a
 }
 
 foo(12,3);
+
+def_func bar(@int: ptr) ~ int {
+    @ptr := 41;
+    21
+}
+
 
 int : d := 10;
 @int : pointer;
 pointer := &d;
 @pointer := 22;
-# bar(pointer);
+bar(pointer);
 d

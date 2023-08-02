@@ -391,7 +391,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
             size_t total_len = strlen(res_string) + 3;
             res_string = calloc(total_len, sizeof(char));
             snprintf(res_string, total_len, "(%s)", res_string_copy);
-            res_string[total_len] = '\0';
+            res_string[total_len - 1] = '\0';
             free(res_string_copy);
         }
 

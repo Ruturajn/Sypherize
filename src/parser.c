@@ -389,7 +389,17 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
 
     if (strcmp(op->ast_val.node_symbol, "def_func_params") == 0) {
         valid_op = 1;
+        if ((*running_expr)->type != TYPE_VAR_DECLARATION)
+            print_error(ERR_SYNTAX, "Found invalid declaration of function parameters", NULL, 0);
+        int status = -1;
+        AstNode *var_type = get_env((*context)->vars, (*running_expr)->child, &status);
+        if (status == 0)
+            print_error(ERR_COMMON, "Could not find type information for function parameter", NULL,
+                        0);
+
+        add_ast_node_child(*running_expr, var_type);
         if (check_next_token(")", temp_file_data, curr_token)) {
+
             // Parse return type of the function.
             if (!check_next_token("~", temp_file_data, curr_token))
                 print_error(ERR_SYNTAX, "Return type not specified for function", NULL, 0);
@@ -398,7 +408,7 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
             AstNode *return_type = node_symbol_from_token_create(*curr_token);
             AstNode *type_node = node_alloc();
 
-            int status = -1;
+            status = -1;
             parse_type(&type_node, curr_token, temp_file_data, *context, &return_type, &status);
 
             if (status == 0)

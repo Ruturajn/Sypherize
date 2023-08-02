@@ -137,10 +137,22 @@ void type_check_expr(ParsingContext *context, ParsingContext **context_to_enter,
     case TYPE_FUNCTION:;
         ParsingContext *to_enter = (*context_to_enter)->child;
         AstNode *function_body = temp_expr->child->next_child->next_child->child;
+        AstNode *last_expr = function_body;
         while (function_body != NULL) {
             type_check_expr(*context_to_enter, &to_enter, function_body);
+            last_expr = function_body;
             function_body = function_body->next_child;
         }
+        AstNode *last_expr_type = get_return_type(*context_to_enter, &to_enter, last_expr);
+        AstNode *func_ret_type = parser_get_type(context, temp_expr->child->next_child, &stat);
+        if (stat == 0)
+            print_error(ERR_COMMON, "Couldn't find information for return type of the function",
+                        NULL, 0);
+        if (cmp_type(last_expr_type, func_ret_type) == 0)
+            print_error(ERR_TYPE,
+                        "Found Mismatched type for function return type and last expression", NULL,
+                        0);
+
         (*context_to_enter) = (*context_to_enter)->next_child;
         break;
     case TYPE_VAR_REASSIGNMENT:;
@@ -205,53 +217,39 @@ void type_check_expr(ParsingContext *context, ParsingContext **context_to_enter,
         }
         AstNode *func_param_list = func_body->child->child;
         AstNode *func_call_params = temp_expr->child->next_child->child;
-        AstNode *param_list_type_sym = NULL;
         AstNode *param_list_type = NULL;
+        AstNode *param_call_type = NULL;
+        AstNode *temp_param_list_type = NULL;
+        AstNode *func_param_it = NULL;
         while (func_call_params != NULL && func_param_list != NULL) {
-            // This is a temporary solution for getting the types of variables
-            // inside the function body.
-            if (context->parent_ctx == NULL && context->child != NULL) {
-                ParsingContext *tmp_ctx = context->child;
-                while (tmp_ctx != NULL) {
-                    param_list_type_sym = get_env(tmp_ctx->vars, func_param_list->child, &stat);
-                    if (stat)
-                        break;
-                    tmp_ctx = tmp_ctx->next_child;
-                }
-            } else {
-                ParsingContext *tmp_ctx = context;
-                while (tmp_ctx != NULL) {
-                    param_list_type_sym = get_env(tmp_ctx->vars, func_param_list->child, &stat);
-                    if (stat)
-                        break;
-                    tmp_ctx = tmp_ctx->parent_ctx;
-                }
+            param_call_type = get_return_type(context, context_to_enter, func_call_params);
+
+            AstNode *complete_param_list_type = node_alloc();
+            copy_node(complete_param_list_type, func_param_list->child->next_child);
+            func_param_it = func_param_list->child->next_child;
+            temp_param_list_type = complete_param_list_type;
+
+            while (func_param_it != NULL && func_param_it->type != TYPE_SYM) {
+                temp_param_list_type->child = node_alloc();
+                temp_param_list_type->child->type = func_param_it->type;
+                temp_param_list_type = temp_param_list_type->child;
+                func_param_it = func_param_it->child;
             }
-            if (stat == 1) {
-                // if (param_list_type_sym->child != NULL) {
-                //     param_list_type = parser_get_type(context, param_list_type_sym->child,
-                //     &stat);
-                //     *(param_list_type_sym->child) = *param_list_type;
-                //     *param_list_type = *param_list_type_sym;
-                // }
-                // else
-                //     param_list_type = parser_get_type(context, param_list_type_sym, &stat);
-                param_list_type = parser_get_type(context, param_list_type_sym, &stat);
-                if (stat == 0)
-                    print_error(ERR_TYPE, "Unable to find type information for : `%s`",
-                                param_list_type->ast_val.node_symbol, 0);
-            } else
-                print_error(ERR_TYPE, "Unable to find type information for variable : `%s`",
-                            func_param_list->child->ast_val.node_symbol, 0);
-            AstNode *param_call_type = get_return_type(context, context_to_enter, func_call_params);
+            param_list_type = parser_get_type(context, func_param_it, &stat);
+            *temp_param_list_type = *param_list_type;
+
+            if (stat == 0)
+                print_error(ERR_TYPE, "Unable to find type information for : `%s`",
+                            func_param_list->child->next_child->ast_val.node_symbol, 0);
             if (param_call_type->type == TYPE_NULL)
                 break;
-            if (cmp_type(param_call_type, param_list_type) == 0) {
+            if (cmp_type(param_call_type, complete_param_list_type) == 0) {
                 print_error(ERR_SYNTAX, "Mismatched argument type for function call : `%s`",
                             temp_expr->child->ast_val.node_symbol, 0);
             }
             func_param_list = func_param_list->next_child;
             func_call_params = func_call_params->next_child;
+            free_node(complete_param_list_type);
         }
         if (func_param_list != NULL) {
             print_error(ERR_ARGS,
