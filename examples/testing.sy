@@ -6,9 +6,9 @@ def_func foo(int: a, int: b) ~ int {
 
 foo(12,3);
 
-def_func bar(@int: ptr) ~ int {
-    @ptr := 41;
-    21
+def_func bar(@int: ptr) ~ @int {
+    @ptr := 41 + 28;
+    ptr
 }
 
 
