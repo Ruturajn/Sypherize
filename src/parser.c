@@ -248,7 +248,7 @@ void lex_and_parse(char *file_dest, ParsingContext **curr_context, AstNode **pro
 
     // The whole program will be tokenized and parsed into an
     // AST which will be created from the curr_node.
-    AstNode *curr_expr;
+    AstNode *curr_expr = NULL;
 
     while (*temp_file_data != '\0') {
         curr_expr = node_alloc();

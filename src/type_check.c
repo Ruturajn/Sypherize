@@ -84,6 +84,49 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
             print_error(ERR_TYPE, "Only pointer types can be dereferenced", NULL, 0);
         *ret_type = *deref_type->child;
         break;
+    case TYPE_IF_CONDITION:;
+        // The last expression of both the if-then body and the else body needs
+        // to be checked. The last expression in both the bodies should be of
+        // the same type.
+
+        // Type check the condition of the if statement.
+        AstNode *if_cond = type_check_expr(context, context_to_enter, temp_expr->child);
+        free_node(if_cond);
+
+        // Type check the IF body.
+        AstNode *if_body_expr = temp_expr->child->next_child->child;
+        AstNode *if_expr_ret_type = NULL;
+        while (if_body_expr != NULL) {
+            if_expr_ret_type = type_check_expr(context, context_to_enter, if_body_expr);
+            if (if_body_expr->next_child != NULL)
+                free_node(if_expr_ret_type);
+            if_body_expr = if_body_expr->next_child;
+        }
+
+        // This will not allow for empty if body, what to do about that??
+        if (if_expr_ret_type == NULL)
+            print_error(ERR_TYPE,
+                        "No return type found for the last expression in the IF-THEN body", NULL,
+                        0);
+
+        // Check if there is a ELSE body, if so type check it, and compare the
+        // last expressions of both the IF body and the ELSE body.
+        if (temp_expr->child->next_child->next_child != NULL) {
+            AstNode *else_body_expr = temp_expr->child->next_child->next_child->child;
+            AstNode *else_expr_ret_type = NULL;
+            while (else_body_expr != NULL) {
+                else_expr_ret_type = type_check_expr(context, context_to_enter, else_body_expr);
+                if (else_body_expr->next_child != NULL)
+                    free_node(else_expr_ret_type);
+                else_body_expr = else_body_expr->next_child;
+            }
+
+            if (cmp_type(if_expr_ret_type, else_expr_ret_type) == 0)
+                print_error(ERR_TYPE, "IF-THEN body and the ELSE body do not return the same type",
+                            NULL, 0);
+        }
+        *ret_type = *if_expr_ret_type;
+        break;
     case TYPE_FUNCTION:;
         ParsingContext *to_enter = (*context_to_enter)->child;
         AstNode *function_body = temp_expr->child->next_child->next_child->child;
