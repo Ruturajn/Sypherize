@@ -16,5 +16,5 @@ int : d := 10;
 @int : pointer;
 pointer := &d;
 @pointer := 22;
-bar(pointer);
+pointer := bar(pointer);
 d

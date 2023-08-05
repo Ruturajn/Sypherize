@@ -20,105 +20,6 @@ int cmp_type(AstNode *node1, AstNode *node2) {
     return 1;
 }
 
-AstNode *get_return_type(ParsingContext *context, ParsingContext **context_to_enter,
-                         AstNode *expr) {
-    AstNode *ret_type = node_alloc();
-    int stat = -1;
-    switch (expr->type) {
-    case TYPE_ADDROF:;
-        type_check_expr(context, context_to_enter, expr);
-        AstNode *temp = get_return_type(context, context_to_enter, expr->child);
-        ret_type->type = TYPE_POINTER;
-        add_ast_node_child(ret_type, temp);
-        break;
-    case TYPE_DEREFERENCE:;
-        type_check_expr(context, context_to_enter, expr);
-        type_check_expr(context, context_to_enter, expr->child);
-        ret_type = get_return_type(context, context_to_enter, expr->child);
-        memcpy(ret_type, ret_type->child, sizeof(AstNode));
-        break;
-    case TYPE_VAR_ACCESS:;
-        ParsingContext *temp_ctx = context;
-        AstNode *sym_type = NULL;
-        if (temp_ctx->parent_ctx == NULL) {
-            sym_type = get_env_from_sym(temp_ctx->vars, expr->ast_val.node_symbol, &stat);
-            if (stat == 0)
-                print_error(ERR_COMMON, "Couldn't find information for variable : `%s`",
-                            expr->ast_val.node_symbol, 0);
-        } else {
-            while (temp_ctx->parent_ctx != NULL) {
-                sym_type = get_env_from_sym(temp_ctx->vars, expr->ast_val.node_symbol, &stat);
-                if (stat)
-                    break;
-                temp_ctx = temp_ctx->parent_ctx;
-            }
-            if (stat == 0)
-                print_error(ERR_COMMON, "Couldn't find information for variable : `%s`",
-                            expr->ast_val.node_symbol, 0);
-        }
-        // sym_type POINTER
-        //          `-- SYM : int
-
-        // The above node needs to be converted to:
-        // POINTER
-        //       `-- INT : 0
-        copy_node(ret_type, sym_type);
-        AstNode *temp_node = ret_type;
-        while (temp_node->child != NULL)
-            temp_node = temp_node->child;
-
-        AstNode *type_node = parser_get_type(temp_ctx, temp_node, &stat);
-        if (stat == 0)
-            print_error(ERR_COMMON, "Couldn't find information for `type` of variable : `%s`",
-                        expr->ast_val.node_symbol, 0);
-        *temp_node = *type_node;
-        break;
-    case TYPE_BINARY_OPERATOR:
-        type_check_expr(context, context_to_enter, expr);
-        temp_ctx = context;
-        while (temp_ctx->parent_ctx != NULL)
-            temp_ctx = temp_ctx->parent_ctx;
-        AstNode *op_sym = create_node_symbol(expr->ast_val.node_symbol);
-        AstNode *op_data = get_env(temp_ctx->binary_ops, op_sym, &stat);
-        if (!stat)
-            print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
-                        op_data->child->next_child->next_child->ast_val.node_symbol, 0);
-        AstNode *op_decl_ret_type = parser_get_type(temp_ctx, op_data->child->next_child, &stat);
-        if (!stat)
-            print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
-                        op_data->child->next_child->ast_val.node_symbol, 0);
-        ret_type = op_decl_ret_type;
-        free_node(op_sym);
-        free_node(op_data);
-        break;
-    case TYPE_FUNCTION_CALL:;
-        AstNode *func_body = parser_get_func(context, expr->child, &stat);
-        if (!stat)
-            print_error(ERR_COMMON,
-                        "Function definition not found :"
-                        "`%s`",
-                        expr->child->ast_val.node_symbol, 0);
-        AstNode *func_ret = parser_get_type(context, func_body->child->next_child, &stat);
-        if (!stat)
-            print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
-                        func_body->child->next_child->ast_val.node_symbol, 0);
-        *ret_type = *func_ret;
-        free_node(func_body);
-        break;
-    case TYPE_INT:;
-        stat = -1;
-        AstNode *ret_type_int = parser_get_type(context, create_node_symbol("int"), &stat);
-        if (stat == 0)
-            print_error(ERR_COMMON, "Couldn't find information for type in environment", NULL, 0);
-        ret_type = ret_type_int;
-        break;
-    default:
-        ret_type = expr;
-        break;
-    }
-    return ret_type;
-}
-
 AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_enter,
                          AstNode *expr) {
     AstNode *temp_expr = expr;
@@ -134,7 +35,7 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         *ret_type = *ret_int_type;
         break;
     case TYPE_ADDROF:;
-        if (temp_expr->child->type != TYPE_VAR_ACCESS)
+        if (temp_expr->child == NULL || temp_expr->child->type != TYPE_VAR_ACCESS)
             print_error(ERR_SYNTAX, "Expected valid variable access for AddressOf operator", NULL,
                         0);
         AstNode *var_access_type = type_check_expr(context, context_to_enter, temp_expr->child);
@@ -192,14 +93,14 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
             last_expr = function_body;
             function_body = function_body->next_child;
         }
-        AstNode *last_expr_type = get_return_type(*context_to_enter, &to_enter, last_expr);
+        AstNode *last_expr_type = type_check_expr(*context_to_enter, &to_enter, last_expr);
 
         AstNode *complete_func_ret_type = node_alloc();
         copy_node(complete_func_ret_type, temp_expr->child->next_child);
         AstNode *temp_func_ret_type = complete_func_ret_type;
         AstNode *temp_expr_ret_type = temp_expr->child->next_child;
 
-        while (temp_expr_ret_type != NULL && temp_expr_ret_type->type != TYPE_SYM) {
+        while (temp_expr_ret_type != NULL && temp_expr_ret_type->child != NULL) {
             temp_func_ret_type->type = TYPE_POINTER;
             temp_func_ret_type->child = node_alloc();
             temp_func_ret_type->child->type = temp_expr_ret_type->type;
@@ -214,7 +115,11 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
             print_error(ERR_COMMON, "Couldn't find information for return type of the function",
                         NULL, 0);
         if (cmp_type(last_expr_type, complete_func_ret_type) == 0) {
-            print_ast_node(last_expr_type, 0);
+            printf("Expression:\n");
+            print_ast_node(temp_expr, 0);
+            printf("LAST EXPR:\n");
+            print_ast_node(last_expr, 0);
+            printf("EXPECTED RETURN TYPE:\n");
             print_ast_node(complete_func_ret_type, 0);
             print_error(ERR_TYPE,
                         "Found Mismatched type for function return type and last expression", NULL,
@@ -305,7 +210,7 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
             func_param_it = func_param_list->child->next_child;
             temp_param_list_type = complete_param_list_type;
 
-            while (func_param_it != NULL && func_param_it->type != TYPE_SYM) {
+            while (func_param_it != NULL && func_param_it->child != NULL) {
                 temp_param_list_type->type = TYPE_POINTER;
                 temp_param_list_type->child = node_alloc();
                 temp_param_list_type->child->type = func_param_it->type;
@@ -344,13 +249,24 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         }
         free_node(param_list_type);
         stat = -1;
-        AstNode *function_return_type =
-            parser_get_type(context, func_body->child->next_child, &stat);
+        AstNode *final_function_return_type = node_alloc();
+        copy_node(final_function_return_type, func_body->child->next_child);
+        AstNode *temp_function_return_type = final_function_return_type;
+        AstNode *temp_actual_return_type = func_body->child->next_child;
+        while (temp_actual_return_type != NULL && temp_actual_return_type->child != NULL) {
+            temp_function_return_type->type = TYPE_POINTER;
+            temp_function_return_type->child = node_alloc();
+            temp_function_return_type = temp_function_return_type->child;
+            temp_actual_return_type = temp_actual_return_type->child;
+        }
+        stat = -1;
+        AstNode *function_return_type = parser_get_type(context, temp_actual_return_type, &stat);
         if (stat == 0)
             print_error(ERR_COMMON,
                         "Could not find information for return type of function call : `%s`",
                         func_body->child->next_child->ast_val.node_symbol, 0);
-        *ret_type = *function_return_type;
+        *temp_function_return_type = *function_return_type;
+        *ret_type = *final_function_return_type;
         free_node(func_body);
         break;
     default:
