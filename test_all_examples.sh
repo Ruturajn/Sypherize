@@ -1,4 +1,6 @@
 #!/bin/bash
+# This script compiles all the sypher files present in the examples
+# directory, and checks the exit code for deciding `PASS` / `FAIL`.
 
 #Save current working directory.
 CWD=$(pwd)

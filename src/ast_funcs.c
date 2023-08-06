@@ -29,7 +29,11 @@ char *get_node_str(AstNode *node) {
         snprintf(node_buf, NODE_BUF_SIZE, "VAR ACCESS : %s", node->ast_val.node_symbol);
         break;
     case TYPE_SYM:
-        snprintf(node_buf, NODE_BUF_SIZE, "SYM : %s", node->ast_val.node_symbol);
+        if (node->pointer_level == 0)
+            snprintf(node_buf, NODE_BUF_SIZE, "SYM : %s", node->ast_val.node_symbol);
+        else
+            snprintf(node_buf, NODE_BUF_SIZE, "SYM : %s (INDIRECT: %d)", node->ast_val.node_symbol,
+                     node->pointer_level);
         break;
     case TYPE_VAR_REASSIGNMENT:
         snprintf(node_buf, NODE_BUF_SIZE, "VAR REASSIGNMENT");
@@ -42,9 +46,6 @@ char *get_node_str(AstNode *node) {
         break;
     case TYPE_IF_CONDITION:
         snprintf(node_buf, NODE_BUF_SIZE, "IF CONDITION");
-        break;
-    case TYPE_POINTER:
-        snprintf(node_buf, NODE_BUF_SIZE, "POINTER");
         break;
     case TYPE_ADDROF:
         snprintf(node_buf, NODE_BUF_SIZE, "ADDRESS OF");
@@ -129,9 +130,6 @@ int node_cmp(AstNode *node1, AstNode *node2) {
     case TYPE_IF_CONDITION:
         printf("TODO : IF CONDITION!\n");
         break;
-    case TYPE_POINTER:
-        printf("TODO : POINTER!\n");
-        break;
     case TYPE_ADDROF:
         printf("TODO : ADDROF!\n");
         break;
@@ -153,6 +151,7 @@ AstNode *node_alloc() {
     new_node->next_child = NULL;
     new_node->ast_val.node_symbol = NULL;
     new_node->ast_val.val = 0;
+    new_node->pointer_level = 0;
 
     return new_node;
 }
@@ -223,6 +222,7 @@ int copy_node(AstNode *dst_node, AstNode *src_node) {
         return 0;
 
     dst_node->type = src_node->type;
+    dst_node->pointer_level = src_node->pointer_level;
 
     if (src_node->ast_val.node_symbol != NULL)
         dst_node->ast_val.node_symbol = strdup(src_node->ast_val.node_symbol);

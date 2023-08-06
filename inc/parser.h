@@ -24,7 +24,6 @@ typedef enum NodeType {
     TYPE_FUNCTION,         ///< Node for storing functions.
     TYPE_FUNCTION_CALL,    ///< Node for storing function calls.
     TYPE_IF_CONDITION,     ///< Node for storing if-else statements.
-    TYPE_POINTER,          ///< Node for a pointer.
     TYPE_ADDROF,           ///< Node for storing address of a variable.
     TYPE_DEREFERENCE,      ///< Node for storing the dereferenced value of a
                            ///< pointer.
@@ -49,6 +48,7 @@ typedef struct AstNode {
     struct AstNode *next_child; ///< Next child for this node.
     int result_reg_desc;        ///< Register descriptor for stroing the
                                 ///< rersult.
+    unsigned int pointer_level; ///< Indirection level for a pointer.
 } AstNode;
 
 typedef struct ParsingStack {
@@ -148,7 +148,7 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
                                       AstNode **curr_expr);
 
 AstNode *parse_type(AstNode **temp_type_node, LexedToken **curr_token, char **temp_file_data,
-                    ParsingContext *context, AstNode **sym_node, int *status);
+                    ParsingContext *context, int *status);
 
 int check_if_type(char *temp_file_data, ParsingContext *context);
 /**
