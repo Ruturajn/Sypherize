@@ -1,6 +1,9 @@
 # The return value from the last expression is the exit code
 # of the program.
 
+# For more information about functions and the language
+# see `factorial.sy`.
+
 # This is a variable declaration, without initialization.
 int: a;
 
