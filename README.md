@@ -1,13 +1,9 @@
 # Sypherize
 
 **Sypherize** (with an *S*) is a compiler written in C, for a C-like language
-called **Sypher**. See [`Usage`](https://github.com/Ruturajn/Sypherize/tree/main#usage) for more details.
-
-> **Note**
-> 
-> This project is still very much a work in progress, with some fundamental features that are already supported.
-> You can take a look at some sample programs under the `examples` directory. As the project matures, there will
-> be better documentation detailing the language and all the related intricacies.
+called **Sypher**. Sypher is aimed to be a general-purpose statically typed
+programming language. The `examples` directory contains some sample programs for
+reference. See [`Usage`](https://github.com/Ruturajn/Sypherize/tree/main#usage) for more details.
 
 ## Overwiew
 
