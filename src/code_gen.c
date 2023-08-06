@@ -158,15 +158,9 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         if (cg_ctx->parent_ctx == NULL)
             break;
         AstNode *var_node = NULL;
-        ParsingContext *temp_ctx = context;
         int stat = -1;
-        while (temp_ctx != NULL) {
-            var_node = get_env(temp_ctx->vars, curr_expr->child, &stat);
-            if (stat)
-                break;
-            temp_ctx = temp_ctx->parent_ctx;
-        }
-        if (var_node->type == TYPE_NULL)
+        var_node = parser_get_var(context, curr_expr->child, &stat);
+        if (stat == 0)
             print_error(ERR_COMMON, "Unable to find variable in environment : `%s`",
                         curr_expr->child->ast_val.node_symbol, 0);
         AstNode *type_node = NULL;
@@ -204,13 +198,6 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             fprintf(fptr_code, "mov %s(%%rip), %s\n", curr_expr->ast_val.node_symbol,
                     get_reg_name(curr_expr->result_reg_desc, reg_head));
         } else {
-            // CGContext *temp_cg_ctx = cg_ctx;
-            // while (temp_cg_ctx != NULL) {
-            //     local_var_name = get_env(cg_ctx->local_env, curr_expr,
-            //     &stat); if (stat)
-            //         break;
-            //     temp_cg_ctx = temp_cg_ctx->parent_ctx;
-            // }
             stat = -1;
             AstNode *local_var_name =
                 get_env_from_sym(cg_ctx->local_env, curr_expr->ast_val.node_symbol, &stat);
@@ -355,12 +342,26 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
     case TYPE_FUNCTION:;
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Function Definition\n");
-        if (cg_ctx->parent_ctx == NULL) {
-            break;
+
+        ParsingContext *tmp_ctx = context;
+        AstNode *func_id = NULL;
+        stat = -1;
+        while (tmp_ctx != NULL) {
+            func_id = get_env_from_val(context->funcs, curr_expr, &stat);
+            if (stat)
+                break;
+            tmp_ctx = tmp_ctx->parent_ctx;
+            if (tmp_ctx != NULL)
+                free_node(func_id);
         }
-        char *lambda_func_name = gen_label();
-        target_x86_64_win_codegen_func(reg_head, cg_ctx, context, ctx_child, lambda_func_name,
-                                       curr_expr, fptr_code);
+        char *func_name = NULL;
+        if (stat)
+            func_name = func_id->ast_val.node_symbol;
+        else
+            func_name = gen_label();
+
+        target_x86_64_win_codegen_func(reg_head, cg_ctx, context, ctx_child, func_name, curr_expr,
+                                       fptr_code);
         break;
     case TYPE_VAR_REASSIGNMENT:
         if (codegen_verbose)
@@ -600,24 +601,14 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
         temp_var_bind = temp_var_bind->next_id_bind;
     }
 
-    fprintf(fptr_code, ".section .text\n");
-
-    ParsingContext *ctx_child = context->child;
-    IdentifierBind *temp_bind = context->funcs->binding;
-    status = -1;
-    while (temp_bind != NULL) {
-        target_x86_64_win_codegen_func(reg_head, cg_ctx, context, &ctx_child,
-                                       temp_bind->identifier->ast_val.node_symbol,
-                                       temp_bind->id_val, fptr_code);
-        temp_bind = temp_bind->next_id_bind;
-    }
-
     fprintf(fptr_code,
+            ".section .text\n"
             ".global main\n"
             "main:\n"
             "%s",
             FUNC_HEADER_x86_64);
 
+    ParsingContext *ctx_child = context->child;
     AstNode *curr_expr = program->child;
     AstNode *last_expr = NULL;
     while (curr_expr != NULL) {

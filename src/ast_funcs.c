@@ -90,27 +90,26 @@ int node_cmp(AstNode *node1, AstNode *node2) {
         return 0;
     }
 
+    AstNode *node1_child = node1->child;
+    AstNode *node2_child = node2->child;
+    while (node1_child != NULL && node2_child != NULL) {
+        if (node_cmp(node1_child, node2_child) == 0)
+            return 0;
+        node1_child = node1_child->next_child;
+        node2_child = node2_child->next_child;
+    }
+
+    if ((node1->child == NULL && node2->child != NULL) ||
+        (node1->child != NULL && node2->child == NULL))
+        return 0;
+
     switch (node1->type) {
-    case TYPE_NULL:
-        break;
-    case TYPE_PROGRAM:
-        break;
-    case TYPE_ROOT:
-        printf("Compare Programs : Not implemented\n");
-        break;
     case TYPE_INT:
         if (node1->ast_val.val == node2->ast_val.val)
             return 1;
         break;
     case TYPE_BINARY_OPERATOR:
-        printf("TODO : BINARY OPERATOR!\n");
-        break;
-    case TYPE_VAR_DECLARATION:
-        printf("TODO : VAR DECLARATION!\n");
-        break;
     case TYPE_VAR_ACCESS:
-        printf("TODO : VAR ACCESS!\n");
-        break;
     case TYPE_SYM:
         if (node1->ast_val.node_symbol != NULL && node2->ast_val.node_symbol != NULL &&
             (strcmp(node1->ast_val.node_symbol, node2->ast_val.node_symbol) == 0))
@@ -118,26 +117,8 @@ int node_cmp(AstNode *node1, AstNode *node2) {
         else if (node1->ast_val.node_symbol == NULL && node2->ast_val.node_symbol == NULL)
             return 1;
         break;
-    case TYPE_VAR_REASSIGNMENT:
-        printf("TODO : VAR REASSIGNMENT!\n");
-        break;
-    case TYPE_FUNCTION:
-        printf("TODO : FUNCTION!\n");
-        break;
-    case TYPE_FUNCTION_CALL:
-        printf("TODO : FUNCTION CALL!\n");
-        break;
-    case TYPE_IF_CONDITION:
-        printf("TODO : IF CONDITION!\n");
-        break;
-    case TYPE_ADDROF:
-        printf("TODO : ADDROF!\n");
-        break;
-    case TYPE_DEREFERENCE:
-        printf("TODO : DEREFERENCE!\n");
-        break;
     default:
-        break;
+        return 1;
     }
 
     return 0;

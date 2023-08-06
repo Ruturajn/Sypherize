@@ -42,7 +42,7 @@ void print_error(ErrType err, char *fmt, char *str, int val) {
 }
 
 void print_warning(ErrType err, char *fmt, char *str, int val) {
-    printf("\033[1;32m[WARN]\033[1;37m ");
+    printf("\033[1;33m[WARN]\033[1;37m ");
     printf("%s :: ", err_strings[err]);
     if (val != 0)
         printf((const char *)fmt, val);

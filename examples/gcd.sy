@@ -14,4 +14,4 @@ def_func gcd_euclid(int: num1, int: num2) ~ int {
     }
 }
 
-gcd_euclid(88, 32)
+gcd_euclid(80, 32)

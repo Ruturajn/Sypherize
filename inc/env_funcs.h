@@ -61,6 +61,8 @@ AstNode *get_env(Env *Env_to_get, AstNode *identifier, int *stat);
 
 AstNode *get_env_from_sym(Env *Env_to_get, char *identifier, int *stat);
 
+AstNode *get_env_from_val(Env *Env_to_get, AstNode *val, int *stat);
+
 /**
  * @brief  Searches the parsing contexts, for a type node based
  *         on the identifier.

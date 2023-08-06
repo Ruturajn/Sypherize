@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
                             argv[i], 0);
             }
             if (in_file_idx != -1)
-                print_warning(ERR_ARGS, "Got multiple source files,uUsing latest : `%s`", argv[i],
+                print_warning(ERR_ARGS, "Got multiple source files,using latest : `%s`", argv[i],
                               0);
             in_file_idx = i;
         }
