@@ -101,11 +101,13 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         AstNode *if_cond = type_check_expr(context, context_to_enter, temp_expr->child);
         free_node(if_cond);
 
+        ParsingContext *to_enter = (*context_to_enter)->child;
+
         // Type check the IF body.
         AstNode *if_body_expr = temp_expr->child->next_child->child;
         AstNode *if_expr_ret_type = NULL;
         while (if_body_expr != NULL) {
-            if_expr_ret_type = type_check_expr(context, context_to_enter, if_body_expr);
+            if_expr_ret_type = type_check_expr(*context_to_enter, &to_enter, if_body_expr);
             if (if_body_expr->next_child != NULL)
                 free_node(if_expr_ret_type);
             if_body_expr = if_body_expr->next_child;
@@ -118,17 +120,21 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
                         "No return type found for the last expression in the IF-THEN body", NULL,
                         0);
 
+        (*context_to_enter) = (*context_to_enter)->next_child;
+
         // Check if there is a ELSE body, if so type check it, and compare the
         // last expressions of both the IF body and the ELSE body.
         if (temp_expr->child->next_child->next_child != NULL) {
+            to_enter = (*context_to_enter)->child;
             AstNode *else_body_expr = temp_expr->child->next_child->next_child->child;
             AstNode *else_expr_ret_type = NULL;
             while (else_body_expr != NULL) {
-                else_expr_ret_type = type_check_expr(context, context_to_enter, else_body_expr);
+                else_expr_ret_type = type_check_expr(*context_to_enter, &to_enter, else_body_expr);
                 if (else_body_expr->next_child != NULL)
                     free_node(else_expr_ret_type);
                 else_body_expr = else_body_expr->next_child;
             }
+            (*context_to_enter) = (*context_to_enter)->next_child;
 
             if (cmp_type_sym(if_expr_ret_type, else_expr_ret_type) == 0) {
                 print_type(temp_expr, if_expr_ret_type, else_expr_ret_type);
@@ -139,7 +145,7 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         *ret_type = *if_expr_ret_type;
         break;
     case TYPE_FUNCTION:;
-        ParsingContext *to_enter = (*context_to_enter)->child;
+        to_enter = (*context_to_enter)->child;
         AstNode *function_body = temp_expr->child->next_child->next_child->child;
         AstNode *expr_type = NULL;
         while (function_body != NULL) {

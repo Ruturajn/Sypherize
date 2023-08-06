@@ -201,7 +201,7 @@ void print_parsing_context(ParsingContext *context, int indent) {
         temp_ident--;
     }
     printf("TYPES:\n");
-    print_env(context->env_type, indent + 2);
+    print_env(context->env_type, indent + 4);
 
     temp_ident = indent;
     while (temp_ident != 0) {
@@ -209,7 +209,7 @@ void print_parsing_context(ParsingContext *context, int indent) {
         temp_ident--;
     }
     printf("VARIABLES:\n");
-    print_env(context->vars, indent + 2);
+    print_env(context->vars, indent + 4);
 
     temp_ident = indent;
     while (temp_ident != 0) {
@@ -217,7 +217,7 @@ void print_parsing_context(ParsingContext *context, int indent) {
         temp_ident--;
     }
     printf("FUCTIONS:\n");
-    print_env(context->funcs, indent + 2);
+    print_env(context->funcs, indent + 4);
 
     if (context->parent_ctx == NULL) {
         temp_ident = indent;
@@ -226,12 +226,13 @@ void print_parsing_context(ParsingContext *context, int indent) {
             temp_ident--;
         }
         printf("OPERATORS:\n");
-        print_env(context->binary_ops, indent + 2);
+        print_env(context->binary_ops, indent + 4);
     }
+    putchar('\n');
 
     ParsingContext *temp_ctx = context->child;
     while (temp_ctx != NULL) {
-        print_parsing_context(temp_ctx, indent + 2);
+        print_parsing_context(temp_ctx, indent + 4);
         temp_ctx = temp_ctx->next_child;
     }
 }
