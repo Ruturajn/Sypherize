@@ -201,7 +201,7 @@ void print_parsing_context(ParsingContext *context, int indent) {
         temp_ident--;
     }
     printf("TYPES:\n");
-    print_env(context->env_type, indent + 2);
+    print_env(context->env_type, indent + 4);
 
     temp_ident = indent;
     while (temp_ident != 0) {
@@ -209,7 +209,7 @@ void print_parsing_context(ParsingContext *context, int indent) {
         temp_ident--;
     }
     printf("VARIABLES:\n");
-    print_env(context->vars, indent + 2);
+    print_env(context->vars, indent + 4);
 
     temp_ident = indent;
     while (temp_ident != 0) {
@@ -217,7 +217,7 @@ void print_parsing_context(ParsingContext *context, int indent) {
         temp_ident--;
     }
     printf("FUCTIONS:\n");
-    print_env(context->funcs, indent + 2);
+    print_env(context->funcs, indent + 4);
 
     if (context->parent_ctx == NULL) {
         temp_ident = indent;
@@ -226,12 +226,13 @@ void print_parsing_context(ParsingContext *context, int indent) {
             temp_ident--;
         }
         printf("OPERATORS:\n");
-        print_env(context->binary_ops, indent + 2);
+        print_env(context->binary_ops, indent + 4);
     }
+    putchar('\n');
 
     ParsingContext *temp_ctx = context->child;
     while (temp_ctx != NULL) {
-        print_parsing_context(temp_ctx, indent + 2);
+        print_parsing_context(temp_ctx, indent + 4);
         temp_ctx = temp_ctx->next_child;
     }
 }
@@ -405,11 +406,10 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
                 print_error(ERR_SYNTAX, "Return type not specified for function", NULL, 0);
 
             *temp_file_data = lex_token(temp_file_data, curr_token);
-            AstNode *return_type = node_symbol_from_token_create(*curr_token);
             AstNode *type_node = node_alloc();
 
             status = -1;
-            parse_type(&type_node, curr_token, temp_file_data, *context, &return_type, &status);
+            parse_type(&type_node, curr_token, temp_file_data, *context, &status);
 
             if (status == 0)
                 print_error(ERR_TYPE, "Invalid return type for function", NULL, 0);
@@ -483,23 +483,19 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
 }
 
 AstNode *parse_type(AstNode **type_node, LexedToken **curr_token, char **temp_file_data,
-                    ParsingContext *context, AstNode **sym_node, int *status) {
-    AstNode *temp_type_node = *type_node;
-    while (*((*sym_node)->ast_val.node_symbol) == '@') {
-        temp_type_node->type = TYPE_POINTER;
-        AstNode *res_child = node_alloc();
-        temp_type_node->child = res_child;
-        temp_type_node = temp_type_node->child;
+                    ParsingContext *context, int *status) {
+    unsigned int pointer_indirect = 0;
+    while (*((*curr_token)->token_start) == '@') {
+        pointer_indirect += 1;
         *temp_file_data = lex_token(temp_file_data, curr_token);
-        *sym_node = node_symbol_from_token_create(*curr_token);
     }
 
-    AstNode *res = parser_get_type(context, *sym_node, status);
+    AstNode *sym_node = node_symbol_from_token_create(*curr_token);
+
+    AstNode *res = parser_get_type(context, sym_node, status);
     if (*status) {
-        if ((*type_node)->type == TYPE_POINTER)
-            *temp_type_node = **sym_node;
-        else
-            copy_node(*type_node, *sym_node);
+        copy_node(*type_node, sym_node);
+        (*type_node)->pointer_level = pointer_indirect;
         return res;
     }
     return NULL;
@@ -698,12 +694,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                     curr_stack->op = create_node_symbol("def_func");
 
                     *temp_file_data = lex_token(temp_file_data, &curr_token);
-                    AstNode *return_type = node_symbol_from_token_create(curr_token);
                     AstNode *type_node = node_alloc();
 
                     int status = -1;
-                    parse_type(&type_node, &curr_token, temp_file_data, *context, &return_type,
-                               &status);
+                    parse_type(&type_node, &curr_token, temp_file_data, *context, &status);
 
                     if (status == 0)
                         print_error(ERR_TYPE, "Invalid return type for function", NULL, 0);
@@ -746,12 +740,11 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                  *        `-- VARIABLE_INITIALIZED
                  *            `-- INT (420) -> SYMBOL (a)
                  */
-                AstNode *sym_node = node_symbol_from_token_create(curr_token);
                 AstNode *type_node = node_alloc();
 
                 int status = -1;
-                AstNode *res = parse_type(&type_node, &curr_token, temp_file_data, *context,
-                                          &sym_node, &status);
+                AstNode *res =
+                    parse_type(&type_node, &curr_token, temp_file_data, *context, &status);
                 if (status) {
                     AstNode *curr_var_decl = node_alloc();
                     curr_var_decl->type = TYPE_VAR_DECLARATION;
@@ -845,6 +838,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                 }
                 free_node(res);
 
+                AstNode *sym_node = node_symbol_from_token_create(curr_token);
                 // If the parsing flow reaches here, it means that we
                 // can check a variable access.
                 AstNode *node_var_access = NULL;

@@ -177,7 +177,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstN
         }
         AstNode *type_node = NULL;
         long size_in_bytes = 0;
-        if (var_node->type == TYPE_POINTER)
+        if (var_node->pointer_level != 0)
             size_in_bytes = 8;
         else {
             type_node = parser_get_type(context, var_node, &stat);

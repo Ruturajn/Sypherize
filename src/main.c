@@ -101,6 +101,7 @@ int main(int argc, char **argv) {
 
     if (is_verbose == 1) {
         print_ast_node(program, 0);
+        putchar('\n');
         print_parsing_context(curr_context, 0);
     }
 
