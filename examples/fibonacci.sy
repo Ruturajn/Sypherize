@@ -1,3 +1,7 @@
+# This function returns a value from the fibonacci sequence
+# at the index pointed to by the argument. For more information
+# about functions and the language see `factorial.sy`..
+
 def_func fib(int: a) ~ int {
     if a < 2 {
         1

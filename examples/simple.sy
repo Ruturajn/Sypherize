@@ -1,24 +1,26 @@
 # This is a comment, don't lex this.
 
+# The return value from the last expression is the exit code
+# of the program.
+
 # This is a variable declaration.
 int: a := 340; ` this is also a comment.
 
-` How about this.
-#And this.
+` And this.
 
 a := 10;
 
 a := 93
 ` This is a variable declaration
 
-# Assigning value to a variable.
 int: new_val;
 
+# Assigning value to a variable.
 new_val := 11;
 
 new_val := 83;
 
-### This is again a comment. Probably too much XD.
+### This is again a comment.
 def_func test_fn(int: a, int: x) ~ int {
     x := 33;
     a := 99
@@ -28,7 +30,9 @@ def_func test_fn(int: a, int: x) ~ int {
     a := 10;
 }
 
-[int (int: w) { w := 10 }]
+# Following is the syntax for a lambda function.
+# These aren't completely supported yet.
+# [int (int: w) { w := 10 }]
 
 test_fn(13, 94);
 

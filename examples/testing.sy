@@ -1,3 +1,6 @@
+# The return value from the last expression is the exit code
+# of the program.
+
 def_func foo(int: a, int: b) ~ int {
     int: d := 10;
     a := 13;

@@ -1,3 +1,6 @@
+# The return value from the last expression is the exit code
+# of the program.
+
 # This is a basic math expression
 2 * 3 + 1 - 2
 
@@ -7,6 +10,7 @@ def_func test_function(int: a, int: x) ~ int {
     x := 10
     a := 100;
     # Following is the syntax for a lambda function.
+    # These aren't completely supported yet.
     # func : bar := [int (int: w) { w }]
     a := 10;
     x
@@ -14,7 +18,9 @@ def_func test_function(int: a, int: x) ~ int {
 
 2 * 3 + 1 - 2
 
-[int (int: w) { w := 10 }]
+# Following is the syntax for a lambda function.
+# These aren't completely supported yet.
+# [int (int: w) { w := 10 }]
 
 int : a := 10;
 

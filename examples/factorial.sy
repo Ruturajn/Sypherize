@@ -1,9 +1,17 @@
+# This function calculates the factorial of a number. The
+# last expression in a function is the return value of the function.
+
 def_func fact(int: a) ~ int {
     if a < 2 {
+        # Return value of the function.
         1
     } else {
+        ` Return value of the function.
         a * fact(a - 1);
     }
 }
 
+# The return value of the last expression in the file, is
+# the exit code for the program. So, in this case the exit
+# code will be `120`.
 fact(5);
