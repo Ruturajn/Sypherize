@@ -66,11 +66,13 @@ char *gen_label();
 
 char *map_sym_to_addr_win(CGContext *cg_ctx, AstNode *sym_node);
 
-void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context, AstNode *curr_expr,
+void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
+                                    ParsingContext **ctx_child, AstNode *curr_expr,
                                     CGContext *cg_ctx, FILE *fptr_code);
 
 void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx, ParsingContext *context,
-                                    char *func_name, AstNode *func, FILE *fptr_code);
+                                    ParsingContext **ctx_child, char *func_name, AstNode *func,
+                                    FILE *fptr_code);
 
 void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, CGContext *cg_ctx,
                                     FILE *fptr_code);
