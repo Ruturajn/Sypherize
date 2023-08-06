@@ -1,8 +1,8 @@
 #include "../inc/code_gen.h"
 #include "../inc/ast_funcs.h"
 #include "../inc/env_funcs.h"
-#include "../inc/helpers.h"
 #include "../inc/parser.h"
+#include "../inc/utils.h"
 
 char label_arr[LABEL_ARR_SIZE];
 int label_cnt = 0;

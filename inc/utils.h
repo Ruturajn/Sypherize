@@ -1,5 +1,5 @@
-#ifndef __HELPERS_H__
-#define __HELPERS_H__
+#ifndef __UTILS_H__
+#define __UTILS_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -111,4 +111,4 @@ size_t calculate_file_size(FILE *file_ptr);
 }
 #endif
 
-#endif /* __HELPERS_H__ */
+#endif /* __UTILS_H__ */

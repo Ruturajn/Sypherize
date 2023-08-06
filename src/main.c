@@ -1,9 +1,9 @@
 #include "../inc/ast_funcs.h"
 #include "../inc/code_gen.h"
-#include "../inc/helpers.h"
 #include "../inc/lexer.h"
 #include "../inc/parser.h"
 #include "../inc/type_check.h"
+#include "../inc/utils.h"
 
 int main(int argc, char **argv) {
     if (argc < 2) {

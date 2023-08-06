@@ -1,8 +1,8 @@
 #include "../inc/type_check.h"
 #include "../inc/ast_funcs.h"
 #include "../inc/env_funcs.h"
-#include "../inc/helpers.h"
 #include "../inc/parser.h"
+#include "../inc/utils.h"
 
 int cmp_type(AstNode *node1, AstNode *node2) {
     if ((node1->type != node2->type) || (node1->pointer_level != node2->pointer_level))

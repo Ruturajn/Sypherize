@@ -1,8 +1,8 @@
 #include "../inc/parser.h"
 #include "../inc/ast_funcs.h"
 #include "../inc/env_funcs.h"
-#include "../inc/helpers.h"
 #include "../inc/lexer.h"
+#include "../inc/utils.h"
 
 int parse_int(LexedToken *token, AstNode *node) {
     if (token == NULL || node == NULL) {

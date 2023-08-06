@@ -1,4 +1,4 @@
-#include "../inc/helpers.h"
+#include "../inc/utils.h"
 
 const char *err_strings[] = {"GENERIC",   "ARGS",   "MEMORY ALLOCATION", "FILE ACCESS", "FILE SIZE",
                              "FILE READ", "SYNTAX", "REDEFINITION",      "EOF",         "TYPE"};

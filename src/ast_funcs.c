@@ -1,7 +1,7 @@
 #include "../inc/ast_funcs.h"
-#include "../inc/helpers.h"
 #include "../inc/lexer.h"
 #include "../inc/parser.h"
+#include "../inc/utils.h"
 
 char node_buf[NODE_BUF_SIZE] = {0};
 

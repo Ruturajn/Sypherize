@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "../inc/helpers.h"
+#include "../inc/utils.h"
 
 /**
  * @brief String containing all the the delimeters used

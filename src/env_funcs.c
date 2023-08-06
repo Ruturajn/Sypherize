@@ -1,7 +1,7 @@
 #include "../inc/env_funcs.h"
 #include "../inc/ast_funcs.h"
-#include "../inc/helpers.h"
 #include "../inc/parser.h"
+#include "../inc/utils.h"
 
 Env *create_env(Env *parent_env) {
     Env *new_env = calloc(1, sizeof(Env));
