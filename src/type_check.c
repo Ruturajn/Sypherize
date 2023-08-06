@@ -90,7 +90,8 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
             if_body_expr = if_body_expr->next_child;
         }
 
-        // This will not allow for empty if body, what to do about that??
+        // Turns out doing this doesn't cause any issues for empty IF bodies,
+        // because there is NULL node added to the body.
         if (if_expr_ret_type == NULL)
             print_error(ERR_TYPE,
                         "No return type found for the last expression in the IF-THEN body", NULL,
