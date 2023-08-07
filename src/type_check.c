@@ -32,13 +32,13 @@ void print_type(AstNode *expr, AstNode *expected_type, AstNode *got_type) {
     printf("\n\nEXPRESSION:\n");
     print_ast_node(expr, 0);
     if (expected_type != NULL) {
-        printf("EXPECTED TYPE:");
+        printf("EXPECTED TYPE: ");
         for (unsigned int i = 0; i < expected_type->pointer_level; i++) {
             putchar('@');
         }
         printf("%s\n", expected_type->ast_val.node_symbol);
     }
-    printf("FOUND TYPE:");
+    printf("FOUND TYPE   : ");
     for (unsigned int i = 0; i < got_type->pointer_level; i++) {
         putchar('@');
     }
