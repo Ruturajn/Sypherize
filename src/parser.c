@@ -439,22 +439,6 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
         }
     }
 
-    if (strcmp(op->ast_val.node_symbol, "lambda") == 0) {
-        valid_op = 1;
-        if (check_next_token("}", temp_file_data, curr_token)) {
-            if (strncmp_lexed_token(*curr_token, "]") ||
-                check_next_token("]", temp_file_data, curr_token)) {
-                *context = (*context)->parent_ctx;
-                *curr_stack = (*curr_stack)->parent_stack;
-                if (*curr_stack == NULL)
-                    return STACK_OP_BREAK;
-                else
-                    return STACK_OP_CONT_CHECK;
-            } else
-                print_error(ERR_SYNTAX, "Couldn't find `]` for lambda function", NULL, 0);
-        }
-    }
-
     if (strcmp(op->ast_val.node_symbol, "func_call") == 0) {
         valid_op = 1;
         if (check_next_token(")", temp_file_data, curr_token)) {
@@ -567,82 +551,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                 curr_stack = create_parsing_stack(curr_stack);
                 curr_stack->op = create_node_symbol("if-cond");
                 curr_stack->res = if_expr;
-                continue;
-            }
-
-            if (strncmp_lexed_token(curr_token, "[")) {
-                AstNode *func_node = node_alloc();
-                func_node->type = TYPE_FUNCTION;
-                // Get function return type.
-                *temp_file_data = lex_token(temp_file_data, &curr_token);
-                AstNode *return_type = node_symbol_from_token_create(curr_token);
-
-                // Get parameter list.
-                if (!check_next_token("(", temp_file_data, &curr_token))
-                    print_error(ERR_SYNTAX, "Invalid lambda function definition", NULL, 0);
-
-                AstNode *param_list = node_alloc();
-                for (;;) {
-                    if (check_next_token(")", temp_file_data, &curr_token))
-                        break;
-
-                    *temp_file_data = lex_token(temp_file_data, &curr_token);
-                    AstNode *param_type = node_symbol_from_token_create(curr_token);
-
-                    if (!check_next_token(":", temp_file_data, &curr_token))
-                        print_error(ERR_SYNTAX, "Couldn't find `:` after parameter type : `%s`",
-                                    param_type->ast_val.node_symbol, 0);
-
-                    *temp_file_data = lex_token(temp_file_data, &curr_token);
-                    AstNode *param_name = node_symbol_from_token_create(curr_token);
-
-                    AstNode *param = node_alloc();
-
-                    add_ast_node_child(param, param_name);
-                    add_ast_node_child(param, param_type);
-
-                    add_ast_node_child(param_list, param);
-
-                    if (!check_next_token(",", temp_file_data, &curr_token)) {
-                        if (check_next_token(")", temp_file_data, &curr_token))
-                            break;
-                        print_error(ERR_SYNTAX, "Could not find end of lambda function definition",
-                                    NULL, 0);
-                    }
-                }
-                CHECK_END(**temp_file_data, "End of file - Incomplete lambda function definition",
-                          NULL);
-
-                add_ast_node_child(func_node, param_list);
-                add_ast_node_child(func_node, return_type);
-
-                if (!check_next_token("{", temp_file_data, &curr_token))
-                    print_error(ERR_SYNTAX, "Lambda Function definition doesn't have a body", NULL,
-                                0);
-
-                *context = create_parsing_context(*context);
-                AstNode *params = func_node->child->child;
-                while (params != NULL) {
-                    if (!set_env(&((*context)->vars), params->child, params->child->next_child)) {
-                        print_error(ERR_COMMON,
-                                    "Unable to set environment binding for "
-                                    "variable : `%s`",
-                                    params->child->ast_val.node_symbol, 0);
-                    }
-                    params = params->next_child;
-                }
-
-                AstNode *func_body = node_alloc();
-                AstNode *func_expr = node_alloc();
-                add_ast_node_child(func_body, func_expr);
-                add_ast_node_child(func_node, func_body);
-
-                curr_stack = create_parsing_stack(curr_stack);
-                curr_stack->op = create_node_symbol("lambda");
-                curr_stack->res = func_expr;
-
-                *running_expr = *func_node;
-                running_expr = func_expr;
                 continue;
             }
 
