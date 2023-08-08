@@ -716,7 +716,15 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                                 }
                                 continue;
                             }
+                            print_error(ERR_SYNTAX,
+                                        "Expected `=` after `:` in variable declaration for : `%s`",
+                                        sym_name->ast_val.node_symbol, 0);
                         }
+                        if (check_next_token("=", temp_file_data, &curr_token))
+                            print_error(
+                                ERR_SYNTAX,
+                                "Expected `:` before `=` in variable declaration for : `%s`",
+                                sym_name->ast_val.node_symbol, 0);
                         // If the control flow is here, it means that it is a
                         // variable declaration without intiialization.
                         if (curr_stack != NULL) {
@@ -739,10 +747,7 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                         }
                         *running_expr = *curr_var_decl;
                     } else
-                        print_error(ERR_SYNTAX,
-                                    "Could not find variable name in variable "
-                                    "declaration",
-                                    NULL, 0);
+                        print_error(ERR_SYNTAX, "Expected `:` after type declaration", NULL, 0);
                 }
                 free_node(res);
 
@@ -823,6 +828,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                                     sym_node->ast_val.node_symbol, 0);
                     free_node(var_bind);
                 } else {
+                    if (curr_stack == NULL && check_next_token("=", temp_file_data, &curr_token))
+                        print_error(ERR_SYNTAX,
+                                    "Expected `:` before `=` in variable re-assignment of : `%s`",
+                                    node_var_access->ast_val.node_symbol, 0);
                     if (check_next_token("(", temp_file_data, &curr_token)) {
                         status = -1;
                         parser_get_func(*context, sym_node, &status);

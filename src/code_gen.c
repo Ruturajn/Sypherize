@@ -148,7 +148,7 @@ void print_regs(Reg *reg_head) {
 }
 
 void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
-                                    ParsingContext **ctx_child, AstNode *curr_expr,
+                                    ParsingContext **ctx_next_child, AstNode *curr_expr,
                                     CGContext *cg_ctx, FILE *fptr_code) {
     switch (curr_expr->type) {
     case TYPE_VAR_DECLARATION:
@@ -215,10 +215,10 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             fprintf(fptr_code, ";#; Binary Operator : %s\n", curr_expr->ast_val.node_symbol);
         // Move the integers on the left and right hand side into different
         // registers.
-        target_x86_64_win_codegen_expr(reg_head, context, ctx_child, curr_expr->child, cg_ctx,
+        target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, curr_expr->child, cg_ctx,
                                        fptr_code);
-        target_x86_64_win_codegen_expr(reg_head, context, ctx_child, curr_expr->child->next_child,
-                                       cg_ctx, fptr_code);
+        target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child,
+                                       curr_expr->child->next_child, cg_ctx, fptr_code);
 
         // Get the names of those registers, which contain the LHS and RHS
         // integers.
@@ -301,7 +301,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         AstNode *call_params = curr_expr->child->next_child->child;
         int param_count = 0;
         while (call_params != NULL) {
-            target_x86_64_win_codegen_expr(reg_head, context, ctx_child, call_params, cg_ctx,
+            target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, call_params, cg_ctx,
                                            fptr_code);
             fprintf(fptr_code, "pushq %s\n", get_reg_name(call_params->result_reg_desc, reg_head));
             reg_dealloc(reg_head, call_params->result_reg_desc);
@@ -360,8 +360,8 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         else
             func_name = gen_label();
 
-        target_x86_64_win_codegen_func(reg_head, cg_ctx, context, ctx_child, func_name, curr_expr,
-                                       fptr_code);
+        target_x86_64_win_codegen_func(reg_head, cg_ctx, context, ctx_next_child, func_name,
+                                       curr_expr, fptr_code);
         break;
     case TYPE_VAR_REASSIGNMENT:
         if (codegen_verbose)
@@ -373,8 +373,8 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             print_error(ERR_COMMON,
                         "Unable to find valid variable access in a variable Re-assignment", NULL,
                         0);
-        target_x86_64_win_codegen_expr(reg_head, context, ctx_child, curr_expr->child->next_child,
-                                       cg_ctx, fptr_code);
+        target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child,
+                                       curr_expr->child->next_child, cg_ctx, fptr_code);
 
         char *res_string = NULL;
         char res_string_free = 0;
@@ -382,8 +382,8 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             res_string = map_sym_to_addr_win(cg_ctx, temp_sym);
         } else {
             res_string_free = 1;
-            target_x86_64_win_codegen_expr(reg_head, context, ctx_child, curr_expr->child, cg_ctx,
-                                           fptr_code);
+            target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, curr_expr->child,
+                                           cg_ctx, fptr_code);
             res_string = get_reg_name(curr_expr->child->result_reg_desc, reg_head);
             char *res_string_copy = strdup(res_string);
             size_t total_len = strlen(res_string) + 3;
@@ -408,7 +408,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
     case TYPE_IF_CONDITION:;
         if (codegen_verbose)
             fprintf(fptr_code, ";#; IF Block\n");
-        target_x86_64_win_codegen_expr(reg_head, context, ctx_child, curr_expr->child, cg_ctx,
+        target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, curr_expr->child, cg_ctx,
                                        fptr_code);
 
         if (codegen_verbose)
@@ -424,12 +424,19 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         if (codegen_verbose)
             fprintf(fptr_code, ";#; If Then Body\n");
 
+        ParsingContext *ctx = context;
+        ParsingContext *ctx_child = *ctx_next_child;
+        if (*ctx_next_child != NULL) {
+            ctx = *ctx_next_child;
+            ctx_child = (*ctx_next_child)->child;
+            *ctx_next_child = (*ctx_next_child)->next_child;
+        }
+
         // The if body comes here.
         AstNode *last_expr = NULL;
         AstNode *if_expr = curr_expr->child->next_child->child;
         while (if_expr != NULL) {
-            target_x86_64_win_codegen_expr(reg_head, context, ctx_child, if_expr, cg_ctx,
-                                           fptr_code);
+            target_x86_64_win_codegen_expr(reg_head, ctx, &ctx_child, if_expr, cg_ctx, fptr_code);
             if (last_expr != NULL)
                 reg_dealloc(reg_head, last_expr->result_reg_desc);
             last_expr = if_expr;
@@ -450,9 +457,17 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         last_expr = NULL;
         AstNode *else_expr = curr_expr->child->next_child->next_child;
         if (else_expr != NULL) {
+            ctx = context;
+            ctx_child = *ctx_next_child;
+            if (*ctx_next_child != NULL) {
+                ctx = *ctx_next_child;
+                ctx_child = (*ctx_next_child)->child;
+                *ctx_next_child = (*ctx_next_child)->next_child;
+            }
+
             else_expr = else_expr->child;
             while (else_expr != NULL) {
-                target_x86_64_win_codegen_expr(reg_head, context, ctx_child, else_expr, cg_ctx,
+                target_x86_64_win_codegen_expr(reg_head, ctx, &ctx_child, else_expr, cg_ctx,
                                                fptr_code);
                 if (last_expr != NULL)
                     reg_dealloc(reg_head, last_expr->result_reg_desc);
@@ -475,7 +490,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
     case TYPE_DEREFERENCE:
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Dereference\n");
-        target_x86_64_win_codegen_expr(reg_head, context, ctx_child, curr_expr->child, cg_ctx,
+        target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, curr_expr->child, cg_ctx,
                                        fptr_code);
         curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
         break;
@@ -492,7 +507,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
 }
 
 void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx, ParsingContext *context,
-                                    ParsingContext **ctx_child, char *func_name, AstNode *func,
+                                    ParsingContext **ctx_next_child, char *func_name, AstNode *func,
                                     FILE *fptr_code) {
     cg_ctx = create_codegen_context(cg_ctx);
 
@@ -542,14 +557,16 @@ void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx, ParsingCon
                        "push %%rdi\n");
 
     ParsingContext *ctx = context;
-    if (*ctx_child != NULL) {
-        ctx = *ctx_child;
-        *ctx_child = (*ctx_child)->next_child;
+    ParsingContext *ctx_child = *ctx_next_child;
+    if (*ctx_next_child != NULL) {
+        ctx = *ctx_next_child;
+        ctx_child = (*ctx_next_child)->child;
+        *ctx_next_child = (*ctx_next_child)->next_child;
     }
     AstNode *temp_expr = func->child->next_child->next_child->child;
     AstNode *last_expr = NULL;
     while (temp_expr != NULL) {
-        target_x86_64_win_codegen_expr(reg_head, ctx, ctx_child, temp_expr, cg_ctx, fptr_code);
+        target_x86_64_win_codegen_expr(reg_head, ctx, &ctx_child, temp_expr, cg_ctx, fptr_code);
         reg_dealloc(reg_head, temp_expr->result_reg_desc);
         last_expr = temp_expr;
         temp_expr = temp_expr->next_child;
@@ -608,7 +625,7 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
             "%s",
             FUNC_HEADER_x86_64);
 
-    ParsingContext *ctx_child = context->child;
+    ParsingContext *ctx_next_child = context->child;
     AstNode *curr_expr = program->child;
     AstNode *last_expr = NULL;
     while (curr_expr != NULL) {
@@ -616,7 +633,8 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
             curr_expr = curr_expr->next_child;
             continue;
         }
-        target_x86_64_win_codegen_expr(reg_head, context, &ctx_child, curr_expr, cg_ctx, fptr_code);
+        target_x86_64_win_codegen_expr(reg_head, context, &ctx_next_child, curr_expr, cg_ctx,
+                                       fptr_code);
         reg_dealloc(reg_head, curr_expr->result_reg_desc);
         last_expr = curr_expr;
         curr_expr = curr_expr->next_child;

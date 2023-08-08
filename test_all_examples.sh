@@ -15,6 +15,7 @@ declare fail_flag=0
 
 for file in ./examples/* ; do
     make test FILE_PATH="${file}" &> /dev/null
+    file=$(echo "${file}" | sed 's|./examples/||')
     if [[ $? -ne 0 ]] ; then
         echo -e "\e[0;31m[ FAIL ] : ${file}\e[0;37m"
         fail_flag=1
