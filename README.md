@@ -6,6 +6,12 @@ programming language. The [`examples`](https://github.com/Ruturajn/Sypherize/tre
 directory contains some sample programs that demonstrate all the features that the
 language currently supports. See [`Usage`](https://github.com/Ruturajn/Sypherize/tree/main#usage) for more details.
 
+> **Note**
+> 
+> This project is currently under development, and a few fundamental features are supported as of now. As the
+> As the project matures, there will be better documentation detailing the language and all the related
+> intricacies.
+
 ## Overwiew
 
 This project is my take on writing a compiler by following [`Lens_r's`](https://www.youtube.com/playlist?list=PLysa8wRFCssxGKj_RxBWr3rwmjEYlJIpa)
