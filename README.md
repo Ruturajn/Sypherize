@@ -8,7 +8,7 @@ language currently supports. See [`Usage`](https://github.com/Ruturajn/Sypherize
 
 > **Note**
 > 
-> This project is currently under development, and a few fundamental features are supported as of now. As the
+> This project is currently under development, and a few fundamental features are supported as of now.
 > As the project matures, there will be better documentation detailing the language and all the related
 > intricacies.
 
