@@ -1,6 +1,6 @@
-# Sypherize
+# Sypherc
 
-**Sypherize** (with an *S*) is a compiler written in C, for a C-like language
+**Sypherc** (with an *S*) is a compiler written in C, for a C-like language
 called **Sypher**. Sypher is aimed to be a general-purpose statically typed
 programming language. The [`examples`](https://github.com/Ruturajn/Sypherize/tree/main/examples)
 directory contains some sample programs that demonstrate all the features that the
