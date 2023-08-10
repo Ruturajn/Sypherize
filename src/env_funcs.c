@@ -152,7 +152,10 @@ void print_env(Env *env, int indent) {
         if (temp_val == NULL)
             putchar('\n');
         while (temp_val != NULL) {
-            printf(" -> %s", get_node_str(temp_val));
+            if (temp_val == curr_bind->id_val->child)
+                printf(" ==> %s", get_node_str(temp_val));
+            else
+                printf(" -> %s", get_node_str(temp_val));
             temp_val = temp_val->next_child;
             if (temp_val == NULL)
                 putchar('\n');

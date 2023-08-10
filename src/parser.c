@@ -306,6 +306,52 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
     if (op == NULL || op->type != TYPE_SYM)
         print_error(ERR_COMMON, "Compiler - Context operator not a symbol", NULL, 0);
 
+    if (strcmp(op->ast_val.node_symbol, "lambda_params") == 0) {
+        valid_op = 1;
+        if ((*running_expr)->type != TYPE_VAR_DECLARATION)
+            print_error(ERR_SYNTAX, "Found invalid declaration of function parameters", NULL, 0);
+        int status = -1;
+        AstNode *var_type = get_env((*context)->vars, (*running_expr)->child, &status);
+        if (status == 0)
+            print_error(ERR_COMMON, "Could not find type information for function parameter", NULL,
+                        0);
+
+        add_ast_node_child(*running_expr, var_type);
+        if (check_next_token(")", temp_file_data, curr_token)) {
+
+            // Parse function body.
+            if (!check_next_token("{", temp_file_data, curr_token))
+                print_error(ERR_SYNTAX, "Couldn't find body for function definition", NULL, 0);
+
+            (*curr_stack)->op = create_node_symbol("lambda_body");
+            AstNode *func_body = node_alloc();
+            AstNode *func_expr = node_alloc();
+            add_ast_node_child(func_body, func_expr);
+            (*curr_stack)->body->next_child = func_body;
+            (*curr_stack)->body = (*curr_stack)->body->next_child;
+            (*curr_stack)->res = func_expr;
+            *running_expr = func_expr;
+            return STACK_OP_CONT_PARSE;
+        } else {
+            // Parse function params
+            if (!check_next_token(",", temp_file_data, curr_token))
+                print_error(ERR_SYNTAX,
+                            "Could not find end of parameter list in function definition", NULL, 0);
+        }
+    }
+
+    if (strcmp(op->ast_val.node_symbol, "lambda_body") == 0) {
+        valid_op = 1;
+        if (check_next_token("}", temp_file_data, curr_token)) {
+            *curr_stack = (*curr_stack)->parent_stack;
+            *context = (*context)->parent_ctx;
+            if (*curr_stack == NULL)
+                return STACK_OP_BREAK;
+            else
+                return STACK_OP_CONT_CHECK;
+        }
+    }
+
     if (strcmp(op->ast_val.node_symbol, "if-cond") == 0) {
         valid_op = 1;
         if (check_next_token("{", temp_file_data, curr_token)) {
@@ -665,6 +711,50 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                         CHECK_END(**temp_file_data, "End of file during variable declaration",
                                   NULL);
 
+                        // Handle lambda functions.
+                        if (check_next_token("(", temp_file_data, &curr_token)) {
+                            AstNode *lambda_func_node = node_alloc();
+                            lambda_func_node->type = TYPE_FUNCTION;
+                            AstNode *arg_list = node_alloc();
+
+                            *context = create_parsing_context(*context);
+
+                            if (check_next_token(")", temp_file_data, &curr_token)) {
+                                add_ast_node_child(running_expr, arg_list);
+                                curr_stack->op = create_node_symbol("lambda_body");
+
+                                // Parse function body.
+                                if (!check_next_token("{", temp_file_data, &curr_token))
+                                    print_error(ERR_SYNTAX, "Couldn't find body for function definition", NULL,
+                                                0);
+
+                                AstNode *func_body = node_alloc();
+                                AstNode *func_expr = node_alloc();
+                                add_ast_node_child(func_body, func_expr);
+                                add_ast_node_child(lambda_func_node, func_body);
+
+                                curr_stack->body->next_child = func_body;
+                                curr_stack->body = curr_stack->body->next_child;
+                                curr_stack->res = func_expr;
+                                *running_expr = *lambda_func_node;
+                                running_expr = func_expr;
+                                continue;
+                            }
+
+                            AstNode *curr_arg = node_alloc();
+                            add_ast_node_child(arg_list, curr_arg);
+                            add_ast_node_child(lambda_func_node, arg_list);
+                            *running_expr = *lambda_func_node;
+                            running_expr = curr_arg;
+                            curr_stack = create_parsing_stack(curr_stack);
+                            curr_stack->op = create_node_symbol("lambda_params");
+                            curr_stack->body = arg_list;
+                            curr_stack->body->next_child = type_node;
+                            curr_stack->body = curr_stack->body->next_child;
+                            curr_stack->res = running_expr;
+                            continue;
+                        }
+
                         *temp_file_data = lex_token(temp_file_data, &curr_token);
 
                         AstNode *curr_sym = node_symbol_from_token_create(curr_token);
@@ -725,6 +815,47 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                                 ERR_SYNTAX,
                                 "Expected `:` before `=` in variable declaration for : `%s`",
                                 sym_name->ast_val.node_symbol, 0);
+
+                        // Handling functions as variables.
+                        if (check_next_token("(", temp_file_data, &curr_token)) {
+                            AstNode *function_type = create_node_symbol("function");
+                            // Add return type as a child.
+                            add_ast_node_child(function_type, type_node);
+
+                            for (;;) {
+                                if (check_next_token(")", temp_file_data, &curr_token))
+                                    break;
+                                *temp_file_data = lex_token(temp_file_data, &curr_token);
+                                AstNode *param_type = node_alloc();
+                                parse_type(&param_type, &curr_token, temp_file_data, *context, &status);
+                                add_ast_node_child(function_type, param_type);
+
+                                if (!check_next_token(":", temp_file_data, &curr_token))
+                                    print_error(ERR_SYNTAX, "Expected `:` after type annotation of a function parameter",
+                                                NULL, 0);
+
+                                *temp_file_data = lex_token(temp_file_data, &curr_token);
+                                // What to do with the parameter names?? We need
+                                // to set them in a context??
+                                //AstNode *param_name = node_symbol_from_token_create(curr_token);
+
+                                if (!check_next_token(",", temp_file_data, &curr_token)) {
+                                    if (!check_next_token(")", temp_file_data, &curr_token))
+                                        print_error(ERR_SYNTAX, "Expected `,` between function parameters",
+                                                    NULL, 0);
+                                    else
+                                        break;
+                                }
+                            }
+
+                            if (!set_env(&((*context)->vars), sym_name, function_type)) {
+                                print_error(ERR_COMMON,
+                                            "Unable to set environment binding for "
+                                            "variable : `%s`",
+                                            sym_name->ast_val.node_symbol, 0);
+                            }
+                        }
+
                         // If the control flow is here, it means that it is a
                         // variable declaration without intiialization.
                         if (curr_stack != NULL) {
