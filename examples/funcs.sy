@@ -7,3 +7,5 @@ int: bar ();
     @int: ptr;
     ptr
 }
+
+int: () { 69 }
