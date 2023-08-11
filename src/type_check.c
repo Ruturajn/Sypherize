@@ -145,29 +145,36 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         *ret_type = *if_expr_ret_type;
         break;
     case TYPE_FUNCTION:;
-        to_enter = (*context_to_enter)->child;
-        AstNode *function_body = temp_expr->child->next_child->next_child->child;
-        AstNode *expr_type = NULL;
-        while (function_body != NULL) {
-            expr_type = type_check_expr(*context_to_enter, &to_enter, function_body);
-            function_body = function_body->next_child;
-            if (function_body != NULL)
-                free_node(expr_type);
+        if (temp_expr->child->next_child->next_child->child) {
+            to_enter = (*context_to_enter)->child;
+            AstNode *function_body = temp_expr->child->next_child->next_child->child;
+            AstNode *expr_type = NULL;
+            while (function_body != NULL) {
+                expr_type = type_check_expr(*context_to_enter, &to_enter, function_body);
+                function_body = function_body->next_child;
+                if (function_body != NULL)
+                    free_node(expr_type);
+            }
+
+            copy_node(ret_type, temp_expr->child);
+
+            if (stat == 0)
+                print_error(ERR_COMMON, "Couldn't find information for return type of the function",
+                            NULL, 0);
+            if (cmp_type_sym(expr_type, ret_type) == 0) {
+                print_type(temp_expr, ret_type, expr_type);
+                print_error(ERR_TYPE,
+                            "Found Mismatched type for function return type and last expression", NULL,
+                            0);
+            }
+            (*context_to_enter) = (*context_to_enter)->next_child;
         }
 
-        copy_node(ret_type, temp_expr->child->next_child);
+        AstNode *func_type = create_node_symbol("function");
+        *ret_type = *func_type;
+        ret_type->child = node_alloc();
+        copy_node(ret_type->child, temp_expr->child);
 
-        if (stat == 0)
-            print_error(ERR_COMMON, "Couldn't find information for return type of the function",
-                        NULL, 0);
-        if (cmp_type_sym(expr_type, ret_type) == 0) {
-            print_type(temp_expr, ret_type, expr_type);
-            print_error(ERR_TYPE,
-                        "Found Mismatched type for function return type and last expression", NULL,
-                        0);
-        }
-
-        (*context_to_enter) = (*context_to_enter)->next_child;
         break;
     case TYPE_VAR_REASSIGNMENT:;
         // Get the return type of the left hand side of a variable declaration.

@@ -2,6 +2,8 @@
 
 int: bar ();
 
+@@int: test_func(int: a, int: b) := bar;
+
 @int: (int: x) {
     x := 10
     @int: ptr;
