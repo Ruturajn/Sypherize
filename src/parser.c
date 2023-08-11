@@ -53,7 +53,7 @@ ParsingContext *create_default_parsing_context() {
     ParsingContext *new_context = create_parsing_context(NULL);
     AstNode *sym_node = create_node_symbol("int");
     ast_add_type_node(&new_context->env_type, TYPE_INT, sym_node, sizeof(long));
-    ast_add_type_node(&new_context->env_type, TYPE_FUNCTION, create_node_symbol("func"),
+    ast_add_type_node(&new_context->env_type, TYPE_FUNCTION, create_node_symbol("function"),
                       sizeof(long));
     ast_add_binary_ops(&new_context, "=", 3, "int", "int", "int");
     ast_add_binary_ops(&new_context, "<", 3, "int", "int", "int");
@@ -435,7 +435,10 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
                     return STACK_OP_CONT_CHECK;
             }
 
-            (*curr_stack)->op = create_node_symbol("def_func");
+            if (strcmp(op->ast_val.node_symbol, "def_func_params") == 0)
+                (*curr_stack)->op = create_node_symbol("def_func");
+            else
+                (*curr_stack)->op = create_node_symbol("lambda_body");
             AstNode *func_body = node_alloc();
             AstNode *func_expr = node_alloc();
             add_ast_node_child(func_body, func_expr);
@@ -683,10 +686,10 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                             AstNode *lambda_func_node = node_alloc();
                             lambda_func_node->type = TYPE_FUNCTION;
                             AstNode *arg_list = node_alloc();
+                            add_ast_node_child(lambda_func_node, type_node);
                             add_ast_node_child(lambda_func_node, arg_list);
 
                             if (check_next_token(")", temp_file_data, &curr_token)) {
-                                add_ast_node_child(running_expr, arg_list);
 
                                 // Parse function body.
                                 if (!check_next_token("{", temp_file_data, &curr_token))
@@ -702,8 +705,8 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                                 *context = create_parsing_context(*context);
                                 curr_stack = create_parsing_stack(curr_stack);
                                 curr_stack->op = create_node_symbol("lambda_body");
-                                curr_stack->body = arg_list;
-                                curr_stack->body->next_child = type_node;
+                                curr_stack->body = type_node;
+                                curr_stack->body->next_child = arg_list;
                                 curr_stack->body = curr_stack->body->next_child;
 
                                 AstNode *func_body = node_alloc();
@@ -726,15 +729,13 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                             *context = create_parsing_context(*context);
                             curr_stack = create_parsing_stack(curr_stack);
                             curr_stack->op = create_node_symbol("lambda_params");
-                            curr_stack->body = arg_list;
-                            curr_stack->body->next_child = type_node;
+                            curr_stack->body = type_node;
+                            curr_stack->body->next_child = arg_list;
                             curr_stack->body = curr_stack->body->next_child;
                             curr_stack->res = running_expr;
                             continue;
                         }
-
                         *temp_file_data = lex_token(temp_file_data, &curr_token);
-
                         AstNode *curr_sym = node_symbol_from_token_create(curr_token);
                         curr_sym->type = TYPE_SYM;
 
@@ -746,53 +747,6 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                         AstNode *sym_name = node_alloc();
                         copy_node(sym_name, curr_sym);
                         add_ast_node_child(curr_var_decl, curr_sym);
-                        if (!set_env(&((*context)->vars), sym_name, type_node)) {
-                            print_error(ERR_COMMON,
-                                        "Unable to set environment binding for "
-                                        "variable : `%s`",
-                                        sym_name->ast_val.node_symbol, 0);
-                        }
-
-                        // Lex again to look forward.
-                        if (check_next_token(":", temp_file_data, &curr_token)) {
-                            CHECK_END(**temp_file_data,
-                                      "End of file during variable declaration "
-                                      ": `%s`",
-                                      curr_sym->ast_val.node_symbol);
-                            if (check_next_token("=", temp_file_data, &curr_token)) {
-                                CHECK_END(**temp_file_data,
-                                          "End of file during variable "
-                                          "declaration : `%s`",
-                                          curr_sym->ast_val.node_symbol);
-
-                                AstNode *var_reassign = node_alloc();
-                                var_reassign->type = TYPE_VAR_REASSIGNMENT;
-                                AstNode *new_val = node_alloc();
-                                AstNode *sym_name_copy = node_alloc();
-                                copy_node(sym_name_copy, sym_name);
-                                sym_name_copy->type = TYPE_VAR_ACCESS;
-                                add_ast_node_child(var_reassign, sym_name_copy);
-                                add_ast_node_child(var_reassign, new_val);
-
-                                curr_var_decl->next_child = var_reassign;
-
-                                *running_expr = *curr_var_decl;
-                                running_expr = new_val;
-                                if (curr_stack != NULL) {
-                                    *curr_stack->res = *curr_var_decl;
-                                    curr_stack->res = var_reassign;
-                                }
-                                continue;
-                            }
-                            print_error(ERR_SYNTAX,
-                                        "Expected `=` after `:` in variable declaration for : `%s`",
-                                        sym_name->ast_val.node_symbol, 0);
-                        }
-                        if (check_next_token("=", temp_file_data, &curr_token))
-                            print_error(
-                                ERR_SYNTAX,
-                                "Expected `:` before `=` in variable declaration for : `%s`",
-                                sym_name->ast_val.node_symbol, 0);
 
                         // Handling functions as variables.
                         if (check_next_token("(", temp_file_data, &curr_token)) {
@@ -836,7 +790,55 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                                             "variable : `%s`",
                                             sym_name->ast_val.node_symbol, 0);
                             }
+                        } else {
+                            if (!set_env(&((*context)->vars), sym_name, type_node)) {
+                                print_error(ERR_COMMON,
+                                            "Unable to set environment binding for "
+                                            "variable : `%s`",
+                                            sym_name->ast_val.node_symbol, 0);
+                            }
                         }
+
+                        // Lex again to look forward.
+                        if (check_next_token(":", temp_file_data, &curr_token)) {
+                            CHECK_END(**temp_file_data,
+                                      "End of file during variable declaration "
+                                      ": `%s`",
+                                      curr_sym->ast_val.node_symbol);
+                            if (check_next_token("=", temp_file_data, &curr_token)) {
+                                CHECK_END(**temp_file_data,
+                                          "End of file during variable "
+                                          "declaration : `%s`",
+                                          curr_sym->ast_val.node_symbol);
+
+                                AstNode *var_reassign = node_alloc();
+                                var_reassign->type = TYPE_VAR_REASSIGNMENT;
+                                AstNode *new_val = node_alloc();
+                                AstNode *sym_name_copy = node_alloc();
+                                copy_node(sym_name_copy, sym_name);
+                                sym_name_copy->type = TYPE_VAR_ACCESS;
+                                add_ast_node_child(var_reassign, sym_name_copy);
+                                add_ast_node_child(var_reassign, new_val);
+
+                                curr_var_decl->next_child = var_reassign;
+
+                                *running_expr = *curr_var_decl;
+                                running_expr = new_val;
+                                if (curr_stack != NULL) {
+                                    *curr_stack->res = *curr_var_decl;
+                                    curr_stack->res = var_reassign;
+                                }
+                                continue;
+                            }
+                            print_error(ERR_SYNTAX,
+                                        "Expected `=` after `:` in variable declaration for : `%s`",
+                                        sym_name->ast_val.node_symbol, 0);
+                        }
+                        if (check_next_token("=", temp_file_data, &curr_token))
+                            print_error(
+                                ERR_SYNTAX,
+                                "Expected `:` before `=` in variable declaration for : `%s`",
+                                sym_name->ast_val.node_symbol, 0);
 
                         // If the control flow is here, it means that it is a
                         // variable declaration without intiialization.
