@@ -5,8 +5,7 @@
 extern "C" {
 #endif
 
-typedef struct LexedToken LexedToken;
-typedef struct Env Env;
+#include "lexer.h"
 
 /**
  * @brief Enumeration that defines a type for the `AstNode`.
@@ -50,6 +49,25 @@ typedef struct AstNode {
                                 ///< rersult.
     unsigned int pointer_level; ///< Indirection level for a pointer.
 } AstNode;
+
+/**
+ * @brief Structure defining binding for an identifier, i.e. a node for
+ *        the identifier, and it's value.
+ */
+typedef struct IdentifierBind {
+    AstNode *identifier;                 ///< Node for the identifier.
+    AstNode *id_val;                     ///< Node for the value.
+    struct IdentifierBind *next_id_bind; ///< Pointer to the next binding.
+} IdentifierBind;
+
+/**
+ * @brief Structure defining an environment which contains the binding, and
+ *        a parent environment.
+ */
+typedef struct Env {
+    IdentifierBind *binding; ///< Pointer to the binding.
+    struct Env *parent_env;  ///< Pointer to the parent environment.
+} Env;
 
 typedef struct ParsingStack {
     struct ParsingStack *parent_stack; ///< Pointer to the parent stack.

@@ -7,9 +7,7 @@ extern "C" {
 
 #include <stdio.h>
 
-typedef struct AstNode AstNode;
-typedef struct Env Env;
-typedef struct ParsingContext ParsingContext;
+#include "parser.h"
 
 #define LABEL_ARR_SIZE 1024
 #define SYM_ARR_SIZE 1024
