@@ -293,6 +293,56 @@ int check_invalid_var_access(ParsingContext *context, AstNode *sym_node) {
     return 0;
 }
 
+void parse_func_vars(AstNode **function_type, char **temp_file_data, LexedToken **curr_token,
+                     ParsingContext *context) {
+    AstNode *param_type = node_alloc();
+    int status = -1;
+    parse_type(&param_type, curr_token, temp_file_data, context, &status);
+    if (status == 0)
+        print_error(ERR_SYNTAX, "Found invalid type in parameter list", NULL, 0);
+
+    if (!check_next_token(":", temp_file_data, curr_token)) {
+        if (!check_next_token(")", temp_file_data, curr_token)) {
+            print_error(ERR_SYNTAX,
+                        "Type annotation must be followed with a `:` in"
+                        "function parameter list",
+                        NULL, 0);
+        }
+        add_ast_node_child(*function_type, param_type);
+        return;
+    }
+
+    // Lex past the name, it should be stored in some context atleast!!
+    *temp_file_data = lex_token(temp_file_data, curr_token);
+
+    if (check_next_token("(", temp_file_data, curr_token)) {
+        AstNode *func_type = create_node_symbol("function");
+        // Add return type as a child.
+        AstNode *func_return_type = node_alloc();
+        copy_node(func_return_type, param_type);
+        add_ast_node_child(func_type, func_return_type);
+        for (;;) {
+            if (check_next_token(")", temp_file_data, curr_token))
+                break;
+
+            *temp_file_data = lex_token(temp_file_data, curr_token);
+            parse_func_vars(function_type, temp_file_data, curr_token, context);
+
+            if (!check_next_token(",", temp_file_data, curr_token)) {
+                if (!check_next_token(")", temp_file_data, curr_token)) {
+                    print_error(ERR_SYNTAX,
+                                "Parameter list for function definition"
+                                "must be delimited by a `,`",
+                                NULL, 0);
+                }
+                break;
+            }
+        }
+        add_ast_node_child(*function_type, func_type);
+    } else
+        add_ast_node_child(*function_type, param_type);
+}
+
 StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
                                       AstNode **running_expr, char **temp_file_data,
                                       ParsingContext **context, long *running_precedence,
@@ -473,6 +523,27 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **cu
         }
     }
 
+    if (strcmp(op->ast_val.node_symbol, "func_var") == 0) {
+        valid_op = 1;
+        if (check_next_token(")", temp_file_data, curr_token)) {
+            *running_expr = (*curr_stack)->body;
+            char *temp_data = *temp_file_data;
+            LexedToken *temp_token = NULL;
+            *context = (*context)->parent_ctx;
+            if (check_next_token(":", &temp_data, &temp_token))
+                return STACK_OP_CONT_PARSE;
+
+            *curr_stack = (*curr_stack)->parent_stack;
+            return STACK_OP_CONT_CHECK;
+        } else if (strncmp_lexed_token(*curr_token, ",") ||
+                   check_next_token(",", temp_file_data, curr_token)) {
+            (*curr_stack)->res->next_child = node_alloc();
+            (*curr_stack)->res = (*curr_stack)->res->next_child;
+            *running_expr = (*curr_stack)->res;
+            return STACK_OP_CONT_PARSE;
+        }
+    }
+
     if (valid_op == 0)
         return STACK_OP_INVALID;
 
@@ -493,12 +564,47 @@ AstNode *parse_type(AstNode **type_node, LexedToken **curr_token, char **temp_fi
     AstNode *sym_node = node_symbol_from_token_create(*curr_token);
 
     AstNode *res = parser_get_type(context, sym_node, status);
-    if (*status) {
-        copy_node(*type_node, sym_node);
-        (*type_node)->pointer_level = pointer_indirect;
-        return res;
-    }
-    return NULL;
+    if (*status == 0)
+        return NULL;
+
+    copy_node(*type_node, sym_node);
+    (*type_node)->pointer_level = pointer_indirect;
+
+    // char *temp_file_data_ptr = *temp_file_data;
+    // LexedToken *temp_token = NULL;
+    // if (check_next_token(":", &temp_file_data_ptr, &temp_token)) {
+    //     if (check_next_token("(", &temp_file_data_ptr, &temp_token)) {
+    //         // If we are here, it means we are parsing a function type.
+    //         *temp_file_data = temp_file_data_ptr;
+    //         **curr_token = *temp_token;
+    //         AstNode *function_type = create_node_symbol("function");
+    //         // Add return type as a child.
+    //         AstNode *func_ret_type = node_alloc();
+    //         copy_node(func_ret_type, *type_node);
+    //         add_ast_node_child(function_type, func_ret_type);
+
+    //         for (;;) {
+    //             if (check_next_token(")", temp_file_data, curr_token))
+    //                 break;
+    //             *temp_file_data = lex_token(temp_file_data, curr_token);
+    //             AstNode *param_type = node_alloc();
+    //             parse_type(&param_type, curr_token, temp_file_data, context,
+    //                        status);
+    //             add_ast_node_child(function_type, param_type);
+
+    //             if (!check_next_token(",", temp_file_data, curr_token)) {
+    //                 if (!check_next_token(")", temp_file_data, curr_token))
+    //                     print_error(ERR_SYNTAX,
+    //                                 "Expected `,` between function parameters",
+    //                                 NULL, 0);
+    //                 else
+    //                     break;
+    //             }
+    //         }
+    //         copy_node(*type_node, function_type);
+    //     }
+    // }
+    return res;
 }
 
 int check_if_type(char *temp_file_data, ParsingContext *context) {
@@ -757,30 +863,19 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                             for (;;) {
                                 if (check_next_token(")", temp_file_data, &curr_token))
                                     break;
-                                *temp_file_data = lex_token(temp_file_data, &curr_token);
-                                AstNode *param_type = node_alloc();
-                                parse_type(&param_type, &curr_token, temp_file_data, *context,
-                                           &status);
-                                add_ast_node_child(function_type, param_type);
-
-                                if (!check_next_token(":", temp_file_data, &curr_token))
-                                    print_error(ERR_SYNTAX,
-                                                "Expected `:` after type annotation of a function "
-                                                "parameter",
-                                                NULL, 0);
 
                                 *temp_file_data = lex_token(temp_file_data, &curr_token);
-                                // What to do with the parameter names?? We need
-                                // to set them in a context??
-                                // AstNode *param_name = node_symbol_from_token_create(curr_token);
+                                parse_func_vars(&function_type, temp_file_data, &curr_token,
+                                                *context);
 
                                 if (!check_next_token(",", temp_file_data, &curr_token)) {
-                                    if (!check_next_token(")", temp_file_data, &curr_token))
+                                    if (!check_next_token(")", temp_file_data, &curr_token)) {
                                         print_error(ERR_SYNTAX,
-                                                    "Expected `,` between function parameters",
+                                                    "Parameter list for function definition"
+                                                    "must be delimited by a `,`",
                                                     NULL, 0);
-                                    else
-                                        break;
+                                    }
+                                    break;
                                 }
                             }
 
@@ -949,10 +1044,13 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                                     node_var_access->ast_val.node_symbol, 0);
                     if (check_next_token("(", temp_file_data, &curr_token)) {
                         status = -1;
-                        parser_get_func(*context, sym_node, &status);
+                        parser_get_var(*context, sym_node, &status);
                         if (status) {
                             running_expr->type = TYPE_FUNCTION_CALL;
-                            add_ast_node_child(running_expr, sym_node);
+                            AstNode *var_func_name = node_alloc();
+                            copy_node(var_func_name, sym_node);
+                            var_func_name->type = TYPE_VAR_ACCESS;
+                            add_ast_node_child(running_expr, var_func_name);
                             AstNode *arg_list = node_alloc();
 
                             if (check_next_token(")", temp_file_data, &curr_token)) {
@@ -961,7 +1059,21 @@ char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr
                                                           &running_precedence, curr_expr,
                                                           &running_expr, curr_stack))
                                     continue;
-                                break;
+                                StackOpRetVal stack_op_ret = STACK_OP_INVALID;
+                                do {
+                                    stack_op_ret = stack_operator_continue(
+                                        &curr_stack, &curr_token, &running_expr, temp_file_data,
+                                        context, &running_precedence, curr_expr);
+                                } while (stack_op_ret == STACK_OP_CONT_CHECK);
+                                if (stack_op_ret == STACK_OP_CONT_PARSE)
+                                    continue;
+                                else if (stack_op_ret == STACK_OP_BREAK)
+                                    break;
+                                else if (stack_op_ret == STACK_OP_INVALID)
+                                    print_error(ERR_COMMON,
+                                                "Compiler Error - Stack operator not being handled "
+                                                "correctly",
+                                                NULL, 0);
                             }
 
                             AstNode *curr_arg = node_alloc();

@@ -4,12 +4,12 @@
 
 #Save current working directory.
 CWD=$(pwd)
-echo -e "\e[0;33m\n[ INFO ] : NAVIGATING to Sypherize ...\e[0;37m"
+echo -e "\e[0;33m\n[ INFO ] : NAVIGATING to Sypherc ...\e[0;37m"
 WORKING_DIR=$(find ~ -name Sypherize)
 
 cd "${WORKING_DIR}"
 
-echo -e "\e[0;33m[ INFO ] : COMPILING Sypherize ...\e[0;37m"
+echo -e "\e[0;33m[ INFO ] : COMPILING Sypherc ...\e[0;37m"
 make clean all &> /dev/null
 declare fail_flag=0
 

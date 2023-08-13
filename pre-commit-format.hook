@@ -20,7 +20,7 @@ allownonascii=$(git config --bool hooks.allownonascii)
 
 files_to_format=$(git diff --name-only --cached --diff-filter=d | grep -E '(\.c|\.h)$')
 echo "${files_to_format}" | xargs -I {} clang-format -i {}
-git add $(echo ${format_file} | sed 's|^|./|')
+git add $(echo ${files_to_format} | sed 's|^|./|')
 
 # Redirect output to stderr.
 exec 1>&2
