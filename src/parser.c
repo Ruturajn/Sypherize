@@ -53,8 +53,6 @@ ParsingContext *create_default_parsing_context() {
     ParsingContext *new_context = create_parsing_context(NULL);
     AstNode *sym_node = create_node_symbol("int");
     ast_add_type_node(&new_context->env_type, TYPE_INT, sym_node, sizeof(long));
-    ast_add_type_node(&new_context->env_type, TYPE_FUNCTION, create_node_symbol("function"),
-                      sizeof(long));
     ast_add_binary_ops(&new_context, "=", 3, "int", "int", "int");
     ast_add_binary_ops(&new_context, "<", 3, "int", "int", "int");
     ast_add_binary_ops(&new_context, ">", 3, "int", "int", "int");

@@ -164,13 +164,8 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             print_error(ERR_COMMON, "Unable to find variable in environment : `%s`",
                         curr_expr->child->ast_val.node_symbol, 0);
         AstNode *type_node = NULL;
-        long size_in_bytes = 0;
-        if (var_node->pointer_level != 0)
-            size_in_bytes = 8;
-        else {
-            type_node = parser_get_type(context, var_node, &stat);
-            size_in_bytes = type_node->child->ast_val.val;
-        }
+        type_node = parser_get_type(context, var_node, &stat);
+        long size_in_bytes = type_node->child->ast_val.val;
         if (!stat)
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
                         type_node->ast_val.node_symbol, 0);
@@ -652,7 +647,7 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
         *temp_var_type_id = *temp_var_bind->id_val;
         temp_var_type_id->child = NULL;
         temp_var_type_id->next_child = NULL;
-        AstNode *var = get_env(context->env_type, temp_var_type_id, &status);
+        AstNode *var = parser_get_type(context, temp_var_type_id, &status);
         if (!status)
             print_error(ERR_COMMON, "Unable to retrieve value from environment for : `%s`",
                         temp_var_type_id->ast_val.node_symbol, 0);
