@@ -2,7 +2,7 @@
 # at the index pointed to by the argument. For more information
 # about functions and the language see `factorial.sy`.
 
-def_func fib(int: a) ~ int {
+int: fib(int: a) := int: (int: a) {
     if a < 2 {
         1
     }

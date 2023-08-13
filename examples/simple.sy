@@ -24,7 +24,7 @@ new_val := 11;
 new_val := 83;
 
 ### This is again a comment.
-def_func test_fn(int: a, int: x) ~ int {
+int: test_fn(int: a, int: x) := int: (int: a, int: x) {
     x := 33;
     a := 99
     x := 10

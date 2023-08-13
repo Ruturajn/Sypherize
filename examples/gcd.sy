@@ -2,7 +2,7 @@
 # numbers. For more information about functions and the language see
 # `factorial.sy`.
 
-def_func gcd_euclid(int: num1, int: num2) ~ int {
+int: gcd_euclid(int: num1, int: num2) := int: (int: num1, int: num2) {
     if num1 = num2 {
         num1
     } else {

@@ -193,15 +193,27 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
     case TYPE_VAR_ACCESS:
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Variable Access : `%s`\n", curr_expr->ast_val.node_symbol);
+
+        CGContext *var_cg_ctx = cg_ctx;
+        stat = -1;
+        AstNode *local_var_name;
+        while (var_cg_ctx != NULL) {
+            local_var_name =
+                get_env_from_sym(var_cg_ctx->local_env, curr_expr->ast_val.node_symbol, &stat);
+            if (stat)
+                break;
+            if (var_cg_ctx->parent_ctx != NULL)
+                free_node(local_var_name);
+            var_cg_ctx = var_cg_ctx->parent_ctx;
+        }
+
         curr_expr->result_reg_desc = reg_alloc(reg_head);
-        if (cg_ctx->parent_ctx == NULL) {
+        if (var_cg_ctx == NULL) {
             fprintf(fptr_code, "mov %s(%%rip), %s\n", curr_expr->ast_val.node_symbol,
                     get_reg_name(curr_expr->result_reg_desc, reg_head));
         } else {
-            stat = -1;
-            AstNode *local_var_name =
-                get_env_from_sym(cg_ctx->local_env, curr_expr->ast_val.node_symbol, &stat);
-            if (!stat)
+            // Check if `stat` isn't 0, i.e. the variable was found.
+            if (stat == 0)
                 print_error(ERR_COMMON,
                             "Unable to find information regarding local "
                             "variable offset for: `%s`",

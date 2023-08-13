@@ -7,7 +7,7 @@
 # This is a basic math expression
 2 * 3 + 1 - 2
 
-def_func test_function(int: a, int: x) ~ int {
+int: test_function(int: a, int: x) := int: (int: a, int: x){
     x := 33;
     a := 99
     x := 10

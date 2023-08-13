@@ -14,7 +14,7 @@ int: z;
 z := 99
 
 ` This is a function call.
-def_func bar(int: a) ~ int {
+int: bar(int: a) := int: (int: a) {
     # Do something here.
     # func : foo := [int (int: w) { w }]
     # foo
