@@ -282,7 +282,7 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
             print_error(ERR_TYPE, "Called function must be of FUNCTION type : `%s`",
                         temp_expr->child->ast_val.node_symbol, 0);
 
-        AstNode *func_param_list = var_func_type->child->child;
+        AstNode *func_param_list = var_func_type->child->next_child;
         AstNode *func_call_params = temp_expr->child->next_child->child;
         AstNode *param_list_type = NULL;
         AstNode *param_call_type = NULL;
@@ -290,7 +290,7 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
             param_call_type = type_check_expr(context, context_to_enter, func_call_params);
 
             AstNode *complete_param_list_type = node_alloc();
-            copy_node(complete_param_list_type, func_param_list->child->next_child);
+            copy_node(complete_param_list_type, func_param_list);
 
             if (stat == 0)
                 print_error(ERR_TYPE, "Unable to find type information for : `%s`",

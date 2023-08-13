@@ -564,7 +564,7 @@ void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx, ParsingCon
      * the parameter names. Hence notice 'param_cnt' starts from '2',
      * to make space for the first and second instructions.
      */
-    AstNode *func_param_list = func->child->child;
+    AstNode *func_param_list = func->child->next_child->child;
     long param_cnt = 1;
     while (func_param_list != NULL) {
         param_cnt++;
