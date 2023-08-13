@@ -117,13 +117,35 @@ void add_parsing_context_child(ParsingContext **root, ParsingContext *child_to_a
         return;
 
     if ((*root)->child == NULL) {
+        if (*root == child_to_add) {
+            print_warning(ERR_DEV,
+                          "Could not add new child to the parsing context due"
+                          "to creation of possible circular linked list",
+                          NULL, 0);
+            return;
+        }
         (*root)->child = child_to_add;
         return;
     }
 
     ParsingContext *temp_ctx = (*root)->child;
-    while (temp_ctx->next_child != NULL)
+    if (temp_ctx == child_to_add) {
+        print_warning(ERR_DEV,
+                      "Could not add new child to the parsing context due"
+                      "to creation of possible circular linked list",
+                      NULL, 0);
+        return;
+    }
+    while (temp_ctx->next_child != NULL) {
         temp_ctx = temp_ctx->next_child;
+        if (temp_ctx == child_to_add) {
+            print_warning(ERR_DEV,
+                          "Could not add new child to the parsing context due"
+                          "to creation of possible circular linked list",
+                          NULL, 0);
+            return;
+        }
+    }
     temp_ctx->next_child = child_to_add;
 }
 

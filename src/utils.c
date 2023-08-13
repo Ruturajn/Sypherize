@@ -1,7 +1,8 @@
 #include "../inc/utils.h"
 
 const char *err_strings[] = {"GENERIC",   "ARGS",   "MEMORY ALLOCATION", "FILE ACCESS", "FILE SIZE",
-                             "FILE READ", "SYNTAX", "REDEFINITION",      "EOF",         "TYPE"};
+                             "FILE READ", "SYNTAX", "REDEFINITION",      "EOF",         "TYPE",
+                             "DEVELOPER"};
 
 char *read_file_data(char *file_dest) {
     FILE *file_ptr = NULL;

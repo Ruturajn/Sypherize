@@ -77,6 +77,7 @@ typedef enum ErrType {
     ERR_REDEFINITION,
     ERR_EOF,
     ERR_TYPE,
+    ERR_DEV,
 } ErrType;
 
 extern const char *err_strings[];
