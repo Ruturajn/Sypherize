@@ -33,6 +33,11 @@ typedef struct LexedToken {
     int token_length;  ///< Length of the token from the beginning.
 } LexedToken;
 
+typedef struct LexingState {
+    LexedToken *curr_token;
+    char **temp_file_data;
+} LexingState;
+
 /**
  * @brief Print out the token, pointed to by `curr_token`.
  *
@@ -94,7 +99,7 @@ char *lex_token(char **file_data, LexedToken **curr_token);
  *                        stores the next token.
  * @return int            `1` for success, and `0` for failure.
  */
-int check_next_token(char *string_to_cmp, char **temp_file_data, LexedToken **token);
+int check_next_token(char *string_to_cmp, LexingState *state);
 
 #ifdef __cplusplus
 }

@@ -327,7 +327,13 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         *ret_type = *final_function_return_type;
         free_node(var_func_type);
         break;
+    case TYPE_NULL:
+        break;
+    case TYPE_VAR_DECLARATION:
+        break;
     default:
+        print_warning(ERR_DEV, "Found unhandled expression type during type-checking", NULL, 0);
+        print_ast_node(temp_expr, 0);
         break;
     }
     return ret_type;

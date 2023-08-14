@@ -3,7 +3,7 @@
 
 CC=gcc
 CFLAGS=-g -Wall -Werror -Wextra -pedantic
-TARGET=sypherize
+TARGET=sypherc
 
 #==============================================================================
 

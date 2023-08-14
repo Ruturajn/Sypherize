@@ -63,17 +63,17 @@ char *lex_token(char **file_data, LexedToken **curr_token) {
     return *file_data;
 }
 
-int check_next_token(char *string_to_cmp, char **temp_file_data, LexedToken **token) {
-    if (string_to_cmp == NULL || *temp_file_data == NULL || token == NULL) {
+int check_next_token(char *string_to_cmp, LexingState *state) {
+    if (string_to_cmp == NULL || *state->temp_file_data == NULL || state->curr_token == NULL) {
         print_error(ERR_COMMON, "NULL pointer passed to `check_next_token()`", NULL, 0);
         return 0;
     }
-    char *prev_file_data = *temp_file_data;
-    LexedToken *temp_token = *token;
+    char *prev_file_data = *state->temp_file_data;
+    LexedToken *temp_token = state->curr_token;
     prev_file_data = lex_token(&prev_file_data, &temp_token);
     if (strncmp_lexed_token(temp_token, string_to_cmp)) {
-        *token = temp_token;
-        *temp_file_data = prev_file_data;
+        state->curr_token = temp_token;
+        *state->temp_file_data = prev_file_data;
         return 1;
     }
     return 0;

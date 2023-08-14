@@ -156,17 +156,14 @@ int check_invalid_var_access(ParsingContext *context, AstNode *sym_node);
 
 void print_parsing_context(ParsingContext *context, int indent);
 
-int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token, ParsingContext **context,
-                          long *running_precedence, AstNode **curr_expr, AstNode **running_expr,
-                          ParsingStack *curr_stack);
+int parse_binary_infix_op(LexingState *state, ParsingContext **context, long *running_precedence,
+                          AstNode **curr_expr, AstNode **running_expr, ParsingStack *curr_stack);
 
-StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
-                                      AstNode **running_expr, char **temp_file_data,
-                                      ParsingContext **context, long *running_precedence,
-                                      AstNode **curr_expr);
+StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState *state,
+                                      AstNode **running_expr, ParsingContext **context,
+                                      long *running_precedence, AstNode **curr_expr);
 
-AstNode *parse_type(AstNode **temp_type_node, LexedToken **curr_token, char **temp_file_data,
-                    ParsingContext *context, int *status);
+AstNode *parse_type(AstNode **type_node, LexingState *state, ParsingContext *context, int *status);
 
 int check_if_type(char *temp_file_data, ParsingContext *context);
 /**
@@ -183,8 +180,7 @@ int check_if_type(char *temp_file_data, ParsingContext *context);
  *                       the current context.
  * @return char*         Pointer to the file data stream.
  */
-char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr_expr,
-                   ParsingContext **context);
+char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **context);
 
 #ifdef __cplusplus
 }
