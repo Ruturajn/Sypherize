@@ -45,35 +45,32 @@ int check_comment(char *file_data) {
     return 0;
 }
 
-char *lex_token(char **file_data, LexedToken **curr_token) {
+void lex_token(LexingState **state) {
     /// Tokenizing;
     int begin = 0;
-    while (check_comment(*file_data)) {
-        *file_data = strpbrk(*file_data, "\n");
-        *file_data += (strspn(*file_data, WHITESPACE));
+    while (check_comment((*state)->file_data)) {
+        (*state)->file_data = strpbrk((*state)->file_data, "\n");
+        (*state)->file_data += (strspn((*state)->file_data, WHITESPACE));
     }
-    if (**file_data == '\0')
-        return *file_data;
-    begin = strcspn(*file_data, DELIMS);
-    begin = (begin == 0 ? 1 : begin);
-    *curr_token = create_token(begin, *file_data);
-    *file_data += begin;
-    *file_data += (strspn(*file_data, WHITESPACE));
-
-    return *file_data;
+    if (*(*state)->file_data != '\0') {
+        begin = strcspn((*state)->file_data, DELIMS);
+        begin = (begin == 0 ? 1 : begin);
+        (*state)->curr_token = create_token(begin, (*state)->file_data);
+        (*state)->file_data += begin;
+        (*state)->file_data += (strspn((*state)->file_data, WHITESPACE));
+    }
 }
 
-int check_next_token(char *string_to_cmp, LexingState *state) {
-    if (string_to_cmp == NULL || *state->temp_file_data == NULL || state->curr_token == NULL) {
+int check_next_token(char *string_to_cmp, LexingState **state) {
+    if (string_to_cmp == NULL || (*state)->file_data == NULL || (*state)->curr_token == NULL) {
         print_error(ERR_COMMON, "NULL pointer passed to `check_next_token()`", NULL, 0);
         return 0;
     }
-    char *prev_file_data = *state->temp_file_data;
-    LexedToken *temp_token = state->curr_token;
-    prev_file_data = lex_token(&prev_file_data, &temp_token);
-    if (strncmp_lexed_token(temp_token, string_to_cmp)) {
-        state->curr_token = temp_token;
-        *state->temp_file_data = prev_file_data;
+    LexingState temp_state = **state;
+    LexingState *temp_state_ptr = &temp_state;
+    lex_token(&temp_state_ptr);
+    if (strncmp_lexed_token(temp_state.curr_token, string_to_cmp)) {
+        **state = temp_state;
         return 1;
     }
     return 0;

@@ -147,20 +147,19 @@ void add_parsing_context_child(ParsingContext **root, ParsingContext *child_to_a
     temp_ctx->next_child = child_to_add;
 }
 
-int parse_binary_infix_op(LexingState *state, ParsingContext **context, long *running_precedence,
+int parse_binary_infix_op(LexingState **state, ParsingContext **context, long *running_precedence,
                           AstNode **curr_expr, AstNode **running_expr, ParsingStack *curr_stack) {
-    char *tmp_data = *state->temp_file_data;
-    LexedToken *tmp_token = NULL;
-    tmp_data = lex_token(&tmp_data, &tmp_token);
-    AstNode *node_binary_op = node_symbol_from_token_create(tmp_token);
+    LexingState temp_state = **state;
+    LexingState *temp_state_ptr = &temp_state;
+    lex_token(&temp_state_ptr);
+    AstNode *node_binary_op = node_symbol_from_token_create(temp_state.curr_token);
     int stat = -1;
     ParsingContext *global_ctx = *context;
     while (global_ctx->parent_ctx != NULL)
         global_ctx = global_ctx->parent_ctx;
     AstNode *bin_op_val = get_env(global_ctx->binary_ops, node_binary_op, &stat);
     if (stat) {
-        *state->temp_file_data = tmp_data;
-        *state->curr_token = *tmp_token;
+        **state = temp_state;
         long temp_prec = bin_op_val->child->ast_val.val;
         AstNode *node_bin_op_body = node_alloc();
         node_bin_op_body->type = TYPE_BINARY_OPERATOR;
@@ -208,7 +207,6 @@ int parse_binary_infix_op(LexingState *state, ParsingContext **context, long *ru
         return 1;
     }
     free(bin_op_val);
-    free(tmp_token);
     free(node_binary_op);
     return 0;
 }
@@ -272,7 +270,7 @@ void lex_and_parse(char *file_dest, ParsingContext **curr_context, AstNode **pro
 
     LexingState *state = calloc(1, sizeof(LexingState));
     CHECK_NULL(state, "Could not allocate memory for LexingState", NULL);
-    state->temp_file_data = &temp_file_data;
+    state->file_data = temp_file_data;
     state->curr_token = curr_token;
 
     while (*temp_file_data != '\0') {
@@ -319,7 +317,7 @@ int check_invalid_var_access(ParsingContext *context, AstNode *sym_node) {
     return 0;
 }
 
-void parse_func_vars(AstNode **function_type, LexingState *state, ParsingContext *context) {
+void parse_func_vars(AstNode **function_type, LexingState **state, ParsingContext *context) {
     AstNode *param_type = node_alloc();
     int status = -1;
     parse_type(&param_type, state, context, &status);
@@ -338,7 +336,7 @@ void parse_func_vars(AstNode **function_type, LexingState *state, ParsingContext
     }
 
     // Lex past the name, it should be stored in some context atleast!!
-    *state->temp_file_data = lex_token(state->temp_file_data, &state->curr_token);
+    lex_token(state);
 
     if (check_next_token("(", state)) {
         AstNode *func_type = create_node_symbol("function");
@@ -350,7 +348,7 @@ void parse_func_vars(AstNode **function_type, LexingState *state, ParsingContext
             if (check_next_token(")", state))
                 break;
 
-            *state->temp_file_data = lex_token(state->temp_file_data, &state->curr_token);
+            lex_token(state);
             parse_func_vars(function_type, state, context);
 
             if (!check_next_token(",", state)) {
@@ -368,7 +366,7 @@ void parse_func_vars(AstNode **function_type, LexingState *state, ParsingContext
         add_ast_node_child(*function_type, param_type);
 }
 
-StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState *state,
+StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **state,
                                       AstNode **running_expr, ParsingContext **context,
                                       long *running_precedence, AstNode **curr_expr) {
     if (*curr_stack == NULL)
@@ -514,7 +512,7 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState *st
                                       *curr_stack))
                 return STACK_OP_CONT_PARSE;
             return STACK_OP_CONT_CHECK;
-        } else if (strncmp_lexed_token(state->curr_token, ",") || check_next_token(",", state)) {
+        } else if (strncmp_lexed_token((*state)->curr_token, ",") || check_next_token(",", state)) {
             (*curr_stack)->res->next_child = node_alloc();
             (*curr_stack)->res = (*curr_stack)->res->next_child;
             *running_expr = (*curr_stack)->res;
@@ -531,14 +529,15 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState *st
     return STACK_OP_CONT_PARSE;
 }
 
-AstNode *parse_type(AstNode **type_node, LexingState *state, ParsingContext *context, int *status) {
+AstNode *parse_type(AstNode **type_node, LexingState **state, ParsingContext *context,
+                    int *status) {
     unsigned int pointer_indirect = 0;
-    while (*((state->curr_token)->token_start) == '@') {
+    while (*(((*state)->curr_token)->token_start) == '@') {
         pointer_indirect += 1;
-        *state->temp_file_data = lex_token(state->temp_file_data, &state->curr_token);
+        lex_token(state);
     }
 
-    AstNode *sym_node = node_symbol_from_token_create(state->curr_token);
+    AstNode *sym_node = node_symbol_from_token_create((*state)->curr_token);
 
     AstNode *res = parser_get_type(context, sym_node, status);
     if (*status == 0)
@@ -585,13 +584,15 @@ AstNode *parse_type(AstNode **type_node, LexingState *state, ParsingContext *con
 }
 
 int check_if_type(char *temp_file_data, ParsingContext *context) {
-    char *data = temp_file_data;
-    LexedToken *token = NULL;
-    data = lex_token(&data, &token);
-    while (strncmp_lexed_token(token, "@"))
-        data = lex_token(&data, &token);
+    LexingState temp_state;
+    temp_state.file_data = temp_file_data;
+    temp_state.curr_token = NULL;
+    LexingState *temp_state_ptr = &temp_state;
+    lex_token(&temp_state_ptr);
+    while (strncmp_lexed_token(temp_state.curr_token, "@"))
+        lex_token(&temp_state_ptr);
     int stat = -1;
-    AstNode *sym = node_symbol_from_token_create(token);
+    AstNode *sym = node_symbol_from_token_create(temp_state.curr_token);
     parser_get_type(context, sym, &stat);
     if (stat)
         return 1;
@@ -604,10 +605,10 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
     AstNode *running_expr = *curr_expr;
     long running_precedence = 0;
     for (;;) {
-        *state->temp_file_data = lex_token(state->temp_file_data, &state->curr_token);
+        lex_token(&state);
 
         if (state->curr_token == NULL)
-            return *state->temp_file_data;
+            return state->file_data;
 
         // Check if the current token is an integer.
         if (!parse_int(state->curr_token, running_expr)) {
@@ -615,7 +616,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
             // variable declaration, assignment, etc.
 
             if (strncmp_lexed_token(state->curr_token, "@") &&
-                !check_if_type(*state->temp_file_data, *context)) {
+                !check_if_type(state->file_data, *context)) {
                 AstNode *ptr_deref = node_alloc();
                 ptr_deref->type = TYPE_DEREFERENCE;
                 AstNode *ptr_child = node_alloc();
@@ -663,7 +664,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
             AstNode *type_node = node_alloc();
 
             int status = -1;
-            AstNode *res = parse_type(&type_node, state, *context, &status);
+            AstNode *res = parse_type(&type_node, &state, *context, &status);
             if (status) {
                 AstNode *curr_var_decl = node_alloc();
                 curr_var_decl->type = TYPE_VAR_DECLARATION;
@@ -672,26 +673,25 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                 curr_type->type = res->type;
 
                 // Lex again to look forward.
-                if (check_next_token(":", state)) {
-                    CHECK_END(**state->temp_file_data, "End of file during variable declaration",
-                              NULL);
+                if (check_next_token(":", &state)) {
+                    CHECK_END(*state->file_data, "End of file during variable declaration", NULL);
 
                     // Handle lambda functions.
-                    if (check_next_token("(", state)) {
+                    if (check_next_token("(", &state)) {
                         AstNode *lambda_func_node = node_alloc();
                         lambda_func_node->type = TYPE_FUNCTION;
                         AstNode *arg_list = node_alloc();
                         add_ast_node_child(lambda_func_node, type_node);
                         add_ast_node_child(lambda_func_node, arg_list);
 
-                        if (check_next_token(")", state)) {
+                        if (check_next_token(")", &state)) {
 
                             // Parse function body.
-                            if (!check_next_token("{", state))
+                            if (!check_next_token("{", &state))
                                 print_error(ERR_SYNTAX,
                                             "Couldn't find body for function definition", NULL, 0);
 
-                            if (check_next_token("}", state)) {
+                            if (check_next_token("}", &state)) {
                                 *running_expr = *lambda_func_node;
                                 break;
                             }
@@ -729,7 +729,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                         curr_stack->res = running_expr;
                         continue;
                     }
-                    *state->temp_file_data = lex_token(state->temp_file_data, &state->curr_token);
+                    lex_token(&state);
                     AstNode *curr_sym = node_symbol_from_token_create(state->curr_token);
                     curr_sym->type = TYPE_SYM;
 
@@ -743,21 +743,20 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                     add_ast_node_child(curr_var_decl, curr_sym);
 
                     // Handling functions as variables.
-                    if (check_next_token("(", state)) {
+                    if (check_next_token("(", &state)) {
                         AstNode *function_type = create_node_symbol("function");
                         // Add return type as a child.
                         add_ast_node_child(function_type, type_node);
 
                         for (;;) {
-                            if (check_next_token(")", state))
+                            if (check_next_token(")", &state))
                                 break;
 
-                            *state->temp_file_data =
-                                lex_token(state->temp_file_data, &state->curr_token);
-                            parse_func_vars(&function_type, state, *context);
+                            lex_token(&state);
+                            parse_func_vars(&function_type, &state, *context);
 
-                            if (!check_next_token(",", state)) {
-                                if (!check_next_token(")", state)) {
+                            if (!check_next_token(",", &state)) {
+                                if (!check_next_token(")", &state)) {
                                     print_error(ERR_SYNTAX,
                                                 "Parameter list for function definition"
                                                 "must be delimited by a `,`",
@@ -783,13 +782,13 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                     }
 
                     // Lex again to look forward.
-                    if (check_next_token(":", state)) {
-                        CHECK_END(**state->temp_file_data,
+                    if (check_next_token(":", &state)) {
+                        CHECK_END(*state->file_data,
                                   "End of file during variable declaration "
                                   ": `%s`",
                                   curr_sym->ast_val.node_symbol);
-                        if (check_next_token("=", state)) {
-                            CHECK_END(**state->temp_file_data,
+                        if (check_next_token("=", &state)) {
+                            CHECK_END(*state->file_data,
                                       "End of file during variable "
                                       "declaration : `%s`",
                                       curr_sym->ast_val.node_symbol);
@@ -817,7 +816,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                                     "Expected `=` after `:` in variable declaration for : `%s`",
                                     sym_name->ast_val.node_symbol, 0);
                     }
-                    if (check_next_token("=", state))
+                    if (check_next_token("=", &state))
                         print_error(ERR_SYNTAX,
                                     "Expected `:` before `=` in variable declaration for : `%s`",
                                     sym_name->ast_val.node_symbol, 0);
@@ -829,7 +828,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                         StackOpRetVal stack_op_ret = STACK_OP_INVALID;
                         do {
                             stack_op_ret =
-                                stack_operator_continue(&curr_stack, state, &running_expr, context,
+                                stack_operator_continue(&curr_stack, &state, &running_expr, context,
                                                         &running_precedence, curr_expr);
                         } while (stack_op_ret == STACK_OP_CONT_CHECK);
                         if (stack_op_ret == STACK_OP_CONT_PARSE)
@@ -843,6 +842,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                                 0);
                     }
                     *running_expr = *curr_var_decl;
+                    break;
                 } else
                     print_error(ERR_SYNTAX, "Expected `:` after type declaration", NULL, 0);
             }
@@ -875,9 +875,8 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
             }
 
             // Lex again to look forward.
-            if (check_next_token(":", state)) {
-                CHECK_END(**state->temp_file_data,
-                          "End of file during variable re-assignment : `%s`",
+            if (check_next_token(":", &state)) {
+                CHECK_END(*state->file_data, "End of file during variable re-assignment : `%s`",
                           sym_node->ast_val.node_symbol);
 
                 AstNode *var_bind = parser_get_var(*context, sym_node, &status);
@@ -886,8 +885,8 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                     // otherwise invalid syntax error.
 
                     // Lex again to look forward.
-                    if (check_next_token("=", state)) {
-                        CHECK_END(**state->temp_file_data,
+                    if (check_next_token("=", &state)) {
+                        CHECK_END(*state->file_data,
                                   "End of file during variable "
                                   "re-assignment : `%s`",
                                   sym_node->ast_val.node_symbol);
@@ -927,11 +926,11 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                                 sym_node->ast_val.node_symbol, 0);
                 free_node(var_bind);
             } else {
-                if (curr_stack == NULL && check_next_token("=", state))
+                if (curr_stack == NULL && check_next_token("=", &state))
                     print_error(ERR_SYNTAX,
                                 "Expected `:` before `=` in variable re-assignment of : `%s`",
                                 node_var_access->ast_val.node_symbol, 0);
-                if (check_next_token("(", state)) {
+                if (check_next_token("(", &state)) {
                     status = -1;
                     parser_get_var(*context, sym_node, &status);
                     if (status) {
@@ -942,16 +941,16 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                         add_ast_node_child(running_expr, var_func_name);
                         AstNode *arg_list = node_alloc();
 
-                        if (check_next_token(")", state)) {
+                        if (check_next_token(")", &state)) {
                             add_ast_node_child(running_expr, arg_list);
-                            if (parse_binary_infix_op(state, context, &running_precedence,
+                            if (parse_binary_infix_op(&state, context, &running_precedence,
                                                       curr_expr, &running_expr, curr_stack))
                                 continue;
                             StackOpRetVal stack_op_ret = STACK_OP_INVALID;
                             do {
                                 stack_op_ret = stack_operator_continue(
-                                    &curr_stack, state, &running_expr, context, &running_precedence,
-                                    curr_expr);
+                                    &curr_stack, &state, &running_expr, context,
+                                    &running_precedence, curr_expr);
                             } while (stack_op_ret == STACK_OP_CONT_CHECK);
                             if (stack_op_ret == STACK_OP_CONT_PARSE)
                                 continue;
@@ -982,7 +981,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
             }
         }
 
-        if (parse_binary_infix_op(state, context, &running_precedence, curr_expr, &running_expr,
+        if (parse_binary_infix_op(&state, context, &running_precedence, curr_expr, &running_expr,
                                   curr_stack))
             continue;
 
@@ -991,7 +990,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
 
         StackOpRetVal stack_op_ret = STACK_OP_INVALID;
         do {
-            stack_op_ret = stack_operator_continue(&curr_stack, state, &running_expr, context,
+            stack_op_ret = stack_operator_continue(&curr_stack, &state, &running_expr, context,
                                                    &running_precedence, curr_expr);
         } while (stack_op_ret == STACK_OP_CONT_CHECK);
         if (stack_op_ret == STACK_OP_CONT_PARSE)
@@ -1002,5 +1001,5 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
             print_error(ERR_COMMON, "Compiler Error - Stack operator not being handled correctly",
                         NULL, 0);
     }
-    return *state->temp_file_data;
+    return state->file_data;
 }

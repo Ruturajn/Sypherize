@@ -154,16 +154,18 @@ int check_if_delims(LexedToken *token);
 
 int check_invalid_var_access(ParsingContext *context, AstNode *sym_node);
 
+void parse_func_vars(AstNode **function_type, LexingState **state, ParsingContext *context);
+
 void print_parsing_context(ParsingContext *context, int indent);
 
-int parse_binary_infix_op(LexingState *state, ParsingContext **context, long *running_precedence,
+int parse_binary_infix_op(LexingState **state, ParsingContext **context, long *running_precedence,
                           AstNode **curr_expr, AstNode **running_expr, ParsingStack *curr_stack);
 
-StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState *state,
+StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **state,
                                       AstNode **running_expr, ParsingContext **context,
                                       long *running_precedence, AstNode **curr_expr);
 
-AstNode *parse_type(AstNode **type_node, LexingState *state, ParsingContext *context, int *status);
+AstNode *parse_type(AstNode **type_node, LexingState **state, ParsingContext *context, int *status);
 
 int check_if_type(char *temp_file_data, ParsingContext *context);
 /**

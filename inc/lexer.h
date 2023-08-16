@@ -35,7 +35,7 @@ typedef struct LexedToken {
 
 typedef struct LexingState {
     LexedToken *curr_token;
-    char **temp_file_data;
+    char *file_data;
 } LexingState;
 
 /**
@@ -79,12 +79,9 @@ int check_comment(char *file_data);
 /**
  * @brief  Create a new token from the file data stream.
  *
- * @param  file_data   [`char **`] double-pointer to the data stream.
- * @param  curr_token  [`LexedToken *`] pointer in which the new token
- *                     needs to be stored.
- * @return char*      Pointer to the data stream, after the current token.
+ * @param  state   [`LexingState *`] pointer to the current lexing state.
  */
-char *lex_token(char **file_data, LexedToken **curr_token);
+void lex_token(LexingState **state);
 
 /**
  * @brief  Lexes the next token, and checks whether it's equal to the
@@ -93,13 +90,9 @@ char *lex_token(char **file_data, LexedToken **curr_token);
  *
  * @param  string_to_cmp  [`char *`] Pointer to the string, that needs
  *                        to be compared.
- * @param  temp_file_data [`char **`] Double pointer to the file data
- *                        stream.
- * @param  token          [`LexedToken *`] Pointer to a token, that
- *                        stores the next token.
- * @return int            `1` for success, and `0` for failure.
+ * @param  state   [`LexingState *`] pointer to the current lexing state.
  */
-int check_next_token(char *string_to_cmp, LexingState *state);
+int check_next_token(char *string_to_cmp, LexingState **state);
 
 #ifdef __cplusplus
 }
