@@ -222,6 +222,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             fprintf(fptr_code, ";#; Binary Operator : %s\n", curr_expr->ast_val.node_symbol);
         // Move the integers on the left and right hand side into different
         // registers.
+        // See: https://www.felixcloutier.com/x86/
         target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, curr_expr->child, cg_ctx,
                                        fptr_code);
         target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child,
@@ -288,13 +289,40 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
         } else if (strcmp(curr_expr->ast_val.node_symbol, "*") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->next_child->result_reg_desc;
-            // Subtract those registers and save the result in the LHS register.
-            // `sub` operation subtracts the second operand from the first
-            // operand, and stores it in the first operand.
             fprintf(fptr_code, "imul %s, %s\n", reg_lhs, reg_rhs);
 
             // De-allocate the RHS register since it is not in use anymore.
             reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+        } else if (strcmp(curr_expr->ast_val.node_symbol, "/") == 0) {
+            // Quotient is saved in RAX, and remainder is saved in RDX.
+            // So there registers need to be saved.
+            fprintf(fptr_code, "pushq %%rax\n"
+                               "pushq %%rdx\n");
+
+            // @Lens_r: Zero out RDX, so that it doesn't interfere with the
+            // division. RDX is used as the 8 high-bytes of a 16 byte number
+            // stored in RDX:RAX.
+            fprintf(fptr_code, "xor %%rdx, %%rdx\n");
+
+            // Move the value from LHS into RAX.
+            fprintf(fptr_code, "mov %s, %%rax\n",
+                    get_reg_name(curr_expr->child->result_reg_desc, reg_head));
+
+            // Call `div` instruction with the RHS register.
+            fprintf(fptr_code, "div %s\n",
+                    get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head));
+
+            // Move the result that is stored in RAX, into the expression's result register.
+            curr_expr->result_reg_desc = reg_alloc(reg_head);
+            fprintf(fptr_code, "mov %%rax, %s\n",
+                    get_reg_name(curr_expr->result_reg_desc, reg_head));
+
+            fprintf(fptr_code, "pop %%rdx\n"
+                               "pop %%rax\n");
+
+            // De-allocate the RHS/LHS register since they are not in use anymore.
+            // reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+            // reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
         }
         break;
     case TYPE_FUNCTION_CALL:;
