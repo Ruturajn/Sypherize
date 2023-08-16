@@ -10,34 +10,34 @@ extern "C" {
 #include <string.h>
 
 #define USAGE_STRING                                                                               \
-    "Sypherize 0.1\n"                                                                              \
+    "Sypherc 0.1\n"                                                                                \
     "Ruturajn <nanotiruturaj@gmail.com>\n"                                                         \
     "Compiler for Sypher\n"                                                                        \
     "\n"                                                                                           \
     "USAGE:\n"                                                                                     \
-    "    sypherize [OPTIONS] INPUT_FILE\n"                                                         \
+    "    sypherc [OPTIONS] INPUT_FILE\n"                                                           \
     "\n"                                                                                           \
     "OPTIONS:\n"                                                                                   \
-    "    -i, --input <INPUT_FILE_PATH>\n"                                                          \
-    "            Path to the input file\n"                                                         \
-    "\n"                                                                                           \
-    "    -o, --output <OUTPUT_FILE_PATH>\n"                                                        \
-    "            Path to the output file\n"                                                        \
-    "\n"                                                                                           \
     "    -f, --format <OUTPUT_FORMAT>\n"                                                           \
     "            A valid output format for code generation\n"                                      \
     "            VALID FORMATS:\n"                                                                 \
     "            - `x86_64-windows`\n"                                                             \
     "            - `default`\n"                                                                    \
     "\n"                                                                                           \
-    "    -V, --verbose\n"                                                                          \
-    "            Print out extra debugging information\n"                                          \
-    "\n"                                                                                           \
     "    -h, --help\n"                                                                             \
     "            Print this help information\n"                                                    \
     "\n"                                                                                           \
+    "    -i, --input <INPUT_FILE_PATH>\n"                                                          \
+    "            Path to the input file\n"                                                         \
+    "\n"                                                                                           \
+    "    -o, --output <OUTPUT_FILE_PATH>\n"                                                        \
+    "            Path to the output file\n"                                                        \
+    "\n"                                                                                           \
     "    -v, --version\n"                                                                          \
     "            Print out current version of Sypherize\n"                                         \
+    "\n"                                                                                           \
+    "    -V, --verbose\n"                                                                          \
+    "            Print out extra debugging information\n"                                          \
     "\n"                                                                                           \
     "NOTE - Everything else is treated as an input file\n"                                         \
     "\n"
@@ -77,6 +77,7 @@ typedef enum ErrType {
     ERR_REDEFINITION,
     ERR_EOF,
     ERR_TYPE,
+    ERR_DEV,
 } ErrType;
 
 extern const char *err_strings[];

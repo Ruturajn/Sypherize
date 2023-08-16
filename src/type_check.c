@@ -15,15 +15,29 @@ int cmp_type(AstNode *node1, AstNode *node2) {
         temp_node1 = temp_node1->next_child;
         temp_node2 = temp_node2->next_child;
     }
-    if (temp_node1 == temp_node2)
-        return 1;
+    if (temp_node1 != NULL || temp_node2 != NULL)
+        return 0;
     return 1;
 }
 
 int cmp_type_sym(AstNode *node1, AstNode *node2) {
+    if (node1->type != TYPE_SYM || node2->type != TYPE_SYM)
+        print_warning(ERR_COMMON, "Compairing symbols of nodes that aren't type TYPE_SYM", NULL, 0);
+
     if ((node1->type != node2->type) || (node1->pointer_level != node2->pointer_level) ||
         ((node1->ast_val.node_symbol != NULL && node2->ast_val.node_symbol != NULL) &&
          (strcmp(node1->ast_val.node_symbol, node2->ast_val.node_symbol) != 0)))
+        return 0;
+
+    AstNode *temp_node1 = node1->child;
+    AstNode *temp_node2 = node2->child;
+    while (temp_node1 != NULL && temp_node2 != NULL) {
+        if (cmp_type_sym(temp_node1, temp_node2) == 0)
+            return 0;
+        temp_node1 = temp_node1->next_child;
+        temp_node2 = temp_node2->next_child;
+    }
+    if (temp_node1 != NULL || temp_node2 != NULL)
         return 0;
     return 1;
 }
@@ -33,16 +47,26 @@ void print_type(AstNode *expr, AstNode *expected_type, AstNode *got_type) {
     print_ast_node(expr, 0);
     if (expected_type != NULL) {
         printf("EXPECTED TYPE: ");
-        for (unsigned int i = 0; i < expected_type->pointer_level; i++) {
-            putchar('@');
+        if (expected_type->child != NULL) {
+            putchar('\n');
+            print_ast_node(expected_type, 0);
+        } else {
+            for (unsigned int i = 0; i < expected_type->pointer_level; i++) {
+                putchar('@');
+            }
+            printf("%s\n", expected_type->ast_val.node_symbol);
         }
-        printf("%s\n", expected_type->ast_val.node_symbol);
     }
     printf("FOUND TYPE   : ");
-    for (unsigned int i = 0; i < got_type->pointer_level; i++) {
-        putchar('@');
+    if (got_type->child == NULL) {
+        for (unsigned int i = 0; i < got_type->pointer_level; i++) {
+            putchar('@');
+        }
+        printf("%s\n\n", got_type->ast_val.node_symbol);
+        return;
     }
-    printf("%s\n\n", got_type->ast_val.node_symbol);
+    putchar('\n');
+    print_ast_node(got_type, 0);
 }
 
 AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_enter,
@@ -145,29 +169,56 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         *ret_type = *if_expr_ret_type;
         break;
     case TYPE_FUNCTION:;
-        to_enter = (*context_to_enter)->child;
-        AstNode *function_body = temp_expr->child->next_child->next_child->child;
-        AstNode *expr_type = NULL;
-        while (function_body != NULL) {
-            expr_type = type_check_expr(*context_to_enter, &to_enter, function_body);
-            function_body = function_body->next_child;
-            if (function_body != NULL)
-                free_node(expr_type);
+        if (temp_expr->child->next_child->next_child->child) {
+            to_enter = (*context_to_enter)->child;
+            AstNode *function_body = temp_expr->child->next_child->next_child->child;
+            AstNode *expr_type = NULL;
+            while (function_body != NULL) {
+                expr_type = type_check_expr(*context_to_enter, &to_enter, function_body);
+                function_body = function_body->next_child;
+                if (function_body != NULL)
+                    free_node(expr_type);
+            }
+
+            copy_node(ret_type, temp_expr->child);
+
+            if (stat == 0)
+                print_error(ERR_COMMON, "Couldn't find information for return type of the function",
+                            NULL, 0);
+            if (cmp_type_sym(expr_type, ret_type) == 0) {
+                print_type(temp_expr, ret_type, expr_type);
+                print_error(ERR_TYPE,
+                            "Found Mismatched type for function return type and last expression",
+                            NULL, 0);
+            }
+            (*context_to_enter) = (*context_to_enter)->next_child;
         }
 
-        copy_node(ret_type, temp_expr->child->next_child);
+        AstNode *func_type = create_node_symbol("function");
 
-        if (stat == 0)
-            print_error(ERR_COMMON, "Couldn't find information for return type of the function",
-                        NULL, 0);
-        if (cmp_type_sym(expr_type, ret_type) == 0) {
-            print_type(temp_expr, ret_type, expr_type);
-            print_error(ERR_TYPE,
-                        "Found Mismatched type for function return type and last expression", NULL,
-                        0);
+        // Copy return type.
+        *ret_type = *func_type;
+        ret_type->child = node_alloc();
+        copy_node(ret_type->child, temp_expr->child);
+
+        // Copy parameter types.
+        AstNode *param_types = temp_expr->child->next_child->child;
+        if (param_types == NULL)
+            break;
+
+        while (param_types != NULL) {
+            if (param_types->type != TYPE_VAR_DECLARATION)
+                print_error(
+                    ERR_TYPE,
+                    "Parameter list in function definition must be a valid variable declaration",
+                    NULL, 0);
+
+            AstNode *param_ret_type = node_alloc();
+            copy_node(param_ret_type, param_types->child->next_child);
+            add_ast_node_child(ret_type, param_ret_type);
+            param_types = param_types->next_child;
         }
 
-        (*context_to_enter) = (*context_to_enter)->next_child;
         break;
     case TYPE_VAR_REASSIGNMENT:;
         // Get the return type of the left hand side of a variable declaration.
@@ -218,14 +269,20 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         *ret_type = *op_decl_ret_type;
         break;
     case TYPE_FUNCTION_CALL:;
-        AstNode *func_body = parser_get_func(context, temp_expr->child, &stat);
+        AstNode *var_func_type = parser_get_var(context, temp_expr->child, &stat);
         if (!stat) {
             print_error(ERR_COMMON,
                         "Function definition not found :"
                         "`%s`",
                         temp_expr->child->ast_val.node_symbol, 0);
         }
-        AstNode *func_param_list = func_body->child->child;
+
+        // Make sure that the variable used is of FUNCTION type.
+        if (strcmp(var_func_type->ast_val.node_symbol, "function") != 0)
+            print_error(ERR_TYPE, "Called function must be of FUNCTION type : `%s`",
+                        temp_expr->child->ast_val.node_symbol, 0);
+
+        AstNode *func_param_list = var_func_type->child->next_child;
         AstNode *func_call_params = temp_expr->child->next_child->child;
         AstNode *param_list_type = NULL;
         AstNode *param_call_type = NULL;
@@ -233,7 +290,7 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
             param_call_type = type_check_expr(context, context_to_enter, func_call_params);
 
             AstNode *complete_param_list_type = node_alloc();
-            copy_node(complete_param_list_type, func_param_list->child->next_child);
+            copy_node(complete_param_list_type, func_param_list);
 
             if (stat == 0)
                 print_error(ERR_TYPE, "Unable to find type information for : `%s`",
@@ -266,11 +323,17 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         free_node(param_list_type);
         stat = -1;
         AstNode *final_function_return_type = node_alloc();
-        copy_node(final_function_return_type, func_body->child->next_child);
+        copy_node(final_function_return_type, var_func_type->child);
         *ret_type = *final_function_return_type;
-        free_node(func_body);
+        free_node(var_func_type);
+        break;
+    case TYPE_NULL:
+        break;
+    case TYPE_VAR_DECLARATION:
         break;
     default:
+        print_warning(ERR_DEV, "Found unhandled expression type during type-checking", NULL, 0);
+        print_ast_node(temp_expr, 0);
         break;
     }
     return ret_type;

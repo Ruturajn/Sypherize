@@ -4,7 +4,7 @@
 # For more information about functions and the language
 # see `factorial.sy`.
 
-def_func foo(int: a, int: b) ~ int {
+int: foo(int: a, int: b) := int: (int: a, int: b) {
     int: d := 10;
     a := 13;
     a
@@ -12,7 +12,7 @@ def_func foo(int: a, int: b) ~ int {
 
 foo(12,3);
 
-def_func bar(@int: ptr) ~ @int {
+@int: bar(@int: ptr) := @int: (@int: ptr) {
     @ptr := 41 + 28;
     ptr
 }

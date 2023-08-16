@@ -4,7 +4,7 @@
 # There isn't a `main` function in sypher that acts an an entry point.
 # Rather the instructions are executed sequentially, like a script.
 
-def_func fact(int: a) ~ int {
+int: fact(int: a) := int: (int: a) {
     if a < 2 {
         # Return value of the function.
         1

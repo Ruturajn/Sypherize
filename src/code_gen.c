@@ -164,13 +164,8 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             print_error(ERR_COMMON, "Unable to find variable in environment : `%s`",
                         curr_expr->child->ast_val.node_symbol, 0);
         AstNode *type_node = NULL;
-        long size_in_bytes = 0;
-        if (var_node->pointer_level != 0)
-            size_in_bytes = 8;
-        else {
-            type_node = parser_get_type(context, var_node, &stat);
-            size_in_bytes = type_node->child->ast_val.val;
-        }
+        type_node = parser_get_type(context, var_node, &stat);
+        long size_in_bytes = type_node->child->ast_val.val;
         if (!stat)
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
                         type_node->ast_val.node_symbol, 0);
@@ -193,15 +188,27 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
     case TYPE_VAR_ACCESS:
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Variable Access : `%s`\n", curr_expr->ast_val.node_symbol);
+
+        CGContext *var_cg_ctx = cg_ctx;
+        stat = -1;
+        AstNode *local_var_name;
+        while (var_cg_ctx != NULL) {
+            local_var_name =
+                get_env_from_sym(var_cg_ctx->local_env, curr_expr->ast_val.node_symbol, &stat);
+            if (stat)
+                break;
+            if (var_cg_ctx->parent_ctx != NULL)
+                free_node(local_var_name);
+            var_cg_ctx = var_cg_ctx->parent_ctx;
+        }
+
         curr_expr->result_reg_desc = reg_alloc(reg_head);
-        if (cg_ctx->parent_ctx == NULL) {
+        if (var_cg_ctx == NULL) {
             fprintf(fptr_code, "mov %s(%%rip), %s\n", curr_expr->ast_val.node_symbol,
                     get_reg_name(curr_expr->result_reg_desc, reg_head));
         } else {
-            stat = -1;
-            AstNode *local_var_name =
-                get_env_from_sym(cg_ctx->local_env, curr_expr->ast_val.node_symbol, &stat);
-            if (!stat)
+            // Check if `stat` isn't 0, i.e. the variable was found.
+            if (stat == 0)
                 print_error(ERR_COMMON,
                             "Unable to find information regarding local "
                             "variable offset for: `%s`",
@@ -325,7 +332,16 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
          * travel up 8 bytes to reach the `call - return address`, and 8 more
          * to reach our argument, i.e. 3.
          */
-        fprintf(fptr_code, "call %s\n", curr_expr->child->ast_val.node_symbol);
+
+        // Now that we treats functions as variables for calling them we need to
+        // var access the name of the "function variable" and call it's result
+        // register. See TYPE_FUNCTION for more details.
+
+        target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, curr_expr->child, cg_ctx,
+                                       fptr_code);
+        fprintf(fptr_code, "call *%s\n", get_reg_name(curr_expr->child->result_reg_desc, reg_head));
+        reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+
         if (param_count > 0)
             fprintf(fptr_code, "add $%d, %%rsp\n", param_count * 8);
 
@@ -362,6 +378,29 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
 
         target_x86_64_win_codegen_func(reg_head, cg_ctx, context, ctx_next_child, func_name,
                                        curr_expr, fptr_code);
+
+        /**
+         * Now that functions are being treated as variables we can use
+         * the following assembly to re-assign them to a different function
+         * signature and use that to call the actual function.
+         *
+         *      jmp after_foo_label
+         * foo_label:
+         *      push %rbp
+         *      mov %rsp, %rbp
+         *      sub $32, %rsp
+         *      mov $69, %rax
+         *      add $32, %rsp
+         * after_foo_label:
+         *      lea foo_label(%rip), %rax
+         *      mov %rax, bar(%rip)
+         *      mov bar(%rip), %rax
+         *      call *%rax
+         */
+
+        curr_expr->result_reg_desc = reg_alloc(reg_head);
+        fprintf(fptr_code, "lea %s(%%rip), %s\n", func_name,
+                get_reg_name(curr_expr->result_reg_desc, reg_head));
         break;
     case TYPE_VAR_REASSIGNMENT:
         if (codegen_verbose)
@@ -532,7 +571,7 @@ void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx, ParsingCon
      * the parameter names. Hence notice 'param_cnt' starts from '2',
      * to make space for the first and second instructions.
      */
-    AstNode *func_param_list = func->child->child;
+    AstNode *func_param_list = func->child->next_child->child;
     long param_cnt = 1;
     while (func_param_list != NULL) {
         param_cnt++;
@@ -601,21 +640,23 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
     fprintf(fptr_code, ".section .data\n");
 
     IdentifierBind *temp_var_bind = context->vars->binding;
-    AstNode *temp_var_id = NULL;
+    AstNode *temp_var_type_id = NULL;
     int status = -1;
     while (temp_var_bind != NULL) {
-        temp_var_id = temp_var_bind->id_val;
-        while (temp_var_id != NULL && temp_var_id->ast_val.node_symbol == NULL)
-            temp_var_id = temp_var_id->child;
-        AstNode *var = get_env(context->env_type, temp_var_id, &status);
+        temp_var_type_id = node_alloc();
+        *temp_var_type_id = *temp_var_bind->id_val;
+        temp_var_type_id->child = NULL;
+        temp_var_type_id->next_child = NULL;
+        AstNode *var = parser_get_type(context, temp_var_type_id, &status);
         if (!status)
             print_error(ERR_COMMON, "Unable to retrieve value from environment for : `%s`",
-                        temp_var_id->ast_val.node_symbol, 0);
+                        temp_var_type_id->ast_val.node_symbol, 0);
 
         fprintf(fptr_code, "%s: .space %ld\n", temp_var_bind->identifier->ast_val.node_symbol,
                 var->child->ast_val.val);
 
         temp_var_bind = temp_var_bind->next_id_bind;
+        free_node(temp_var_type_id);
     }
 
     fprintf(fptr_code,

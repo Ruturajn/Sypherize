@@ -91,6 +91,13 @@ AstNode *parser_get_type(ParsingContext *context, AstNode *identifier, int *stat
     ParsingContext *temp_ctx = context;
     int status = -1;
 
+    if (identifier->pointer_level > 0 || strcmp(identifier->ast_val.node_symbol, "function") == 0) {
+        AstNode *res = node_alloc();
+        res->child = create_node_int(8);
+        *stat = 1;
+        return res;
+    }
+
     while (temp_ctx != NULL) {
         AstNode *res = get_env(temp_ctx->env_type, identifier, &status);
         if (status) {
@@ -152,7 +159,10 @@ void print_env(Env *env, int indent) {
         if (temp_val == NULL)
             putchar('\n');
         while (temp_val != NULL) {
-            printf(" -> %s", get_node_str(temp_val));
+            if (temp_val == curr_bind->id_val->child)
+                printf(" ==> %s", get_node_str(temp_val));
+            else
+                printf(" -> %s", get_node_str(temp_val));
             temp_val = temp_val->next_child;
             if (temp_val == NULL)
                 putchar('\n');

@@ -5,8 +5,7 @@
 extern "C" {
 #endif
 
-typedef struct ParsingContext ParsingContext;
-typedef struct AstNode AstNode;
+#include "parser.h"
 
 int cmp_type(AstNode *node1, AstNode *node2);
 

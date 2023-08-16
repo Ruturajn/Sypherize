@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-typedef struct AstNode AstNode;
-typedef struct LexedToken LexedToken;
+#include "lexer.h"
+#include "parser.h"
 
 #define NODE_BUF_SIZE 512
 

@@ -5,27 +5,7 @@
 extern "C" {
 #endif
 
-typedef struct AstNode AstNode;
-typedef struct ParsingContext ParsingContext;
-
-/**
- * @brief Structure defining binding for an identifier, i.e. a node for
- *        the identifier, and it's value.
- */
-typedef struct IdentifierBind {
-    AstNode *identifier;                 ///< Node for the identifier.
-    AstNode *id_val;                     ///< Node for the value.
-    struct IdentifierBind *next_id_bind; ///< Pointer to the next binding.
-} IdentifierBind;
-
-/**
- * @brief Structure defining an environment which contains the binding, and
- *        a parent environment.
- */
-typedef struct Env {
-    IdentifierBind *binding; ///< Pointer to the binding.
-    struct Env *parent_env;  ///< Pointer to the parent environment.
-} Env;
+#include "parser.h"
 
 /**
  * @brief  Creates a new environment.

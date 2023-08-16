@@ -6,8 +6,7 @@
 # For more information about functions and the language
 # see `factorial.sy`.
 
-def_func bar() ~ int
-{
+int: bar() := int: () {
     int :a := 0;
     int :b := 0;
 

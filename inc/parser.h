@@ -5,8 +5,7 @@
 extern "C" {
 #endif
 
-typedef struct LexedToken LexedToken;
-typedef struct Env Env;
+#include "lexer.h"
 
 /**
  * @brief Enumeration that defines a type for the `AstNode`.
@@ -50,6 +49,25 @@ typedef struct AstNode {
                                 ///< rersult.
     unsigned int pointer_level; ///< Indirection level for a pointer.
 } AstNode;
+
+/**
+ * @brief Structure defining binding for an identifier, i.e. a node for
+ *        the identifier, and it's value.
+ */
+typedef struct IdentifierBind {
+    AstNode *identifier;                 ///< Node for the identifier.
+    AstNode *id_val;                     ///< Node for the value.
+    struct IdentifierBind *next_id_bind; ///< Pointer to the next binding.
+} IdentifierBind;
+
+/**
+ * @brief Structure defining an environment which contains the binding, and
+ *        a parent environment.
+ */
+typedef struct Env {
+    IdentifierBind *binding; ///< Pointer to the binding.
+    struct Env *parent_env;  ///< Pointer to the parent environment.
+} Env;
 
 typedef struct ParsingStack {
     struct ParsingStack *parent_stack; ///< Pointer to the parent stack.
@@ -136,19 +154,18 @@ int check_if_delims(LexedToken *token);
 
 int check_invalid_var_access(ParsingContext *context, AstNode *sym_node);
 
+void parse_func_vars(AstNode **function_type, LexingState **state, ParsingContext *context);
+
 void print_parsing_context(ParsingContext *context, int indent);
 
-int parse_binary_infix_op(char **temp_file_data, LexedToken **curr_token, ParsingContext **context,
-                          long *running_precedence, AstNode **curr_expr, AstNode **running_expr,
-                          ParsingStack *curr_stack);
+int parse_binary_infix_op(LexingState **state, ParsingContext **context, long *running_precedence,
+                          AstNode **curr_expr, AstNode **running_expr, ParsingStack *curr_stack);
 
-StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexedToken **curr_token,
-                                      AstNode **running_expr, char **temp_file_data,
-                                      ParsingContext **context, long *running_precedence,
-                                      AstNode **curr_expr);
+StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **state,
+                                      AstNode **running_expr, ParsingContext **context,
+                                      long *running_precedence, AstNode **curr_expr);
 
-AstNode *parse_type(AstNode **temp_type_node, LexedToken **curr_token, char **temp_file_data,
-                    ParsingContext *context, int *status);
+AstNode *parse_type(AstNode **type_node, LexingState **state, ParsingContext *context, int *status);
 
 int check_if_type(char *temp_file_data, ParsingContext *context);
 /**
@@ -165,8 +182,7 @@ int check_if_type(char *temp_file_data, ParsingContext *context);
  *                       the current context.
  * @return char*         Pointer to the file data stream.
  */
-char *parse_tokens(char **temp_file_data, LexedToken *curr_token, AstNode **curr_expr,
-                   ParsingContext **context);
+char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **context);
 
 #ifdef __cplusplus
 }

@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "../inc/utils.h"
+#include "utils.h"
 
 /**
  * @brief String containing all the the delimeters used
@@ -32,6 +32,11 @@ typedef struct LexedToken {
     char *token_start; ///< Pointer to the beginning of the token.
     int token_length;  ///< Length of the token from the beginning.
 } LexedToken;
+
+typedef struct LexingState {
+    LexedToken *curr_token;
+    char *file_data;
+} LexingState;
 
 /**
  * @brief Print out the token, pointed to by `curr_token`.
@@ -74,12 +79,9 @@ int check_comment(char *file_data);
 /**
  * @brief  Create a new token from the file data stream.
  *
- * @param  file_data   [`char **`] double-pointer to the data stream.
- * @param  curr_token  [`LexedToken *`] pointer in which the new token
- *                     needs to be stored.
- * @return char*      Pointer to the data stream, after the current token.
+ * @param  state   [`LexingState *`] pointer to the current lexing state.
  */
-char *lex_token(char **file_data, LexedToken **curr_token);
+void lex_token(LexingState **state);
 
 /**
  * @brief  Lexes the next token, and checks whether it's equal to the
@@ -88,13 +90,9 @@ char *lex_token(char **file_data, LexedToken **curr_token);
  *
  * @param  string_to_cmp  [`char *`] Pointer to the string, that needs
  *                        to be compared.
- * @param  temp_file_data [`char **`] Double pointer to the file data
- *                        stream.
- * @param  token          [`LexedToken *`] Pointer to a token, that
- *                        stores the next token.
- * @return int            `1` for success, and `0` for failure.
+ * @param  state   [`LexingState *`] pointer to the current lexing state.
  */
-int check_next_token(char *string_to_cmp, char **temp_file_data, LexedToken **token);
+int check_next_token(char *string_to_cmp, LexingState **state);
 
 #ifdef __cplusplus
 }
