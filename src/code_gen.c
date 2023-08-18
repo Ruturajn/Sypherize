@@ -313,7 +313,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             fprintf(fptr_code,
                     "push %%rcx\n"
                     "mov %s, %%rcx\n"
-                    "shr %%cl, %s\n"
+                    "sar %%cl, %s\n"
                     "pop %%rcx\n",
                     reg_rhs, reg_lhs);
 
@@ -331,17 +331,19 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             fprintf(fptr_code, "pushq %%rax\n"
                                "pushq %%rdx\n");
 
-            // @Lens_r: Zero out RDX, so that it doesn't interfere with the
-            // division. RDX is used as the 8 high-bytes of a 16 byte number
-            // stored in RDX:RAX.
-            fprintf(fptr_code, "xor %%rdx, %%rdx\n");
-
-            // Move the value from LHS into RAX.
-            fprintf(fptr_code, "mov %s, %%rax\n",
+            // Move the value from LHS into RAX. Use signed division instead of
+            // unsigned to avoid division error, when using negative numbers.
+            // Sign extend the value in RAX to RDX.
+            // RDX is used as the 8 high-bytes of a 16 byte number
+            // stored in RDX:RAX. Convert 8 bytes into a 16 byte number using
+            // `cqto` (convert quad word to octo word).
+            fprintf(fptr_code,
+                    "mov %s, %%rax\n"
+                    "cqto\n",
                     get_reg_name(curr_expr->child->result_reg_desc, reg_head));
 
-            // Call `div` instruction with the RHS register.
-            fprintf(fptr_code, "div %s\n",
+            // Call `idiv` instruction with the RHS register.
+            fprintf(fptr_code, "idiv %s\n",
                     get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head));
 
             // Move the result that is stored in RAX, into the expression's result register.
