@@ -287,6 +287,38 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
 
             // De-allocate the LHS register since it is not in use anymore.
             reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+        } else if (strcmp(curr_expr->ast_val.node_symbol, "<<") == 0) {
+            curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
+            // Since shift left is destructive, we use the expression result
+            // register as the LHS register. The RHS or the amount by which the
+            // shift left needs to be done is placed into RCX, which is used by
+            // the SHL instruction by default and the final value is stored in
+            // the LHS register.
+            fprintf(fptr_code,
+                    "push %%rcx\n"
+                    "mov %s, %%rcx\n"
+                    "shl %%cl, %s\n"
+                    "pop %%rcx\n",
+                    reg_rhs, reg_lhs);
+
+            // De-allocate the RHS register since it is not in use anymore.
+            reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
+        } else if (strcmp(curr_expr->ast_val.node_symbol, ">>") == 0) {
+            curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
+            // Since shift right is destructive, we use the expression result
+            // register as the LHS register. The RHS or the amount by which the
+            // shift right needs to be done is placed into RCX, which is used by
+            // the SHL instruction by default and the final value is stored in
+            // the LHS register.
+            fprintf(fptr_code,
+                    "push %%rcx\n"
+                    "mov %s, %%rcx\n"
+                    "shr %%cl, %s\n"
+                    "pop %%rcx\n",
+                    reg_rhs, reg_lhs);
+
+            // De-allocate the RHS register since it is not in use anymore.
+            reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
         } else if (strcmp(curr_expr->ast_val.node_symbol, "*") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->next_child->result_reg_desc;
             fprintf(fptr_code, "imul %s, %s\n", reg_lhs, reg_rhs);

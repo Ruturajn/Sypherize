@@ -58,6 +58,8 @@ void lex_token(LexingState **state) {
         (*state)->curr_token = create_token(begin, (*state)->file_data);
         (*state)->file_data += begin;
         (*state)->file_data += (strspn((*state)->file_data, WHITESPACE));
+    } else {
+        *(*state)->curr_token->token_start = '\0';
     }
 }
 

@@ -28,3 +28,7 @@ int: test_function(int: a, int: x) := int: (int: a, int: x){
 int : a := 10;
 
 a
+
+4 >> 2
+
+2 << 3

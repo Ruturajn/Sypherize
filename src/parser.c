@@ -57,6 +57,9 @@ ParsingContext *create_default_parsing_context() {
     ast_add_binary_ops(&new_context, "<", 3, "int", "int", "int");
     ast_add_binary_ops(&new_context, ">", 3, "int", "int", "int");
 
+    ast_add_binary_ops(&new_context, "<<", 4, "int", "int", "int");
+    ast_add_binary_ops(&new_context, ">>", 4, "int", "int", "int");
+
     ast_add_binary_ops(&new_context, "+", 5, "int", "int", "int");
     ast_add_binary_ops(&new_context, "-", 5, "int", "int", "int");
 
@@ -152,7 +155,14 @@ int parse_binary_infix_op(LexingState **state, ParsingContext **context, long *r
     LexingState temp_state = **state;
     LexingState *temp_state_ptr = &temp_state;
     lex_token(&temp_state_ptr);
-    AstNode *node_binary_op = node_symbol_from_token_create(temp_state.curr_token);
+    AstNode *node_binary_op = NULL;
+    if (strncmp_lexed_token(temp_state.curr_token, "<") && check_next_token("<", &temp_state_ptr))
+        node_binary_op = create_node_symbol("<<");
+    else if (strncmp_lexed_token(temp_state.curr_token, ">") &&
+             check_next_token(">", &temp_state_ptr))
+        node_binary_op = create_node_symbol(">>");
+    else
+        node_binary_op = node_symbol_from_token_create(temp_state.curr_token);
     int stat = -1;
     ParsingContext *global_ctx = *context;
     while (global_ctx->parent_ctx != NULL)
@@ -607,7 +617,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
     for (;;) {
         lex_token(&state);
 
-        if (state->curr_token == NULL)
+        if (*state->curr_token->token_start == '\0')
             return state->file_data;
 
         // Check if the current token is an integer.
