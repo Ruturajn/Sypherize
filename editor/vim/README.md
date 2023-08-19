@@ -6,7 +6,7 @@
     ```
     Plug 'Ruturajn/Sypherc', {'rtp' : 'editor/vim'}
     ```
-  - For using with `neovim` add the following to your vim-plug init file:
+  - For using with `neovim` add the following to your vim-plug lua init file:
     ```
     Plug ('Ruturajn/Sypherc', {['rtp'] = 'editor/vim'})
     ```
