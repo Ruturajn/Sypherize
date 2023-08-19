@@ -48,19 +48,29 @@ int check_comment(char *file_data) {
 void lex_token(LexingState **state) {
     /// Tokenizing;
     int begin = 0;
+    // Skip all whitespace.
+    (*state)->file_data += (strspn((*state)->file_data, WHITESPACE));
+    // Skip all the comments.
     while (check_comment((*state)->file_data)) {
         (*state)->file_data = strpbrk((*state)->file_data, "\n");
         (*state)->file_data += (strspn((*state)->file_data, WHITESPACE));
     }
     if (*(*state)->file_data != '\0') {
+        // Move forward until a delimiter is encountered.
         begin = strcspn((*state)->file_data, DELIMS);
         begin = (begin == 0 ? 1 : begin);
         (*state)->curr_token = create_token(begin, (*state)->file_data);
         (*state)->file_data += begin;
-        (*state)->file_data += (strspn((*state)->file_data, WHITESPACE));
     } else {
         *(*state)->curr_token->token_start = '\0';
     }
+}
+
+void extend_curr_token(LexingState **state) {
+    LexingState temp_state = **state;
+    LexingState *temp_state_ptr = &temp_state;
+    lex_token(&temp_state_ptr);
+    (*state)->curr_token->token_length += (*state)->curr_token->token_length;
 }
 
 int check_next_token(char *string_to_cmp, LexingState **state) {

@@ -232,6 +232,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         // integers.
         char *reg_lhs = get_reg_name(curr_expr->child->result_reg_desc, reg_head);
         char *reg_rhs = get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head);
+
         if (strcmp(curr_expr->ast_val.node_symbol, ">") == 0) {
             curr_expr->result_reg_desc = reg_alloc(reg_head);
             RegDescriptor true_reg = reg_alloc(reg_head);
@@ -245,6 +246,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
             reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
             reg_dealloc(reg_head, true_reg);
+
         } else if (strcmp(curr_expr->ast_val.node_symbol, "<") == 0) {
             curr_expr->result_reg_desc = reg_alloc(reg_head);
             RegDescriptor true_reg = reg_alloc(reg_head);
@@ -258,7 +260,8 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
             reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
             reg_dealloc(reg_head, true_reg);
-        } else if (strcmp(curr_expr->ast_val.node_symbol, "=") == 0) {
+
+        } else if (strcmp(curr_expr->ast_val.node_symbol, "==") == 0) {
             curr_expr->result_reg_desc = reg_alloc(reg_head);
             RegDescriptor true_reg = reg_alloc(reg_head);
 
@@ -271,6 +274,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
             reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
             reg_dealloc(reg_head, true_reg);
+
         } else if (strcmp(curr_expr->ast_val.node_symbol, "+") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->next_child->result_reg_desc;
             // Add those registers and save the result in the RHS register.
@@ -278,6 +282,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
 
             // De-allocate the LHS register since it is not in use anymore.
             reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+
         } else if (strcmp(curr_expr->ast_val.node_symbol, "-") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
             // Subtract those registers and save the result in the LHS register.
@@ -287,6 +292,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
 
             // De-allocate the LHS register since it is not in use anymore.
             reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+
         } else if (strcmp(curr_expr->ast_val.node_symbol, "<<") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
             // Since shift left is destructive, we use the expression result
@@ -297,12 +303,13 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             fprintf(fptr_code,
                     "push %%rcx\n"
                     "mov %s, %%rcx\n"
-                    "shl %%cl, %s\n"
+                    "sal %%cl, %s\n"
                     "pop %%rcx\n",
                     reg_rhs, reg_lhs);
 
             // De-allocate the RHS register since it is not in use anymore.
             reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
+
         } else if (strcmp(curr_expr->ast_val.node_symbol, ">>") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
             // Since shift right is destructive, we use the expression result
@@ -319,17 +326,30 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
 
             // De-allocate the RHS register since it is not in use anymore.
             reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
+
         } else if (strcmp(curr_expr->ast_val.node_symbol, "*") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->next_child->result_reg_desc;
             fprintf(fptr_code, "imul %s, %s\n", reg_lhs, reg_rhs);
 
             // De-allocate the RHS register since it is not in use anymore.
             reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
-        } else if (strcmp(curr_expr->ast_val.node_symbol, "/") == 0) {
+
+        } else if (strcmp(curr_expr->ast_val.node_symbol, "/") == 0 ||
+                   strcmp(curr_expr->ast_val.node_symbol, "%") == 0) {
+
+            char is_modulus = 0;
+            if (strcmp(curr_expr->ast_val.node_symbol, "%") == 0)
+                is_modulus = 1;
+
             // Quotient is saved in RAX, and remainder is saved in RDX.
             // So there registers need to be saved.
             fprintf(fptr_code, "pushq %%rax\n"
                                "pushq %%rdx\n");
+
+            // Move result into RAX only if it isn't the result register.
+            if (strcmp(get_reg_name(curr_expr->child->result_reg_desc, reg_head), "%rax") != 0)
+                fprintf(fptr_code, "mov %s, %%rax\n",
+                        get_reg_name(curr_expr->child->result_reg_desc, reg_head));
 
             // Move the value from LHS into RAX. Use signed division instead of
             // unsigned to avoid division error, when using negative numbers.
@@ -337,10 +357,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             // RDX is used as the 8 high-bytes of a 16 byte number
             // stored in RDX:RAX. Convert 8 bytes into a 16 byte number using
             // `cqto` (convert quad word to octo word).
-            fprintf(fptr_code,
-                    "mov %s, %%rax\n"
-                    "cqto\n",
-                    get_reg_name(curr_expr->child->result_reg_desc, reg_head));
+            fprintf(fptr_code, "cqto\n");
 
             // Call `idiv` instruction with the RHS register.
             fprintf(fptr_code, "idiv %s\n",
@@ -348,8 +365,15 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
 
             // Move the result that is stored in RAX, into the expression's result register.
             curr_expr->result_reg_desc = reg_alloc(reg_head);
-            fprintf(fptr_code, "mov %%rax, %s\n",
-                    get_reg_name(curr_expr->result_reg_desc, reg_head));
+            if (is_modulus) {
+                if (strcmp(get_reg_name(curr_expr->result_reg_desc, reg_head), "%rdx") != 0)
+                    fprintf(fptr_code, "mov %%rdx, %s\n",
+                            get_reg_name(curr_expr->result_reg_desc, reg_head));
+            } else {
+                if (strcmp(get_reg_name(curr_expr->result_reg_desc, reg_head), "%rax") != 0)
+                    fprintf(fptr_code, "mov %%rax, %s\n",
+                            get_reg_name(curr_expr->result_reg_desc, reg_head));
+            }
 
             fprintf(fptr_code, "pop %%rdx\n"
                                "pop %%rax\n");
@@ -357,7 +381,10 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             // De-allocate the RHS/LHS register since they are not in use anymore.
             // reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
             // reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
-        }
+
+        } else
+            print_error(ERR_COMMON, "Found unknown binary operator : `%s`",
+                        curr_expr->ast_val.node_symbol, 0);
         break;
     case TYPE_FUNCTION_CALL:;
         if (codegen_verbose)

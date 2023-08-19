@@ -11,7 +11,7 @@ extern "C" {
  * @brief String containing all the the delimeters used
  *        for tokenizing.
  */
-#define DELIMS " :=,;~()[]{}<>-+/*&@\r\n"
+#define DELIMS " :=,;~(){}<>-+/*&@%\r\n"
 
 /**
  * @brief String containing all the the whitespace characters
@@ -82,6 +82,8 @@ int check_comment(char *file_data);
  * @param  state   [`LexingState *`] pointer to the current lexing state.
  */
 void lex_token(LexingState **state);
+
+void extend_curr_token(LexingState **state);
 
 /**
  * @brief  Lexes the next token, and checks whether it's equal to the

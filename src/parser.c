@@ -53,7 +53,8 @@ ParsingContext *create_default_parsing_context() {
     ParsingContext *new_context = create_parsing_context(NULL);
     AstNode *sym_node = create_node_symbol("int");
     ast_add_type_node(&new_context->env_type, TYPE_INT, sym_node, sizeof(long));
-    ast_add_binary_ops(&new_context, "=", 3, "int", "int", "int");
+
+    ast_add_binary_ops(&new_context, "==", 3, "int", "int", "int");
     ast_add_binary_ops(&new_context, "<", 3, "int", "int", "int");
     ast_add_binary_ops(&new_context, ">", 3, "int", "int", "int");
 
@@ -65,6 +66,8 @@ ParsingContext *create_default_parsing_context() {
 
     ast_add_binary_ops(&new_context, "*", 10, "int", "int", "int");
     ast_add_binary_ops(&new_context, "/", 10, "int", "int", "int");
+    ast_add_binary_ops(&new_context, "%", 10, "int", "int", "int");
+
     return new_context;
 }
 
@@ -156,13 +159,18 @@ int parse_binary_infix_op(LexingState **state, ParsingContext **context, long *r
     LexingState *temp_state_ptr = &temp_state;
     lex_token(&temp_state_ptr);
     AstNode *node_binary_op = NULL;
-    if (strncmp_lexed_token(temp_state.curr_token, "<") && check_next_token("<", &temp_state_ptr))
-        node_binary_op = create_node_symbol("<<");
-    else if (strncmp_lexed_token(temp_state.curr_token, ">") &&
-             check_next_token(">", &temp_state_ptr))
-        node_binary_op = create_node_symbol(">>");
-    else
-        node_binary_op = node_symbol_from_token_create(temp_state.curr_token);
+
+    // While the end of a token isn't a white space character is a delimeter,
+    // and isn't a NULL terminator keep extending the token. This is done to
+    // catch multi-character operators.
+    char *token_end = (temp_state.curr_token->token_start + temp_state.curr_token->token_length);
+    while (*token_end != '\0' && strchr(WHITESPACE, *token_end) == NULL &&
+           strchr(DELIMS, *token_end) != NULL) {
+        token_end += 1;
+        temp_state.curr_token->token_length += 1;
+        temp_state.file_data += 1;
+    }
+    node_binary_op = node_symbol_from_token_create(temp_state.curr_token);
     int stat = -1;
     ParsingContext *global_ctx = *context;
     while (global_ctx->parent_ctx != NULL)
@@ -299,7 +307,7 @@ void lex_and_parse(char *file_dest, ParsingContext **curr_context, AstNode **pro
 }
 
 int check_if_delims(LexedToken *token) {
-    char *delims = ":=,;~()[]{}<>-+/*&@";
+    char *delims = DELIMS;
     while (*delims != '\0') {
         if (*token->token_start == *delims)
             return 1;
