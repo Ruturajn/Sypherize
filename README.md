@@ -62,34 +62,34 @@ $ gcc code_gen.s -o code_gen
 ## Usage
 
 ```
-Sypherize 0.1
+Sypherc 0.1
 Ruturajn <nanotiruturaj@gmail.com>
 Compiler for Sypher
 
 USAGE:
-    sypherize [OPTIONS] INPUT_FILE
+    sypherc [OPTIONS] INPUT_FILE
 
 OPTIONS:
-    -i, --input <INPUT_FILE_PATH>
-            Path to the input file
-
-    -o, --output <OUTPUT_FILE_PATH>
-            Path to the output file
-
     -f, --format <OUTPUT_FORMAT>
             A valid output format for code generation
             VALID FORMATS:
             - `x86_64-windows`
             - `default`
 
-    -V, --verbose
-            Print out extra debugging information
-
     -h, --help
             Print this help information
 
+    -i, --input <INPUT_FILE_PATH>
+            Path to the input file
+
+    -o, --output <OUTPUT_FILE_PATH>
+            Path to the output file
+
     -v, --version
             Print out current version of Sypherize
+
+    -V, --verbose
+            Print out extra debugging information
 
 NOTE - Everything else is treated as an input file
 ```
