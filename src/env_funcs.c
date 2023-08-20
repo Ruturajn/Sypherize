@@ -32,7 +32,7 @@ int set_env(Env **env_to_set, AstNode *identifier_node, AstNode *id_val) {
             // Should binding over-write be allowed??
             // print_error(ERR_COMMON,
             //             "Redefining Binding in environment for : `%s`",
-            //             identifier_node->ast_val.node_symbol, 0);
+            //             identifier_node->ast_val.node_symbol);
             temp->id_val = id_val;
             return 1;
         }

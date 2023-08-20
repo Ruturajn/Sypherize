@@ -77,7 +77,7 @@ char is_valid_reg_desc(CGContext *cg_ctx, RegDescriptor reg_desc) {
 
 RegDescriptor reg_alloc(CGContext *cg_ctx) {
     if (!(cg_ctx->reg_pool.reg_cnt > 0 && cg_ctx->reg_pool.scratch_reg_cnt > 0))
-        print_error(ERR_COMMON, "Found empty register pool", NULL, 0);
+        print_error(ERR_COMMON, "Found empty register pool");
 
     // Iterate through the register pool to find un-used register.
     Reg *reg_iterator = cg_ctx->reg_pool.regs;
@@ -88,13 +88,13 @@ RegDescriptor reg_alloc(CGContext *cg_ctx) {
         }
     }
 
-    print_error(ERR_MEM, "Unable to allocate a new register", NULL, 0);
+    print_error(ERR_MEM, "Unable to allocate a new register");
     return -1;
 }
 
 const char *get_reg_name(CGContext *cg_ctx, RegDescriptor reg_desc) {
     if (!is_valid_reg_desc(cg_ctx, reg_desc))
-        print_error(ERR_COMMON, "Encountered invalid register descriptor", NULL, 0);
+        print_error(ERR_COMMON, "Encountered invalid register descriptor");
 
     Reg *temp = cg_ctx->reg_pool.regs;
     return temp[reg_desc].reg_name;
@@ -102,7 +102,7 @@ const char *get_reg_name(CGContext *cg_ctx, RegDescriptor reg_desc) {
 
 void reg_dealloc(CGContext *cg_ctx, RegDescriptor reg_desc) {
     if (!is_valid_reg_desc(cg_ctx, reg_desc))
-        print_error(ERR_COMMON, "Encountered invalid register descriptor", NULL, 0);
+        print_error(ERR_COMMON, "Encountered invalid register descriptor");
 
     Reg *temp = cg_ctx->reg_pool.regs;
     temp[reg_desc].reg_in_use = 0;
@@ -135,7 +135,7 @@ char *map_sym_to_addr_win(CGContext *cg_ctx, AstNode *sym_node) {
                         "Unable to get information from locals environment in "
                         "code gen context "
                         "for : `%s`",
-                        sym_node->ast_val.node_symbol, 0);
+                        sym_node->ast_val.node_symbol);
         sym_idx +=
             snprintf(sym, SYM_ARR_SIZE - sym_idx, "%ld(%%rbp)", var_stack_offset->ast_val.val);
     }
@@ -171,7 +171,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         var_node = parser_get_var(context, curr_expr->child, &stat);
         if (stat == 0)
             print_error(ERR_COMMON, "Unable to find variable in environment : `%s`",
-                        curr_expr->child->ast_val.node_symbol, 0);
+                        curr_expr->child->ast_val.node_symbol);
 
         if (strcmp(var_node->ast_val.node_symbol, "ext function") == 0)
             break;
@@ -181,7 +181,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         long size_in_bytes = type_node->child->ast_val.val;
         if (!stat)
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
-                        type_node->ast_val.node_symbol, 0);
+                        type_node->ast_val.node_symbol);
 
         fprintf(fptr_code, "sub $%ld, %%rsp\n", size_in_bytes);
         cg_ctx->local_offset -= size_in_bytes;
@@ -189,7 +189,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
             print_error(ERR_COMMON,
                         "Unable to set locals environment in code gen context "
                         "for : `%s`",
-                        curr_expr->child->ast_val.node_symbol, 0);
+                        curr_expr->child->ast_val.node_symbol);
         break;
 
     case TYPE_INT:
@@ -227,7 +227,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
                 print_error(ERR_COMMON,
                             "Unable to find information regarding local "
                             "variable offset for: `%s`",
-                            curr_expr->ast_val.node_symbol, 0);
+                            curr_expr->ast_val.node_symbol);
             fprintf(fptr_code, "mov %ld(%%rbp), %s\n", local_var_name->ast_val.val,
                     get_reg_name(cg_ctx, curr_expr->result_reg_desc));
         }
@@ -400,7 +400,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
 
         } else
             print_error(ERR_COMMON, "Found unknown binary operator : `%s`",
-                        curr_expr->ast_val.node_symbol, 0);
+                        curr_expr->ast_val.node_symbol);
         break;
 
     case TYPE_FUNCTION_CALL:;
@@ -415,7 +415,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         AstNode *func_call_type = parser_get_var(context, curr_expr->child, &stat);
         if (!stat)
             print_error(ERR_TYPE, "Unable to find type information in environment, for: `%s`",
-                        curr_expr->child->ast_val.node_symbol, 0);
+                        curr_expr->child->ast_val.node_symbol);
 
         int param_count = 0;
         AstNode *call_params = curr_expr->child->next_child->child;
@@ -571,8 +571,8 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
             temp_sym = temp_sym->child;
         if (temp_sym == NULL)
             print_error(ERR_COMMON,
-                        "Unable to find valid variable access in a variable Re-assignment", NULL,
-                        0);
+                        "Unable to find valid variable access in a variable Re-assignment");
+
         target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child->next_child,
                                        cg_ctx, fptr_code);
 
@@ -741,7 +741,7 @@ void target_x86_64_win_codegen_func(CGContext *cg_ctx, ParsingContext *context,
             print_error(ERR_COMMON,
                         "Unable to set locals environment in code gen context "
                         "for : `%s`",
-                        func_param_list->child->ast_val.node_symbol, 0);
+                        func_param_list->child->ast_val.node_symbol);
         func_param_list = func_param_list->next_child;
     }
 
@@ -797,7 +797,7 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
         AstNode *var = parser_get_type(context, temp_var_type_id, &status);
         if (!status)
             print_error(ERR_COMMON, "Unable to retrieve value from environment for : `%s`",
-                        temp_var_type_id->ast_val.node_symbol, 0);
+                        temp_var_type_id->ast_val.node_symbol);
 
         if (strcmp(temp_var_type_id->ast_val.node_symbol, "ext function") != 0)
             fprintf(fptr_code, "%s: .space %ld\n", temp_var_bind->identifier->ast_val.node_symbol,
@@ -837,22 +837,20 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
 void target_codegen(ParsingContext *context, AstNode *program, char *output_file_path,
                     TargetType type) {
     if (context == NULL || program == NULL)
-        print_error(ERR_COMMON,
-                    "NULL program node passed for code generation to "
-                    "`target_codegen()`",
-                    NULL, 0);
+        print_error(ERR_COMMON, "NULL program node passed for code generation to "
+                                "`target_codegen()`");
 
     FILE *fptr_code = NULL;
     if (output_file_path == NULL) {
         fptr_code = fopen("code_gen.s", "w");
         if (fptr_code == NULL)
-            print_error(ERR_FILE_OPEN, "Unable to open default file for code generation : `%s`",
-                        "code_gen.s", 0);
+            print_error(ERR_FILE_OPEN,
+                        "Unable to open default file for code generation : `code_gen.s`");
     } else {
         fptr_code = fopen(output_file_path, "w");
         if (fptr_code == NULL)
             print_error(ERR_FILE_OPEN, "Unable to open file for code generation : `%s`",
-                        output_file_path, 0);
+                        output_file_path);
     }
 
     CGContext *cg_ctx = create_codegen_context(NULL);

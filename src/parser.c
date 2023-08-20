@@ -73,7 +73,7 @@ ParsingContext *create_default_parsing_context() {
 
 void ast_add_type_node(Env **env_type, int node_type, AstNode *sym, long byte_size) {
     if (sym == NULL || byte_size <= 0)
-        print_error(ERR_COMMON, "Unable to add a new type to the types environment", NULL, 0);
+        print_error(ERR_COMMON, "Unable to add a new type to the types environment");
 
     AstNode *sz_node = node_alloc();
     sz_node->type = TYPE_INT;
@@ -84,8 +84,7 @@ void ast_add_type_node(Env **env_type, int node_type, AstNode *sym, long byte_si
     new_type_node->child = sz_node;
 
     if (!set_env(env_type, sym, new_type_node)) {
-        print_error(ERR_REDEFINITION, "Unable to redefine type : `%s`", sym->ast_val.node_symbol,
-                    0);
+        print_error(ERR_REDEFINITION, "Unable to redefine type : `%s`", sym->ast_val.node_symbol);
     }
 }
 
@@ -112,7 +111,7 @@ void ast_add_binary_ops(ParsingContext **context, char *bin_op, int precedence, 
         print_error(ERR_COMMON,
                     "Unable to set environment binding for "
                     "binary operator : `%s`",
-                    node_sym_op->ast_val.node_symbol, 0);
+                    node_sym_op->ast_val.node_symbol);
     }
 }
 
@@ -122,10 +121,8 @@ void add_parsing_context_child(ParsingContext **root, ParsingContext *child_to_a
 
     if ((*root)->child == NULL) {
         if (*root == child_to_add) {
-            print_warning(ERR_DEV,
-                          "Could not add new child to the parsing context due"
-                          "to creation of possible circular linked list",
-                          NULL, 0);
+            print_warning(ERR_DEV, "Could not add new child to the parsing context due"
+                                   "to creation of possible circular linked list");
             return;
         }
         (*root)->child = child_to_add;
@@ -134,19 +131,15 @@ void add_parsing_context_child(ParsingContext **root, ParsingContext *child_to_a
 
     ParsingContext *temp_ctx = (*root)->child;
     if (temp_ctx == child_to_add) {
-        print_warning(ERR_DEV,
-                      "Could not add new child to the parsing context due"
-                      "to creation of possible circular linked list",
-                      NULL, 0);
+        print_warning(ERR_DEV, "Could not add new child to the parsing context due"
+                               "to creation of possible circular linked list");
         return;
     }
     while (temp_ctx->next_child != NULL) {
         temp_ctx = temp_ctx->next_child;
         if (temp_ctx == child_to_add) {
-            print_warning(ERR_DEV,
-                          "Could not add new child to the parsing context due"
-                          "to creation of possible circular linked list",
-                          NULL, 0);
+            print_warning(ERR_DEV, "Could not add new child to the parsing context due"
+                                   "to creation of possible circular linked list");
             return;
         }
     }
@@ -340,14 +333,12 @@ void parse_func_vars(AstNode **function_type, LexingState **state, ParsingContex
     int status = -1;
     parse_type(&param_type, state, context, &status);
     if (status == 0)
-        print_error(ERR_SYNTAX, "Found invalid type in parameter list", NULL, 0);
+        print_error(ERR_SYNTAX, "Found invalid type in parameter list");
 
     if (!check_next_token(":", state)) {
         if (!check_next_token(")", state)) {
-            print_error(ERR_SYNTAX,
-                        "Type annotation must be followed with a `:` in"
-                        "function parameter list",
-                        NULL, 0);
+            print_error(ERR_SYNTAX, "Type annotation must be followed with a `:` in"
+                                    "function parameter list");
         }
         add_ast_node_child(*function_type, param_type);
         return;
@@ -371,10 +362,8 @@ void parse_func_vars(AstNode **function_type, LexingState **state, ParsingContex
 
             if (!check_next_token(",", state)) {
                 if (!check_next_token(")", state)) {
-                    print_error(ERR_SYNTAX,
-                                "Parameter list for function definition"
-                                "must be delimited by a `,`",
-                                NULL, 0);
+                    print_error(ERR_SYNTAX, "Parameter list for function definition"
+                                            "must be delimited by a `,`");
                 }
                 break;
             }
@@ -394,7 +383,7 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **s
 
     AstNode *op = (*curr_stack == NULL) ? NULL : (*curr_stack)->op;
     if (op == NULL || op->type != TYPE_SYM)
-        print_error(ERR_COMMON, "Compiler - Context operator not a symbol", NULL, 0);
+        print_error(ERR_COMMON, "Compiler - Context operator not a symbol");
 
     if (strcmp(op->ast_val.node_symbol, "if-cond") == 0) {
         valid_op = 1;
@@ -417,7 +406,7 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **s
             (*curr_stack)->body = if_then_body;
             return STACK_OP_CONT_PARSE;
         } else
-            print_error(ERR_SYNTAX, "Expected body after the `if` statement", NULL, 0);
+            print_error(ERR_SYNTAX, "Expected body after the `if` statement");
     }
 
     if (strcmp(op->ast_val.node_symbol, "if-then-body") == 0) {
@@ -444,7 +433,7 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **s
                     return STACK_OP_CONT_PARSE;
 
                 } else
-                    print_error(ERR_SYNTAX, "Expected body after the `else` statement", NULL, 0);
+                    print_error(ERR_SYNTAX, "Expected body after the `else` statement");
             }
             *curr_stack = (*curr_stack)->parent_stack;
             if (*curr_stack == NULL)
@@ -481,19 +470,18 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **s
     if (strcmp(op->ast_val.node_symbol, "lambda_params") == 0) {
         valid_op = 1;
         if ((*running_expr)->type != TYPE_VAR_DECLARATION)
-            print_error(ERR_SYNTAX, "Found invalid declaration of function parameters", NULL, 0);
+            print_error(ERR_SYNTAX, "Found invalid declaration of function parameters");
         int status = -1;
         AstNode *var_type = get_env((*context)->vars, (*running_expr)->child, &status);
         if (status == 0)
-            print_error(ERR_COMMON, "Could not find type information for function parameter", NULL,
-                        0);
+            print_error(ERR_COMMON, "Could not find type information for function parameter");
 
         add_ast_node_child(*running_expr, var_type);
         if (check_next_token(")", state)) {
 
             // Parse function body.
             if (!check_next_token("{", state))
-                print_error(ERR_SYNTAX, "Couldn't find body for function definition", NULL, 0);
+                print_error(ERR_SYNTAX, "Couldn't find body for function definition");
 
             if (check_next_token("}", state)) {
                 *context = (*context)->parent_ctx;
@@ -517,7 +505,7 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **s
             // Parse function params
             if (!check_next_token(",", state))
                 print_error(ERR_SYNTAX,
-                            "Could not find end of parameter list in function definition", NULL, 0);
+                            "Could not find end of parameter list in function definition");
         }
     }
 
@@ -589,8 +577,7 @@ AstNode *parse_type(AstNode **type_node, LexingState **state, ParsingContext *co
     //             if (!check_next_token(",", temp_file_data, curr_token)) {
     //                 if (!check_next_token(")", temp_file_data, curr_token))
     //                     print_error(ERR_SYNTAX,
-    //                                 "Expected `,` between function parameters",
-    //                                 NULL, 0);
+    //                                 "Expected `,` between function parameters");
     //                 else
     //                     break;
     //             }
@@ -714,7 +701,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                             // Parse function body.
                             if (!check_next_token("{", &state))
                                 print_error(ERR_SYNTAX,
-                                            "Couldn't find body for function definition", NULL, 0);
+                                            "Couldn't find body for function definition");
 
                             if (check_next_token("}", &state)) {
                                 *running_expr = *lambda_func_node;
@@ -761,7 +748,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                     get_env((*context)->vars, curr_sym, &status);
                     if (status)
                         print_error(ERR_REDEFINITION, "Redefinition of variable : `%s`",
-                                    curr_sym->ast_val.node_symbol, 0);
+                                    curr_sym->ast_val.node_symbol);
 
                     AstNode *sym_name = node_alloc();
                     copy_node(sym_name, curr_sym);
@@ -786,10 +773,8 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
 
                             if (!check_next_token(",", &state)) {
                                 if (!check_next_token(")", &state)) {
-                                    print_error(ERR_SYNTAX,
-                                                "Parameter list for function definition"
-                                                "must be delimited by a `,`",
-                                                NULL, 0);
+                                    print_error(ERR_SYNTAX, "Parameter list for function definition"
+                                                            "must be delimited by a `,`");
                                 }
                                 break;
                             }
@@ -799,14 +784,14 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                             print_error(ERR_COMMON,
                                         "Unable to set environment binding for "
                                         "variable : `%s`",
-                                        sym_name->ast_val.node_symbol, 0);
+                                        sym_name->ast_val.node_symbol);
                         }
                     } else {
                         if (!set_env(&((*context)->vars), sym_name, type_node)) {
                             print_error(ERR_COMMON,
                                         "Unable to set environment binding for "
                                         "variable : `%s`",
-                                        sym_name->ast_val.node_symbol, 0);
+                                        sym_name->ast_val.node_symbol);
                         }
                     }
 
@@ -843,12 +828,12 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                         }
                         print_error(ERR_SYNTAX,
                                     "Expected `=` after `:` in variable declaration for : `%s`",
-                                    sym_name->ast_val.node_symbol, 0);
+                                    sym_name->ast_val.node_symbol);
                     }
                     if (check_next_token("=", &state))
                         print_error(ERR_SYNTAX,
                                     "Expected `:` before `=` in variable declaration for : `%s`",
-                                    sym_name->ast_val.node_symbol, 0);
+                                    sym_name->ast_val.node_symbol);
 
                     // If the control flow is here, it means that it is a
                     // variable declaration without intiialization.
@@ -867,13 +852,12 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                         else if (stack_op_ret == STACK_OP_INVALID)
                             print_error(
                                 ERR_COMMON,
-                                "Compiler Error - Stack operator not being handled correctly", NULL,
-                                0);
+                                "Compiler Error - Stack operator not being handled correctly");
                     }
                     *running_expr = *curr_var_decl;
                     break;
                 } else
-                    print_error(ERR_SYNTAX, "Expected `:` after type declaration", NULL, 0);
+                    print_error(ERR_SYNTAX, "Expected `:` after type declaration");
             }
             free_node(res);
 
@@ -895,7 +879,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                     print_error(ERR_COMMON,
                                 "Undefined symbol :"
                                 "`%s`",
-                                sym_node->ast_val.node_symbol, 0);
+                                sym_node->ast_val.node_symbol);
 
                 node_var_access = node_alloc();
                 node_var_access->type = TYPE_VAR_ACCESS;
@@ -948,17 +932,17 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
 
                     } else {
                         print_error(ERR_COMMON, "Undefined symbol after : `%s`",
-                                    sym_node->ast_val.node_symbol, 0);
+                                    sym_node->ast_val.node_symbol);
                     }
                 } else
                     print_error(ERR_COMMON, "Undefined variable : `%s`",
-                                sym_node->ast_val.node_symbol, 0);
+                                sym_node->ast_val.node_symbol);
                 free_node(var_bind);
             } else {
                 if (curr_stack == NULL && check_next_token("=", &state))
                     print_error(ERR_SYNTAX,
                                 "Expected `:` before `=` in variable re-assignment of : `%s`",
-                                node_var_access->ast_val.node_symbol, 0);
+                                node_var_access->ast_val.node_symbol);
                 if (check_next_token("(", &state)) {
                     status = -1;
                     parser_get_var(*context, sym_node, &status);
@@ -988,8 +972,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                             else if (stack_op_ret == STACK_OP_INVALID)
                                 print_error(ERR_COMMON,
                                             "Compiler Error - Stack operator not being handled "
-                                            "correctly",
-                                            NULL, 0);
+                                            "correctly");
                         }
 
                         AstNode *curr_arg = node_alloc();
@@ -1004,7 +987,7 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                         print_error(ERR_COMMON,
                                     "Function definition not found :"
                                     "`%s`",
-                                    sym_node->ast_val.node_symbol, 0);
+                                    sym_node->ast_val.node_symbol);
                     }
                 }
             }

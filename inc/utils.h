@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -90,9 +91,9 @@ typedef enum ErrType {
 
 extern const char *err_strings[];
 
-void print_error(ErrType err, char *fmt, char *str, int val);
+void print_error(ErrType err, const char *fmt, ...);
 
-void print_warning(ErrType err, char *fmt, char *str, int val);
+void print_warning(ErrType err, const char *fmt, ...);
 
 char *read_file_data(char *file_dest);
 

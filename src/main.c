@@ -8,7 +8,7 @@
 int main(int argc, char **argv) {
     if (argc < 2) {
         printf("\nSee `%s --help`\n\n", argv[0]);
-        print_error(ERR_ARGS, "Invalid number of arguments", NULL, 0);
+        print_error(ERR_ARGS, "Invalid number of arguments");
     }
 
     int out_file_idx = -1;
@@ -23,42 +23,42 @@ int main(int argc, char **argv) {
             i = i + 1;
             if (i > argc) {
                 printf("\nSee `%s --help`\n\n", argv[0]);
-                print_error(ERR_ARGS, "Expected Input file path after %s", argv[i - 1], 0);
+                print_error(ERR_ARGS, "Expected Input file path after %s", argv[i - 1]);
             }
             if (*argv[i] == '-') {
                 printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS,
                             "Expected valid input file path got another "
                             "possible command line option : `%s`",
-                            argv[i], 0);
+                            argv[i]);
             }
             in_file_idx = i;
         } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
             i = i + 1;
             if (i > argc) {
                 printf("\nSee `%s --help`\n\n", argv[0]);
-                print_error(ERR_ARGS, "Expected Output file path after %s", argv[i - 1], 0);
+                print_error(ERR_ARGS, "Expected Output file path after %s", argv[i - 1]);
             }
             if (*argv[i] == '-') {
                 printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS,
                             "Expected valid file path got another possible "
                             "command line option : `%s`",
-                            argv[i], 0);
+                            argv[i]);
             }
             out_file_idx = i;
         } else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--format") == 0) {
             i = i + 1;
             if (i > argc) {
                 printf("\nSee `%s --help`\n\n", argv[0]);
-                print_error(ERR_ARGS, "Expected Output format after : `%s`", argv[i - 1], 0);
+                print_error(ERR_ARGS, "Expected Output format after : `%s`", argv[i - 1]);
             }
             if (*argv[i] == '-') {
                 printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS,
                             "Expected valid output format got another possible "
                             "command line option : `%s`",
-                            argv[i], 0);
+                            argv[i]);
             }
             if (strcmp(argv[i], "default") == 0)
                 out_fmt = TARGET_DEFAULT;
@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
                 out_fmt = TARGET_x86_64_WIN;
             else {
                 printf("\nSee `%s --help`\n\n", argv[0]);
-                print_error(ERR_ARGS, "Expected valid output format, got : `%s`", argv[i], 0);
+                print_error(ERR_ARGS, "Expected valid output format, got : `%s`", argv[i]);
             }
         } else if (strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--verbose") == 0) {
             is_verbose = 1;
@@ -79,11 +79,10 @@ int main(int argc, char **argv) {
                 print_error(ERR_ARGS,
                             "Expected valid output format got another possible "
                             "command line option : `%s`",
-                            argv[i], 0);
+                            argv[i]);
             }
             if (in_file_idx != -1)
-                print_warning(ERR_ARGS, "Got multiple source files,using latest : `%s`", argv[i],
-                              0);
+                print_warning(ERR_ARGS, "Got multiple source files,using latest : `%s`", argv[i]);
             in_file_idx = i;
         }
     }
@@ -96,7 +95,7 @@ int main(int argc, char **argv) {
 
     // Open the file, lex and parse the file.
     if (in_file_idx == -1)
-        print_error(ERR_ARGS, "Expected valid input file path", NULL, 0);
+        print_error(ERR_ARGS, "Expected valid input file path");
     lex_and_parse(argv[in_file_idx], &curr_context, &program);
 
     if (is_verbose == 1) {

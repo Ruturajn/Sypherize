@@ -248,19 +248,15 @@ void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add) {
     }
     AstNode *temp_child = parent_node->child;
     if (temp_child == child_to_add) {
-        print_warning(ERR_DEV,
-                      "Could not add new child to the AST due"
-                      "to creation of possible circular linked list",
-                      NULL, 0);
+        print_warning(ERR_DEV, "Could not add new child to the AST due"
+                               "to creation of possible circular linked list");
         return;
     }
     while (temp_child->next_child != NULL) {
         temp_child = temp_child->next_child;
         if (temp_child == child_to_add) {
-            print_warning(ERR_DEV,
-                          "Could not add new child to the AST due"
-                          "to creation of possible circular linked list",
-                          NULL, 0);
+            print_warning(ERR_DEV, "Could not add new child to the AST due"
+                                   "to creation of possible circular linked list");
             return;
         }
     }

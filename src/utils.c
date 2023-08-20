@@ -27,33 +27,23 @@ char *read_file_data(char *file_dest) {
     return file_data;
 }
 
-void print_error(ErrType err, char *fmt, char *str, int val) {
-    printf("\033[1;31m[ERROR]\033[1;37m ");
-    printf("%s :: ", err_strings[err]);
-    if (val != 0)
-        printf((const char *)fmt, val);
-    else {
-        if (str != NULL)
-            printf((const char *)fmt, str);
-        else
-            printf("%s", fmt);
-    }
-    printf("!\n");
+void print_error(ErrType err, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    fprintf(stderr, "\033[1;31m[ERROR]\033[1;37m %s:: ", err_strings[err]);
+    fprintf(stderr, fmt, args);
+    va_end(args);
+    fprintf(stderr, "!\n");
     exit(EXIT_FAILURE);
 }
 
-void print_warning(ErrType err, char *fmt, char *str, int val) {
-    printf("\033[1;33m[WARN]\033[1;37m ");
-    printf("%s :: ", err_strings[err]);
-    if (val != 0)
-        printf((const char *)fmt, val);
-    else {
-        if (str != NULL)
-            printf((const char *)fmt, str);
-        else
-            printf("%s", fmt);
-    }
-    printf("!\n");
+void print_warning(ErrType err, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    fprintf(stderr, "\033[1;33m[WARN]\033[1;37m %s:: ", err_strings[err]);
+    fprintf(stderr, fmt, args);
+    va_end(args);
+    fprintf(stderr, "!\n");
 }
 
 size_t calculate_file_size(FILE *file_ptr) {
