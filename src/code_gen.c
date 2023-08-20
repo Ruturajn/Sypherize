@@ -14,6 +14,21 @@ int sym_idx = 0;
 
 char codegen_verbose = 1;
 
+enum ComparisonType {
+    COMP_EQ,
+    COMP_NE,
+    COMP_LT,
+    COMP_LE,
+    COMP_GT,
+    COMP_GE,
+
+    COMP_COUNT,
+};
+
+static const char *comp_suffixes_x86_84[COMP_COUNT] = {
+    "e", "ne", "l", "le", "g", "ge",
+};
+
 #define INIT_REGISTER(regs, register_desc, register_name)                                          \
     ((regs)[register_desc] =                                                                       \
          (Reg){.reg_name = (register_name), .reg_in_use = 0, .reg_desc = (register_desc)})
@@ -154,6 +169,39 @@ void print_regs(CGContext *cg_ctx) {
         printf("REG: %s, USE: %d\n", temp[i].reg_name, temp[i].reg_in_use);
 }
 
+void target_x86_64_win_codegen_comp(CGContext *cg_ctx, AstNode *curr_expr,
+                                    enum ComparisonType comp_type, FILE *fptr_code) {
+    if (comp_type > COMP_COUNT)
+        print_error(ERR_COMMON, "Encountered invalid comparison during code gen");
+
+    curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
+
+    // To avoid encoding 8-bit registers, %r8b is being used currently. If the
+    // result is in %r8 we can directly use it without save/restore operations.
+    char is_r8_res = curr_expr->result_reg_desc == REG_X86_64_WIN_R8;
+
+    // If R8 is in use save it and clear it out.
+    if (!is_r8_res)
+        fprintf(fptr_code, "pushq %%r8\n");
+    fprintf(fptr_code, "xor %%r8, %%r8\n");
+
+    // Subtracts second operand from the first operand and sets the EFLAGS
+    // ,i.e., OF, CF, etc. The set<op> then checks those flags for specific
+    // condition.
+    fprintf(fptr_code, "cmp %s, %s\n",
+            get_reg_name(cg_ctx, curr_expr->child->next_child->result_reg_desc),
+            get_reg_name(cg_ctx, curr_expr->child->result_reg_desc));
+    fprintf(fptr_code, "set%s %%r8b\n", comp_suffixes_x86_84[comp_type]);
+    reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
+
+    // Restore R8 if it was in use, and move the result into the expression's
+    // result register.
+    if (!is_r8_res) {
+        fprintf(fptr_code, "movzbq %%r8b, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+        fprintf(fptr_code, "popq %%r8\n");
+    }
+}
+
 void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ctx_next_child,
                                     AstNode *curr_expr, CGContext *cg_ctx, FILE *fptr_code) {
     switch (curr_expr->type) {
@@ -250,46 +298,13 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         const char *reg_rhs = get_reg_name(cg_ctx, curr_expr->child->next_child->result_reg_desc);
 
         if (strcmp(curr_expr->ast_val.node_symbol, ">") == 0) {
-            curr_expr->result_reg_desc = reg_alloc(cg_ctx);
-            RegDescriptor true_reg = reg_alloc(cg_ctx);
-
-            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
-            fprintf(fptr_code, "mov $1, %s\n", get_reg_name(cg_ctx, true_reg));
-            fprintf(fptr_code, "cmp %s, %s\n", reg_rhs, reg_lhs);
-            fprintf(fptr_code, "cmovg %s, %s\n", get_reg_name(cg_ctx, true_reg),
-                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
-
-            reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
-            reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
-            reg_dealloc(cg_ctx, true_reg);
+            target_x86_64_win_codegen_comp(cg_ctx, curr_expr, COMP_GT, fptr_code);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "<") == 0) {
-            curr_expr->result_reg_desc = reg_alloc(cg_ctx);
-            RegDescriptor true_reg = reg_alloc(cg_ctx);
-
-            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
-            fprintf(fptr_code, "mov $1, %s\n", get_reg_name(cg_ctx, true_reg));
-            fprintf(fptr_code, "cmp %s, %s\n", reg_rhs, reg_lhs);
-            fprintf(fptr_code, "cmovl %s, %s\n", get_reg_name(cg_ctx, true_reg),
-                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
-
-            reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
-            reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
-            reg_dealloc(cg_ctx, true_reg);
+            target_x86_64_win_codegen_comp(cg_ctx, curr_expr, COMP_LT, fptr_code);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "==") == 0) {
-            curr_expr->result_reg_desc = reg_alloc(cg_ctx);
-            RegDescriptor true_reg = reg_alloc(cg_ctx);
-
-            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
-            fprintf(fptr_code, "mov $1, %s\n", get_reg_name(cg_ctx, true_reg));
-            fprintf(fptr_code, "cmp %s, %s\n", reg_lhs, reg_rhs);
-            fprintf(fptr_code, "cmove %s, %s\n", get_reg_name(cg_ctx, true_reg),
-                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
-
-            reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
-            reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
-            reg_dealloc(cg_ctx, true_reg);
+            target_x86_64_win_codegen_comp(cg_ctx, curr_expr, COMP_EQ, fptr_code);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "+") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->next_child->result_reg_desc;

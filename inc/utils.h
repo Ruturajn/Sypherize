@@ -87,9 +87,11 @@ typedef enum ErrType {
     ERR_EOF,
     ERR_TYPE,
     ERR_DEV,
+
+    ERR_COUNT,
 } ErrType;
 
-extern const char *err_strings[];
+extern const char *err_strings[ERR_COUNT];
 
 void print_error(ErrType err, const char *fmt, ...);
 
