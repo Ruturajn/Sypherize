@@ -14,80 +14,92 @@ int sym_idx = 0;
 
 char codegen_verbose = 1;
 
-Reg *reg_create_new(char *reg_name) {
-    Reg *new_reg = calloc(1, sizeof(Reg));
-    CHECK_NULL(new_reg, "Unable to allocate memory for a new register", NULL);
-    new_reg->reg_name = strdup(reg_name);
-    new_reg->next_reg = NULL;
-    return new_reg;
-}
+CGContext *create_codegen_context(CGContext *parent_ctx) {
+    RegPool pool;
 
-void reg_add_new(Reg **reg_head, char *reg_name) {
-    if (*reg_head == NULL) {
-        *reg_head = reg_create_new(reg_name);
-        return;
+    // Initialize the registers only when we are creating the global context.
+    if (parent_ctx == NULL) {
+        Reg *registers = calloc(REG_X86_64_WIN_COUNT, sizeof(Reg));
+        CHECK_NULL(registers, "Unable to allocate memory for registers array", NULL);
+        INIT_REGISTER(registers, REG_X86_64_WIN_RAX, "%rax");
+        INIT_REGISTER(registers, REG_X86_64_WIN_RCX, "%rcx");
+        INIT_REGISTER(registers, REG_X86_64_WIN_RDX, "%rdx");
+        INIT_REGISTER(registers, REG_X86_64_WIN_R8, "%r8");
+        INIT_REGISTER(registers, REG_X86_64_WIN_R9, "%r9");
+        INIT_REGISTER(registers, REG_X86_64_WIN_R10, "%r10");
+        INIT_REGISTER(registers, REG_X86_64_WIN_R11, "%r11");
+
+        INIT_REGISTER(registers, REG_X86_64_WIN_R12, "%r12");
+        INIT_REGISTER(registers, REG_X86_64_WIN_R13, "%r13");
+        INIT_REGISTER(registers, REG_X86_64_WIN_R14, "%r14");
+        INIT_REGISTER(registers, REG_X86_64_WIN_R15, "%r15");
+        INIT_REGISTER(registers, REG_X86_64_WIN_RBX, "%rbx");
+        INIT_REGISTER(registers, REG_X86_64_WIN_RSI, "%rsi");
+        INIT_REGISTER(registers, REG_X86_64_WIN_RDI, "%rdi");
+        INIT_REGISTER(registers, REG_X86_64_WIN_RBP, "%rbp");
+        INIT_REGISTER(registers, REG_X86_64_WIN_RSP, "%rsp");
+        INIT_REGISTER(registers, REG_X86_64_WIN_RIP, "%rip");
+
+        pool = (RegPool){.regs = registers,
+                         .scratch_reg_cnt = REG_X86_64_WIN_SCRATCH_COUNT,
+                         .reg_cnt = REG_X86_64_WIN_COUNT};
+    } else {
+        // If parent exists use it's register pool.
+        pool = parent_ctx->reg_pool;
     }
 
-    Reg *temp = *reg_head;
-    while (temp->next_reg != NULL) {
-        temp = temp->next_reg;
-    }
-    temp->next_reg = reg_create_new(reg_name);
+    CGContext *new_ctx = calloc(1, sizeof(CGContext));
+    CHECK_NULL(new_ctx, "Unable to allocate memory for new codegen context", NULL);
+    new_ctx->parent_ctx = parent_ctx;
+    new_ctx->local_env = create_env(NULL);
+    new_ctx->local_offset = -32;
+    new_ctx->reg_pool = pool;
+    return new_ctx;
 }
 
-void reg_free(Reg *reg_head) {
-    Reg *temp = NULL;
-    while (temp != NULL) {
-        temp = reg_head;
-        reg_head = reg_head->next_reg;
-        if (temp->reg_name != NULL)
-            free(temp->reg_name);
-        free(temp);
+void free_codegen_context(CGContext *cg_ctx) {
+    if (cg_ctx->parent_ctx == NULL) {
+        free(cg_ctx->reg_pool.regs);
     }
+    // Free environments.
+    free(cg_ctx);
 }
 
-RegDescriptor reg_alloc(Reg *reg_head) {
-    Reg *temp = reg_head;
-    RegDescriptor curr_reg = 0;
-    while (temp != NULL) {
-        if (!temp->reg_in_use) {
-            temp->reg_in_use = 1;
-            return curr_reg;
+char is_valid_reg_desc(CGContext *cg_ctx, RegDescriptor reg_desc) {
+    return reg_desc >= 0 && reg_desc <= cg_ctx->reg_pool.reg_cnt;
+}
+
+RegDescriptor reg_alloc(CGContext *cg_ctx) {
+    if (!(cg_ctx->reg_pool.reg_cnt > 0 && cg_ctx->reg_pool.scratch_reg_cnt > 0))
+        print_error(ERR_COMMON, "Found empty register pool", NULL, 0);
+
+    // Iterate through the register pool to find un-used register.
+    Reg *reg_iterator = cg_ctx->reg_pool.regs;
+    for (RegDescriptor i = 0; i < cg_ctx->reg_pool.scratch_reg_cnt; i++) {
+        if (reg_iterator[i].reg_in_use == 0) {
+            reg_iterator[i].reg_in_use = 1;
+            return reg_iterator[i].reg_desc;
         }
-        temp = temp->next_reg;
-        curr_reg++;
     }
-    print_error(ERR_MEM, "Unable to allocate memory for a new register", NULL, 0);
-    return curr_reg;
+
+    print_error(ERR_MEM, "Unable to allocate a new register", NULL, 0);
+    return -1;
 }
 
-char *get_reg_name(RegDescriptor reg_desc, Reg *reg_head) {
-    Reg *temp = reg_head;
-    RegDescriptor temp_desc = reg_desc;
-    while (temp != NULL) {
-        if (temp_desc == 0)
-            return temp->reg_name;
-        temp = temp->next_reg;
-        temp_desc--;
-    }
-    print_error(ERR_COMMON, "Unable to find register name for register descriptor : `%d`", NULL,
-                reg_desc);
-    return NULL;
+char *get_reg_name(CGContext *cg_ctx, RegDescriptor reg_desc) {
+    if (!is_valid_reg_desc(cg_ctx, reg_desc))
+        print_error(ERR_COMMON, "Encountered invalid register descriptor", NULL, 0);
+
+    Reg *temp = cg_ctx->reg_pool.regs;
+    return temp[reg_desc].reg_name;
 }
 
-void reg_dealloc(Reg *reg_head, RegDescriptor reg_desc) {
-    Reg *temp = reg_head;
-    RegDescriptor temp_desc = reg_desc;
-    while (temp != NULL) {
-        if (temp_desc == 0) {
-            temp->reg_in_use = 0;
-            return;
-        }
-        temp = temp->next_reg;
-        temp_desc--;
-    }
-    print_error(ERR_COMMON, "Unable to de-allocate register with register descriptor : `%d`", NULL,
-                reg_desc);
+void reg_dealloc(CGContext *cg_ctx, RegDescriptor reg_desc) {
+    if (!is_valid_reg_desc(cg_ctx, reg_desc))
+        print_error(ERR_COMMON, "Encountered invalid register descriptor", NULL, 0);
+
+    Reg *temp = cg_ctx->reg_pool.regs;
+    temp[reg_desc].reg_in_use = 0;
 }
 
 char *gen_label() {
@@ -130,27 +142,16 @@ char *map_sym_to_addr_win(CGContext *cg_ctx, AstNode *sym_node) {
     return sym;
 }
 
-CGContext *create_codegen_context(CGContext *parent_ctx) {
-    CGContext *new_ctx = calloc(1, sizeof(CGContext));
-    CHECK_NULL(new_ctx, "Unable to allocate memory for new codegen context", NULL);
-    new_ctx->parent_ctx = parent_ctx;
-    new_ctx->local_env = create_env(NULL);
-    new_ctx->local_offset = -32;
-    return new_ctx;
+void print_regs(CGContext *cg_ctx) {
+    Reg *temp = cg_ctx->reg_pool.regs;
+    for (RegDescriptor i = 0; i < cg_ctx->reg_pool.reg_cnt; i++)
+        printf("REG: %s, USE: %d\n", temp[i].reg_name, temp[i].reg_in_use);
 }
 
-void print_regs(Reg *reg_head) {
-    Reg *temp = reg_head;
-    while (temp != NULL) {
-        printf("REG: %s, USE: %d\n", temp->reg_name, temp->reg_in_use);
-        temp = temp->next_reg;
-    }
-}
-
-void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
-                                    ParsingContext **ctx_next_child, AstNode *curr_expr,
-                                    CGContext *cg_ctx, FILE *fptr_code) {
+void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ctx_next_child,
+                                    AstNode *curr_expr, CGContext *cg_ctx, FILE *fptr_code) {
     switch (curr_expr->type) {
+
     case TYPE_VAR_DECLARATION:
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Variable Declaration : `%s`\n",
@@ -178,13 +179,15 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                         "for : `%s`",
                         curr_expr->child->ast_val.node_symbol, 0);
         break;
+
     case TYPE_INT:
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Literal Integer : %ld\n", curr_expr->ast_val.val);
-        curr_expr->result_reg_desc = reg_alloc(reg_head);
+        curr_expr->result_reg_desc = reg_alloc(cg_ctx);
         fprintf(fptr_code, "movq $%ld, %s\n", curr_expr->ast_val.val,
-                get_reg_name(curr_expr->result_reg_desc, reg_head));
+                get_reg_name(cg_ctx, curr_expr->result_reg_desc));
         break;
+
     case TYPE_VAR_ACCESS:
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Variable Access : `%s`\n", curr_expr->ast_val.node_symbol);
@@ -202,10 +205,10 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             var_cg_ctx = var_cg_ctx->parent_ctx;
         }
 
-        curr_expr->result_reg_desc = reg_alloc(reg_head);
+        curr_expr->result_reg_desc = reg_alloc(cg_ctx);
         if (var_cg_ctx == NULL) {
             fprintf(fptr_code, "mov %s(%%rip), %s\n", curr_expr->ast_val.node_symbol,
-                    get_reg_name(curr_expr->result_reg_desc, reg_head));
+                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
         } else {
             // Check if `stat` isn't 0, i.e. the variable was found.
             if (stat == 0)
@@ -214,66 +217,67 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                             "variable offset for: `%s`",
                             curr_expr->ast_val.node_symbol, 0);
             fprintf(fptr_code, "mov %ld(%%rbp), %s\n", local_var_name->ast_val.val,
-                    get_reg_name(curr_expr->result_reg_desc, reg_head));
+                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
         }
         break;
+
     case TYPE_BINARY_OPERATOR:;
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Binary Operator : %s\n", curr_expr->ast_val.node_symbol);
         // Move the integers on the left and right hand side into different
         // registers.
         // See: https://www.felixcloutier.com/x86/
-        target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, curr_expr->child, cg_ctx,
+        target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
                                        fptr_code);
-        target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child,
-                                       curr_expr->child->next_child, cg_ctx, fptr_code);
+        target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child->next_child,
+                                       cg_ctx, fptr_code);
 
         // Get the names of those registers, which contain the LHS and RHS
         // integers.
-        char *reg_lhs = get_reg_name(curr_expr->child->result_reg_desc, reg_head);
-        char *reg_rhs = get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head);
+        char *reg_lhs = get_reg_name(cg_ctx, curr_expr->child->result_reg_desc);
+        char *reg_rhs = get_reg_name(cg_ctx, curr_expr->child->next_child->result_reg_desc);
 
         if (strcmp(curr_expr->ast_val.node_symbol, ">") == 0) {
-            curr_expr->result_reg_desc = reg_alloc(reg_head);
-            RegDescriptor true_reg = reg_alloc(reg_head);
+            curr_expr->result_reg_desc = reg_alloc(cg_ctx);
+            RegDescriptor true_reg = reg_alloc(cg_ctx);
 
-            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(curr_expr->result_reg_desc, reg_head));
-            fprintf(fptr_code, "mov $1, %s\n", get_reg_name(true_reg, reg_head));
+            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+            fprintf(fptr_code, "mov $1, %s\n", get_reg_name(cg_ctx, true_reg));
             fprintf(fptr_code, "cmp %s, %s\n", reg_rhs, reg_lhs);
-            fprintf(fptr_code, "cmovg %s, %s\n", get_reg_name(true_reg, reg_head),
-                    get_reg_name(curr_expr->result_reg_desc, reg_head));
+            fprintf(fptr_code, "cmovg %s, %s\n", get_reg_name(cg_ctx, true_reg),
+                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
 
-            reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
-            reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
-            reg_dealloc(reg_head, true_reg);
+            reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
+            reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
+            reg_dealloc(cg_ctx, true_reg);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "<") == 0) {
-            curr_expr->result_reg_desc = reg_alloc(reg_head);
-            RegDescriptor true_reg = reg_alloc(reg_head);
+            curr_expr->result_reg_desc = reg_alloc(cg_ctx);
+            RegDescriptor true_reg = reg_alloc(cg_ctx);
 
-            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(curr_expr->result_reg_desc, reg_head));
-            fprintf(fptr_code, "mov $1, %s\n", get_reg_name(true_reg, reg_head));
+            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+            fprintf(fptr_code, "mov $1, %s\n", get_reg_name(cg_ctx, true_reg));
             fprintf(fptr_code, "cmp %s, %s\n", reg_rhs, reg_lhs);
-            fprintf(fptr_code, "cmovl %s, %s\n", get_reg_name(true_reg, reg_head),
-                    get_reg_name(curr_expr->result_reg_desc, reg_head));
+            fprintf(fptr_code, "cmovl %s, %s\n", get_reg_name(cg_ctx, true_reg),
+                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
 
-            reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
-            reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
-            reg_dealloc(reg_head, true_reg);
+            reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
+            reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
+            reg_dealloc(cg_ctx, true_reg);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "==") == 0) {
-            curr_expr->result_reg_desc = reg_alloc(reg_head);
-            RegDescriptor true_reg = reg_alloc(reg_head);
+            curr_expr->result_reg_desc = reg_alloc(cg_ctx);
+            RegDescriptor true_reg = reg_alloc(cg_ctx);
 
-            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(curr_expr->result_reg_desc, reg_head));
-            fprintf(fptr_code, "mov $1, %s\n", get_reg_name(true_reg, reg_head));
+            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+            fprintf(fptr_code, "mov $1, %s\n", get_reg_name(cg_ctx, true_reg));
             fprintf(fptr_code, "cmp %s, %s\n", reg_lhs, reg_rhs);
-            fprintf(fptr_code, "cmove %s, %s\n", get_reg_name(true_reg, reg_head),
-                    get_reg_name(curr_expr->result_reg_desc, reg_head));
+            fprintf(fptr_code, "cmove %s, %s\n", get_reg_name(cg_ctx, true_reg),
+                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
 
-            reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
-            reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
-            reg_dealloc(reg_head, true_reg);
+            reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
+            reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
+            reg_dealloc(cg_ctx, true_reg);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "+") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->next_child->result_reg_desc;
@@ -281,7 +285,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             fprintf(fptr_code, "add %s, %s\n", reg_lhs, reg_rhs);
 
             // De-allocate the LHS register since it is not in use anymore.
-            reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+            reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "-") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
@@ -291,7 +295,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             fprintf(fptr_code, "sub %s, %s\n", reg_rhs, reg_lhs);
 
             // De-allocate the LHS register since it is not in use anymore.
-            reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+            reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "<<") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
@@ -308,7 +312,7 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                     reg_rhs, reg_lhs);
 
             // De-allocate the RHS register since it is not in use anymore.
-            reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
+            reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, ">>") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
@@ -325,14 +329,14 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                     reg_rhs, reg_lhs);
 
             // De-allocate the RHS register since it is not in use anymore.
-            reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
+            reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "*") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->next_child->result_reg_desc;
             fprintf(fptr_code, "imul %s, %s\n", reg_lhs, reg_rhs);
 
             // De-allocate the RHS register since it is not in use anymore.
-            reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+            reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "/") == 0 ||
                    strcmp(curr_expr->ast_val.node_symbol, "%") == 0) {
@@ -347,9 +351,9 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
                                "pushq %%rdx\n");
 
             // Move result into RAX only if it isn't the result register.
-            if (strcmp(get_reg_name(curr_expr->child->result_reg_desc, reg_head), "%rax") != 0)
+            if (curr_expr->child->result_reg_desc != REG_X86_64_WIN_RAX)
                 fprintf(fptr_code, "mov %s, %%rax\n",
-                        get_reg_name(curr_expr->child->result_reg_desc, reg_head));
+                        get_reg_name(cg_ctx, curr_expr->child->result_reg_desc));
 
             // Move the value from LHS into RAX. Use signed division instead of
             // unsigned to avoid division error, when using negative numbers.
@@ -361,31 +365,32 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
 
             // Call `idiv` instruction with the RHS register.
             fprintf(fptr_code, "idiv %s\n",
-                    get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head));
+                    get_reg_name(cg_ctx, curr_expr->child->next_child->result_reg_desc));
 
             // Move the result that is stored in RAX, into the expression's result register.
-            curr_expr->result_reg_desc = reg_alloc(reg_head);
+            curr_expr->result_reg_desc = reg_alloc(cg_ctx);
             if (is_modulus) {
-                if (strcmp(get_reg_name(curr_expr->result_reg_desc, reg_head), "%rdx") != 0)
+                if (curr_expr->result_reg_desc != REG_X86_64_WIN_RDX)
                     fprintf(fptr_code, "mov %%rdx, %s\n",
-                            get_reg_name(curr_expr->result_reg_desc, reg_head));
+                            get_reg_name(cg_ctx, curr_expr->result_reg_desc));
             } else {
-                if (strcmp(get_reg_name(curr_expr->result_reg_desc, reg_head), "%rax") != 0)
+                if (curr_expr->result_reg_desc != REG_X86_64_WIN_RAX)
                     fprintf(fptr_code, "mov %%rax, %s\n",
-                            get_reg_name(curr_expr->result_reg_desc, reg_head));
+                            get_reg_name(cg_ctx, curr_expr->result_reg_desc));
             }
 
             fprintf(fptr_code, "pop %%rdx\n"
                                "pop %%rax\n");
 
             // De-allocate the RHS/LHS register since they are not in use anymore.
-            // reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
-            // reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
+            // reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
+            // reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
 
         } else
             print_error(ERR_COMMON, "Found unknown binary operator : `%s`",
                         curr_expr->ast_val.node_symbol, 0);
         break;
+
     case TYPE_FUNCTION_CALL:;
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Function Call : `%s`\n", curr_expr->child->ast_val.node_symbol);
@@ -397,10 +402,9 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         AstNode *call_params = curr_expr->child->next_child->child;
         int param_count = 0;
         while (call_params != NULL) {
-            target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, call_params, cg_ctx,
-                                           fptr_code);
-            fprintf(fptr_code, "pushq %s\n", get_reg_name(call_params->result_reg_desc, reg_head));
-            reg_dealloc(reg_head, call_params->result_reg_desc);
+            target_x86_64_win_codegen_expr(context, ctx_next_child, call_params, cg_ctx, fptr_code);
+            fprintf(fptr_code, "pushq %s\n", get_reg_name(cg_ctx, call_params->result_reg_desc));
+            reg_dealloc(cg_ctx, call_params->result_reg_desc);
             call_params = call_params->next_child;
             param_count++;
         }
@@ -426,24 +430,24 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         // var access the name of the "function variable" and call it's result
         // register. See TYPE_FUNCTION for more details.
 
-        target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, curr_expr->child, cg_ctx,
+        target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
                                        fptr_code);
-        fprintf(fptr_code, "call *%s\n", get_reg_name(curr_expr->child->result_reg_desc, reg_head));
-        reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+        fprintf(fptr_code, "call *%s\n", get_reg_name(cg_ctx, curr_expr->child->result_reg_desc));
+        reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
 
         if (param_count > 0)
             fprintf(fptr_code, "add $%d, %%rsp\n", param_count * 8);
 
-        curr_expr->result_reg_desc = reg_alloc(reg_head);
-        if (strcmp(get_reg_name(curr_expr->result_reg_desc, reg_head), "%rax") != 0) {
-            fprintf(fptr_code, "mov %%rax, %s\n",
-                    get_reg_name(curr_expr->result_reg_desc, reg_head));
+        curr_expr->result_reg_desc = reg_alloc(cg_ctx);
+        if (curr_expr->result_reg_desc != REG_X86_64_WIN_RAX) {
+            fprintf(fptr_code, "mov %%rax, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
 
             // Restore the value for RAX from stack.
             fprintf(fptr_code, "pop %%rax\n");
         } else
             fprintf(fptr_code, "add $8, %%rsp\n");
         break;
+
     case TYPE_FUNCTION:;
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Function Definition\n");
@@ -465,8 +469,8 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         else
             func_name = gen_label();
 
-        target_x86_64_win_codegen_func(reg_head, cg_ctx, context, ctx_next_child, func_name,
-                                       curr_expr, fptr_code);
+        target_x86_64_win_codegen_func(cg_ctx, context, ctx_next_child, func_name, curr_expr,
+                                       fptr_code);
 
         /**
          * Now that functions are being treated as variables we can use
@@ -487,10 +491,11 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
          *      call *%rax
          */
 
-        curr_expr->result_reg_desc = reg_alloc(reg_head);
+        curr_expr->result_reg_desc = reg_alloc(cg_ctx);
         fprintf(fptr_code, "lea %s(%%rip), %s\n", func_name,
-                get_reg_name(curr_expr->result_reg_desc, reg_head));
+                get_reg_name(cg_ctx, curr_expr->result_reg_desc));
         break;
+
     case TYPE_VAR_REASSIGNMENT:
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Variable Re-assignment\n");
@@ -501,8 +506,8 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             print_error(ERR_COMMON,
                         "Unable to find valid variable access in a variable Re-assignment", NULL,
                         0);
-        target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child,
-                                       curr_expr->child->next_child, cg_ctx, fptr_code);
+        target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child->next_child,
+                                       cg_ctx, fptr_code);
 
         char *res_string = NULL;
         char res_string_free = 0;
@@ -510,9 +515,9 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
             res_string = map_sym_to_addr_win(cg_ctx, temp_sym);
         } else {
             res_string_free = 1;
-            target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, curr_expr->child,
-                                           cg_ctx, fptr_code);
-            res_string = get_reg_name(curr_expr->child->result_reg_desc, reg_head);
+            target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
+                                           fptr_code);
+            res_string = get_reg_name(cg_ctx, curr_expr->child->result_reg_desc);
             char *res_string_copy = strdup(res_string);
             size_t total_len = strlen(res_string) + 3;
             res_string = calloc(total_len, sizeof(char));
@@ -522,32 +527,32 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         }
 
         fprintf(fptr_code, "mov %s, %s\n",
-                get_reg_name(curr_expr->child->next_child->result_reg_desc, reg_head), res_string);
+                get_reg_name(cg_ctx, curr_expr->child->next_child->result_reg_desc), res_string);
         // De-allocate RHS result register.
-        reg_dealloc(reg_head, curr_expr->child->next_child->result_reg_desc);
+        reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
 
         if (res_string_free) {
             free(res_string);
             // De-allocate LHS result register.
-            reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+            reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
         }
-
         break;
+
     case TYPE_IF_CONDITION:;
         if (codegen_verbose)
             fprintf(fptr_code, ";#; IF Block\n");
-        target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, curr_expr->child, cg_ctx,
+        target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
                                        fptr_code);
 
         if (codegen_verbose)
             fprintf(fptr_code, ";#; If Condition\n");
 
-        char *res_reg = get_reg_name(curr_expr->child->result_reg_desc, reg_head);
+        char *res_reg = get_reg_name(cg_ctx, curr_expr->child->result_reg_desc);
         char *else_label = gen_label();
         char *after_else_label = gen_label();
         fprintf(fptr_code, "test %s, %s\n", res_reg, res_reg);
         fprintf(fptr_code, "jz %s\n", else_label);
-        reg_dealloc(reg_head, curr_expr->child->result_reg_desc);
+        reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
 
         if (codegen_verbose)
             fprintf(fptr_code, ";#; If Then Body\n");
@@ -564,17 +569,17 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
         AstNode *last_expr = NULL;
         AstNode *if_expr = curr_expr->child->next_child->child;
         while (if_expr != NULL) {
-            target_x86_64_win_codegen_expr(reg_head, ctx, &ctx_child, if_expr, cg_ctx, fptr_code);
+            target_x86_64_win_codegen_expr(ctx, &ctx_child, if_expr, cg_ctx, fptr_code);
             if (last_expr != NULL)
-                reg_dealloc(reg_head, last_expr->result_reg_desc);
+                reg_dealloc(cg_ctx, last_expr->result_reg_desc);
             last_expr = if_expr;
             if_expr = if_expr->next_child;
         }
 
-        curr_expr->result_reg_desc = reg_alloc(reg_head);
-        fprintf(fptr_code, "mov %s, %s\n", get_reg_name(last_expr->result_reg_desc, reg_head),
-                get_reg_name(curr_expr->result_reg_desc, reg_head));
-        reg_dealloc(reg_head, last_expr->result_reg_desc);
+        curr_expr->result_reg_desc = reg_alloc(cg_ctx);
+        fprintf(fptr_code, "mov %s, %s\n", get_reg_name(cg_ctx, last_expr->result_reg_desc),
+                get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+        reg_dealloc(cg_ctx, last_expr->result_reg_desc);
         fprintf(fptr_code, "jmp %s\n", after_else_label);
 
         if (codegen_verbose)
@@ -595,46 +600,47 @@ void target_x86_64_win_codegen_expr(Reg *reg_head, ParsingContext *context,
 
             else_expr = else_expr->child;
             while (else_expr != NULL) {
-                target_x86_64_win_codegen_expr(reg_head, ctx, &ctx_child, else_expr, cg_ctx,
-                                               fptr_code);
+                target_x86_64_win_codegen_expr(ctx, &ctx_child, else_expr, cg_ctx, fptr_code);
                 if (last_expr != NULL)
-                    reg_dealloc(reg_head, last_expr->result_reg_desc);
+                    reg_dealloc(cg_ctx, last_expr->result_reg_desc);
                 last_expr = else_expr;
                 else_expr = else_expr->next_child;
             }
 
-            fprintf(fptr_code, "mov %s, %s\n", get_reg_name(last_expr->result_reg_desc, reg_head),
-                    get_reg_name(curr_expr->result_reg_desc, reg_head));
-            reg_dealloc(reg_head, last_expr->result_reg_desc);
+            fprintf(fptr_code, "mov %s, %s\n", get_reg_name(cg_ctx, last_expr->result_reg_desc),
+                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+            reg_dealloc(cg_ctx, last_expr->result_reg_desc);
         } else {
             // If there is an 'if' statement with no else we need to set the
             // result register for the 'if' statement.
-            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(curr_expr->result_reg_desc, reg_head));
+            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
         }
 
         fprintf(fptr_code, "%s:\n", after_else_label);
-
         break;
+
     case TYPE_DEREFERENCE:
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Dereference\n");
-        target_x86_64_win_codegen_expr(reg_head, context, ctx_next_child, curr_expr->child, cg_ctx,
+        target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
                                        fptr_code);
         curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
         break;
+
     case TYPE_ADDROF:
         if (codegen_verbose)
             fprintf(fptr_code, ";#; AddressOf\n");
-        curr_expr->result_reg_desc = reg_alloc(reg_head);
+        curr_expr->result_reg_desc = reg_alloc(cg_ctx);
         fprintf(fptr_code, "lea %s, %s\n", map_sym_to_addr_win(cg_ctx, curr_expr->child),
-                get_reg_name(curr_expr->result_reg_desc, reg_head));
+                get_reg_name(cg_ctx, curr_expr->result_reg_desc));
         break;
+
     default:
         break;
     }
 }
 
-void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx, ParsingContext *context,
+void target_x86_64_win_codegen_func(CGContext *cg_ctx, ParsingContext *context,
                                     ParsingContext **ctx_next_child, char *func_name, AstNode *func,
                                     FILE *fptr_code) {
     cg_ctx = create_codegen_context(cg_ctx);
@@ -694,15 +700,15 @@ void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx, ParsingCon
     AstNode *temp_expr = func->child->next_child->next_child->child;
     AstNode *last_expr = NULL;
     while (temp_expr != NULL) {
-        target_x86_64_win_codegen_expr(reg_head, ctx, &ctx_child, temp_expr, cg_ctx, fptr_code);
-        reg_dealloc(reg_head, temp_expr->result_reg_desc);
+        target_x86_64_win_codegen_expr(ctx, &ctx_child, temp_expr, cg_ctx, fptr_code);
+        reg_dealloc(cg_ctx, temp_expr->result_reg_desc);
         last_expr = temp_expr;
         temp_expr = temp_expr->next_child;
     }
 
     // Function footer.
-    if (strcmp(get_reg_name(last_expr->result_reg_desc, reg_head), "%rax") != 0)
-        fprintf(fptr_code, "mov %s, %%rax\n", get_reg_name(last_expr->result_reg_desc, reg_head));
+    if (last_expr->result_reg_desc != REG_X86_64_WIN_RAX)
+        fprintf(fptr_code, "mov %s, %%rax\n", get_reg_name(cg_ctx, last_expr->result_reg_desc));
 
     fprintf(fptr_code, "pop %%rbx\n"
                        "pop %%rsi\n"
@@ -718,13 +724,6 @@ void target_x86_64_win_codegen_func(Reg *reg_head, CGContext *cg_ctx, ParsingCon
 
 void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, CGContext *cg_ctx,
                                     FILE *fptr_code) {
-
-    Reg *reg_head = reg_create_new("%rax");
-    reg_add_new(&reg_head, "%r10");
-    reg_add_new(&reg_head, "%r11");
-    reg_add_new(&reg_head, "%rbx");
-    reg_add_new(&reg_head, "%rsi");
-    reg_add_new(&reg_head, "%rdi");
 
     fprintf(fptr_code, ".section .data\n");
 
@@ -763,19 +762,16 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
             curr_expr = curr_expr->next_child;
             continue;
         }
-        target_x86_64_win_codegen_expr(reg_head, context, &ctx_next_child, curr_expr, cg_ctx,
-                                       fptr_code);
-        reg_dealloc(reg_head, curr_expr->result_reg_desc);
+        target_x86_64_win_codegen_expr(context, &ctx_next_child, curr_expr, cg_ctx, fptr_code);
+        reg_dealloc(cg_ctx, curr_expr->result_reg_desc);
         last_expr = curr_expr;
         curr_expr = curr_expr->next_child;
     }
 
-    if (strcmp(get_reg_name(last_expr->result_reg_desc, reg_head), "%rax") != 0)
-        fprintf(fptr_code, "mov %s, %%rax\n", get_reg_name(last_expr->result_reg_desc, reg_head));
+    if (last_expr->result_reg_desc != REG_X86_64_WIN_RAX)
+        fprintf(fptr_code, "mov %s, %%rax\n", get_reg_name(cg_ctx, last_expr->result_reg_desc));
     fprintf(fptr_code, "add $%ld, %%rsp\n", -cg_ctx->local_offset);
     fprintf(fptr_code, "%s", FUNC_FOOTER_x86_64);
-
-    reg_free(reg_head);
 }
 
 void target_codegen(ParsingContext *context, AstNode *program, char *output_file_path,
@@ -804,5 +800,6 @@ void target_codegen(ParsingContext *context, AstNode *program, char *output_file
     if (type == TARGET_DEFAULT || type == TARGET_x86_64_WIN)
         target_x86_64_win_codegen_prog(context, program, cg_ctx, fptr_code);
 
+    free_codegen_context(cg_ctx);
     fclose(fptr_code);
 }

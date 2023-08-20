@@ -16,8 +16,6 @@ z := 99
 ` This is a function call.
 int: bar(int: a) := int: (int: a) {
     # Do something here.
-    # func : foo := [int (int: w) { w }]
-    # foo
     int: test := 10;
     int: xyz;
     a := a + 10 * 3

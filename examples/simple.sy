@@ -33,10 +33,6 @@ int: test_fn(int: a, int: x) := int: (int: a, int: x) {
     a := 10;
 }
 
-# Following is the syntax for a lambda function.
-# These aren't completely supported yet.
-# [int (int: w) { w := 10 }]
-
 test_fn(13, 94);
 
 int: test := 17;
