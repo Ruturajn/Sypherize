@@ -43,21 +43,20 @@ Compiling this project:
 
 ## Compiling the Generated x86_64 Assembly File
 
-Using `gcc`:
+- Using `gcc`:
 ```
 $ gcc code_gen.s -o code_gen
 ```
-<!--
-- Use an assembler and linker:
+
+- Using GNU binutils:
     - Assemble into an object file.
       ```
       $ as code_gen.S -o code_gen.o
       ```
     - Link into the final executable.
       ```
-      $ ld code_gen.o -subsystem-console -o code_gen
+      $ ld code_gen.o -o code_gen
       ```
--->
 
 ## Usage
 

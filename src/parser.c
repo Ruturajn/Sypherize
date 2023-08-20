@@ -682,6 +682,13 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
             AstNode *type_node = node_alloc();
 
             int status = -1;
+            char is_external = 0;
+
+            if (strncmp_lexed_token(state->curr_token, "ext")) {
+                is_external = 1;
+                lex_token(&state);
+            }
+
             AstNode *res = parse_type(&type_node, &state, *context, &status);
             if (status) {
                 AstNode *curr_var_decl = node_alloc();
@@ -762,7 +769,11 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
 
                     // Handling functions as variables.
                     if (check_next_token("(", &state)) {
-                        AstNode *function_type = create_node_symbol("function");
+                        AstNode *function_type = NULL;
+                        if (is_external)
+                            function_type = create_node_symbol("ext function");
+                        else
+                            function_type = create_node_symbol("function");
                         // Add return type as a child.
                         add_ast_node_child(function_type, type_node);
 

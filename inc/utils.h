@@ -9,6 +9,14 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef _MSC_VER
+#define FUNC_NORETURN __attribute__((noreturn))
+#define FUNC_FORMAT(...) __attribute__((format(__VA_ARGS__)))
+#else
+#define FUNC_NORETURN
+#define FUNC_FORMAT(...)
+#endif
+
 #define USAGE_STRING                                                                               \
     "Sypherc 0.1\n"                                                                                \
     "Ruturajn <nanotiruturaj@gmail.com>\n"                                                         \

@@ -278,8 +278,9 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         }
 
         // Make sure that the variable used is of FUNCTION type.
-        if (strcmp(var_func_type->ast_val.node_symbol, "function") != 0)
-            print_error(ERR_TYPE, "Called function must be of FUNCTION type : `%s`",
+        if (strcmp(var_func_type->ast_val.node_symbol, "function") != 0 &&
+            strcmp(var_func_type->ast_val.node_symbol, "ext function") != 0)
+            print_error(ERR_TYPE, "Called function must be of function type : `%s`",
                         temp_expr->child->ast_val.node_symbol, 0);
 
         AstNode *func_param_list = var_func_type->child->next_child;

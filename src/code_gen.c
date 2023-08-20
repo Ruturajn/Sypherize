@@ -159,17 +159,23 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
     switch (curr_expr->type) {
 
     case TYPE_VAR_DECLARATION:
+        if (cg_ctx->parent_ctx == NULL)
+            break;
+
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Variable Declaration : `%s`\n",
                     curr_expr->child->ast_val.node_symbol);
-        if (cg_ctx->parent_ctx == NULL)
-            break;
+
         AstNode *var_node = NULL;
         int stat = -1;
         var_node = parser_get_var(context, curr_expr->child, &stat);
         if (stat == 0)
             print_error(ERR_COMMON, "Unable to find variable in environment : `%s`",
                         curr_expr->child->ast_val.node_symbol, 0);
+
+        if (strcmp(var_node->ast_val.node_symbol, "ext function") == 0)
+            break;
+
         AstNode *type_node = NULL;
         type_node = parser_get_type(context, var_node, &stat);
         long size_in_bytes = type_node->child->ast_val.val;
@@ -405,44 +411,99 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         // because the return value is always placed into RAX.
         fprintf(fptr_code, "pushq %%rax\n");
 
-        AstNode *call_params = curr_expr->child->next_child->child;
+        stat = -1;
+        AstNode *func_call_type = parser_get_var(context, curr_expr->child, &stat);
+        if (!stat)
+            print_error(ERR_TYPE, "Unable to find type information in environment, for: `%s`",
+                        curr_expr->child->ast_val.node_symbol, 0);
+
         int param_count = 0;
-        while (call_params != NULL) {
-            target_x86_64_win_codegen_expr(context, ctx_next_child, call_params, cg_ctx, fptr_code);
-            fprintf(fptr_code, "pushq %s\n", get_reg_name(cg_ctx, call_params->result_reg_desc));
-            reg_dealloc(cg_ctx, call_params->result_reg_desc);
-            call_params = call_params->next_child;
-            param_count++;
+        AstNode *call_params = curr_expr->child->next_child->child;
+        if (strcmp(func_call_type->ast_val.node_symbol, "ext function") == 0) {
+            // Save the following registers before using them since they
+            // are scratch registers.
+
+            // Put function arguments in RCX, RDX, R8 and R9. If more exist push
+            // onto stack in reverse order.
+            if (call_params) {
+                // Place the first parameter into RCX or XMM0.
+                target_x86_64_win_codegen_expr(context, ctx_next_child, call_params, cg_ctx,
+                                               fptr_code);
+                fprintf(fptr_code, "mov %s, %%rcx\n",
+                        get_reg_name(cg_ctx, call_params->result_reg_desc));
+                call_params = call_params->next_child;
+            }
+            if (call_params) {
+                // Place the second parameter into RDX or XMM1.
+                target_x86_64_win_codegen_expr(context, ctx_next_child, call_params, cg_ctx,
+                                               fptr_code);
+                fprintf(fptr_code, "mov %s, %%rdx\n",
+                        get_reg_name(cg_ctx, call_params->result_reg_desc));
+                call_params = call_params->next_child;
+            }
+            if (call_params) {
+                // Place the third parameter into R8 or XMM2.
+                target_x86_64_win_codegen_expr(context, ctx_next_child, call_params, cg_ctx,
+                                               fptr_code);
+                fprintf(fptr_code, "mov %s, %%r8\n",
+                        get_reg_name(cg_ctx, call_params->result_reg_desc));
+                call_params = call_params->next_child;
+            }
+            if (call_params) {
+                // Place the fourth parameter into R9 or XMM3.
+                target_x86_64_win_codegen_expr(context, ctx_next_child, call_params, cg_ctx,
+                                               fptr_code);
+                fprintf(fptr_code, "mov %s, %%r9\n",
+                        get_reg_name(cg_ctx, call_params->result_reg_desc));
+                call_params = call_params->next_child;
+            }
+
+            // The rest of the paraameters need to be reversed and placed onto
+            // the stack.
+
+            fprintf(fptr_code, "call %s\n", curr_expr->child->ast_val.node_symbol);
+        } else {
+            // Push arguments onto the stack in order.
+            while (call_params != NULL) {
+                target_x86_64_win_codegen_expr(context, ctx_next_child, call_params, cg_ctx,
+                                               fptr_code);
+                fprintf(fptr_code, "pushq %s\n",
+                        get_reg_name(cg_ctx, call_params->result_reg_desc));
+                reg_dealloc(cg_ctx, call_params->result_reg_desc);
+                call_params = call_params->next_child;
+                param_count += 8;
+            }
+            /**
+             * Consider the following assembly code:
+             * mov $3, %rax
+             * pushq %rax
+             * call <func_name>
+             * add $8, %rsp
+             *
+             * When the `call` instruction is executeed, this is the state of the
+             * stack
+             * |           3           |
+             * | call - return address |
+             * |       Old  RBP        | <-- RSP
+             * The `old RBP` comes into the picture because we push RBP onto the
+             * stack whenever we define a function. So, now to get to 3, we will
+             * travel up 8 bytes to reach the `call - return address`, and 8 more
+             * to reach our argument, i.e. 3.
+             */
+
+            // Now that we treats functions as variables for calling them we need to
+            // var access the name of the "function variable" and call it's result
+            // register. See TYPE_FUNCTION for more details.
+
+            target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
+                                           fptr_code);
+            fprintf(fptr_code, "call *%s\n",
+                    get_reg_name(cg_ctx, curr_expr->child->result_reg_desc));
+            reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
         }
-        /**
-         * Consider the following assembly code:
-         * mov $3, %rax
-         * pushq %rax
-         * call <func_name>
-         * add $8, %rsp
-         *
-         * When the `call` instruction is executeed, this is the state of the
-         * stack
-         * |           3           |
-         * | call - return address |
-         * |       Old  RBP        | <-- RSP
-         * The `old RBP` comes into the picture because we push RBP onto the
-         * stack whenever we define a function. So, now to get to 3, we will
-         * travel up 8 bytes to reach the `call - return address`, and 8 more
-         * to reach our argument, i.e. 3.
-         */
-
-        // Now that we treats functions as variables for calling them we need to
-        // var access the name of the "function variable" and call it's result
-        // register. See TYPE_FUNCTION for more details.
-
-        target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
-                                       fptr_code);
-        fprintf(fptr_code, "call *%s\n", get_reg_name(cg_ctx, curr_expr->child->result_reg_desc));
-        reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
 
         if (param_count > 0)
-            fprintf(fptr_code, "add $%d, %%rsp\n", param_count * 8);
+            fprintf(fptr_code, "add $%d, %%rsp\n", param_count);
 
         curr_expr->result_reg_desc = reg_alloc(cg_ctx);
         if (curr_expr->result_reg_desc != REG_X86_64_WIN_RAX) {
@@ -738,8 +799,9 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
             print_error(ERR_COMMON, "Unable to retrieve value from environment for : `%s`",
                         temp_var_type_id->ast_val.node_symbol, 0);
 
-        fprintf(fptr_code, "%s: .space %ld\n", temp_var_bind->identifier->ast_val.node_symbol,
-                var->child->ast_val.val);
+        if (strcmp(temp_var_type_id->ast_val.node_symbol, "ext function") != 0)
+            fprintf(fptr_code, "%s: .space %ld\n", temp_var_bind->identifier->ast_val.node_symbol,
+                    var->child->ast_val.val);
 
         temp_var_bind = temp_var_bind->next_id_bind;
         free_node(temp_var_type_id);
