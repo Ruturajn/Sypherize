@@ -12,12 +12,15 @@ language currently supports. See [`Usage`](https://github.com/Ruturajn/Sypherize
 > As the project matures, there will be better documentation detailing the language and all the related
 > intricacies.
 
+<br>
+
 ## Overwiew
 
 This project is my take on writing a compiler by following [`Lens_r's`](https://www.youtube.com/playlist?list=PLysa8wRFCssxGKj_RxBWr3rwmjEYlJIpa)
 playlist on youtube which outlines the complete process
 of designing and implementing a compiler.
 
+<br>
 
 ## Build Instructions
 
@@ -41,22 +44,28 @@ Compiling this project:
   ```
 - Use `$ make help` to look at available targets.
 
+<br>
+
 ## Compiling the Generated x86_64 Assembly File
 
 - Using `gcc`:
-```
-$ gcc code_gen.s -o code_gen
-```
+  ```
+  $ gcc code_gen.s -o code_gen
+  ```
 
 - Using GNU binutils:
-    - Assemble into an object file.
-      ```
-      $ as code_gen.S -o code_gen.o
-      ```
-    - Link into the final executable.
-      ```
-      $ ld code_gen.o -o code_gen
-      ```
+
+  Assemble into an object file, and link to create an executable.
+  ```
+  $ as code_gen.S -o code_gen.o
+  $ ld code_gen.o -o code_gen
+  ```
+  For linking with the `C` library use,
+  ```
+  $ ld -o code_gen.exe code_gen.o -lmsvcrt
+  ```
+
+<br>
 
 ## Usage
 
@@ -92,6 +101,8 @@ OPTIONS:
 
 NOTE - Everything else is treated as an input file
 ```
+
+<br>
 
 ## Miscellaneous
 
