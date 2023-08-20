@@ -21,10 +21,6 @@ extern "C" {
     "mov %rsp, %rbp\n"                                                                             \
     "sub $32, %rsp\n"
 
-#define INIT_REGISTER(regs, register_desc, register_name)                                          \
-    ((regs)[register_desc] =                                                                       \
-         (Reg){.reg_name = (register_name), .reg_in_use = 0, .reg_desc = (register_desc)})
-
 typedef int RegDescriptor;
 
 typedef struct Reg {

@@ -14,6 +14,10 @@ int sym_idx = 0;
 
 char codegen_verbose = 1;
 
+#define INIT_REGISTER(regs, register_desc, register_name)                                          \
+    ((regs)[register_desc] =                                                                       \
+         (Reg){.reg_name = (register_name), .reg_in_use = 0, .reg_desc = (register_desc)})
+
 CGContext *create_codegen_context(CGContext *parent_ctx) {
     RegPool pool;
 
@@ -56,6 +60,8 @@ CGContext *create_codegen_context(CGContext *parent_ctx) {
     new_ctx->reg_pool = pool;
     return new_ctx;
 }
+
+#undef INIT_REGISTER
 
 void free_codegen_context(CGContext *cg_ctx) {
     if (cg_ctx->parent_ctx == NULL) {
@@ -686,9 +692,9 @@ void target_x86_64_win_codegen_func(CGContext *cg_ctx, ParsingContext *context,
     // Function header.
     fprintf(fptr_code, "%s", FUNC_HEADER_x86_64);
 
-    fprintf(fptr_code, "push %%rbx\n"
-                       "push %%rsi\n"
-                       "push %%rdi\n");
+    // fprintf(fptr_code, "push %%rbx\n"
+    //                    "push %%rsi\n"
+    //                    "push %%rdi\n");
 
     ParsingContext *ctx = context;
     ParsingContext *ctx_child = *ctx_next_child;
@@ -710,9 +716,9 @@ void target_x86_64_win_codegen_func(CGContext *cg_ctx, ParsingContext *context,
     if (last_expr->result_reg_desc != REG_X86_64_WIN_RAX)
         fprintf(fptr_code, "mov %s, %%rax\n", get_reg_name(cg_ctx, last_expr->result_reg_desc));
 
-    fprintf(fptr_code, "pop %%rbx\n"
-                       "pop %%rsi\n"
-                       "pop %%rdi\n");
+    // fprintf(fptr_code, "pop %%rbx\n"
+    //                    "pop %%rsi\n"
+    //                    "pop %%rdi\n");
 
     fprintf(fptr_code, "add $%ld, %%rsp\n", -cg_ctx->local_offset);
     fprintf(fptr_code, "%s", FUNC_FOOTER_x86_64);
