@@ -62,7 +62,7 @@ Compiling this project:
   ```
   For linking with the `C` library use,
   ```
-  $ ld -o code_gen.exe code_gen.o -lmsvcrt
+  $ ld -o code_gen code_gen.o -lmsvcrt
   ```
 
 <br>
