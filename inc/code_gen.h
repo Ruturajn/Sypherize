@@ -87,7 +87,7 @@ char is_valid_reg_desc(CGContext *cg_ctx, RegDescriptor reg_desc);
 RegDescriptor reg_alloc(CGContext *cg_ctx);
 
 // Get the name of the register based on the register descriptor.
-char *get_reg_name(CGContext *cg_ctx, RegDescriptor reg_desc);
+const char *get_reg_name(CGContext *cg_ctx, RegDescriptor reg_desc);
 
 // Free (Mark as not in use) the register that is in use.
 void reg_dealloc(CGContext *cg_ctx, RegDescriptor reg_desc);

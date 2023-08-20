@@ -86,7 +86,7 @@ RegDescriptor reg_alloc(CGContext *cg_ctx) {
     return -1;
 }
 
-char *get_reg_name(CGContext *cg_ctx, RegDescriptor reg_desc) {
+const char *get_reg_name(CGContext *cg_ctx, RegDescriptor reg_desc) {
     if (!is_valid_reg_desc(cg_ctx, reg_desc))
         print_error(ERR_COMMON, "Encountered invalid register descriptor", NULL, 0);
 
@@ -234,8 +234,8 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
 
         // Get the names of those registers, which contain the LHS and RHS
         // integers.
-        char *reg_lhs = get_reg_name(cg_ctx, curr_expr->child->result_reg_desc);
-        char *reg_rhs = get_reg_name(cg_ctx, curr_expr->child->next_child->result_reg_desc);
+        const char *reg_lhs = get_reg_name(cg_ctx, curr_expr->child->result_reg_desc);
+        const char *reg_rhs = get_reg_name(cg_ctx, curr_expr->child->next_child->result_reg_desc);
 
         if (strcmp(curr_expr->ast_val.node_symbol, ">") == 0) {
             curr_expr->result_reg_desc = reg_alloc(cg_ctx);
@@ -517,9 +517,9 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
             res_string_free = 1;
             target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
                                            fptr_code);
-            res_string = get_reg_name(cg_ctx, curr_expr->child->result_reg_desc);
-            char *res_string_copy = strdup(res_string);
-            size_t total_len = strlen(res_string) + 3;
+            const char *res_reg_name = get_reg_name(cg_ctx, curr_expr->child->result_reg_desc);
+            char *res_string_copy = strdup(res_reg_name);
+            size_t total_len = strlen(res_reg_name) + 3;
             res_string = calloc(total_len, sizeof(char));
             snprintf(res_string, total_len, "(%s)", res_string_copy);
             res_string[total_len - 1] = '\0';
@@ -532,7 +532,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
 
         if (res_string_free) {
-            free(res_string);
+            free((char *)res_string);
             // De-allocate LHS result register.
             reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
         }
@@ -547,7 +547,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         if (codegen_verbose)
             fprintf(fptr_code, ";#; If Condition\n");
 
-        char *res_reg = get_reg_name(cg_ctx, curr_expr->child->result_reg_desc);
+        const char *res_reg = get_reg_name(cg_ctx, curr_expr->child->result_reg_desc);
         char *else_label = gen_label();
         char *after_else_label = gen_label();
         fprintf(fptr_code, "test %s, %s\n", res_reg, res_reg);
