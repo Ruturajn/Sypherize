@@ -757,7 +757,6 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         if (arr_offset)
             fprintf(fptr_code, "add $%ld, %s\n", arr_offset,
                     get_reg_name(cg_ctx, curr_expr->result_reg_desc));
-
         break;
 
     default:
