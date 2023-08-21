@@ -53,6 +53,9 @@ char *get_node_str(AstNode *node) {
     case TYPE_DEREFERENCE:
         snprintf(node_buf, NODE_BUF_SIZE, "DEREFERENCE");
         break;
+    case TYPE_ARR_INDEX:
+        snprintf(node_buf, NODE_BUF_SIZE, "ARR INDEX : %ld", node->ast_val.val);
+        break;
     default:
         snprintf(node_buf, NODE_BUF_SIZE, "Unknown TYPE");
         break;
@@ -101,6 +104,7 @@ int node_cmp(AstNode *node1, AstNode *node2) {
         return 0;
 
     switch (node1->type) {
+    case TYPE_ARR_INDEX:
     case TYPE_INT:
         if (node1->ast_val.val == node2->ast_val.val)
             return 1;

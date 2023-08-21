@@ -712,9 +712,52 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
     case TYPE_ADDROF:
         if (codegen_verbose)
             fprintf(fptr_code, ";#; AddressOf\n");
+        if (curr_expr->child->type == TYPE_ARR_INDEX) {
+            target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
+                                           fptr_code);
+            curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
+        } else {
+            curr_expr->result_reg_desc = reg_alloc(cg_ctx);
+            fprintf(fptr_code, "lea %s, %s\n", map_sym_to_addr_win(cg_ctx, curr_expr->child),
+                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+        }
+        break;
+
+    case TYPE_ARR_INDEX:
+        if (codegen_verbose)
+            fprintf(fptr_code, ";#; Arr Index : %ld\n", curr_expr->ast_val.val);
+
+        // Get type information for the variable.
+        stat = -1;
+        AstNode *arr_type = parser_get_var(context, curr_expr->child, &stat);
+        if (stat == 0)
+            print_error(ERR_COMMON, "Unable to get information for array : `%s`",
+                        curr_expr->child->ast_val.node_symbol);
+
+        // Total array size.
+        // long arr_size = arr_type->child->ast_val.val;
+
+        // Get the size of the base type.
+        stat = -1;
+        AstNode *base_type = parser_get_type(context, arr_type->child->next_child, &stat);
+        if (stat == 0)
+            print_error(ERR_COMMON, "Unable to get base type information for array : `%s`",
+                        curr_expr->child->ast_val.node_symbol);
+
+        // Base type size.
+        long base_type_size = base_type->child->ast_val.val;
+        free_node(base_type);
+
+        long arr_offset = curr_expr->ast_val.val * base_type_size;
+
         curr_expr->result_reg_desc = reg_alloc(cg_ctx);
         fprintf(fptr_code, "lea %s, %s\n", map_sym_to_addr_win(cg_ctx, curr_expr->child),
                 get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+
+        if (arr_offset)
+            fprintf(fptr_code, "add $%ld, %s\n", arr_offset,
+                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+
         break;
 
     default:
@@ -807,8 +850,8 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
     while (temp_var_bind != NULL) {
         temp_var_type_id = node_alloc();
         *temp_var_type_id = *temp_var_bind->id_val;
-        temp_var_type_id->child = NULL;
-        temp_var_type_id->next_child = NULL;
+        // temp_var_type_id->child = NULL;
+        // temp_var_type_id->next_child = NULL;
         AstNode *var = parser_get_type(context, temp_var_type_id, &status);
         if (!status)
             print_error(ERR_COMMON, "Unable to retrieve value from environment for : `%s`",

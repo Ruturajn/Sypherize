@@ -26,6 +26,7 @@ typedef enum NodeType {
     TYPE_ADDROF,           ///< Node for storing address of a variable.
     TYPE_DEREFERENCE,      ///< Node for storing the dereferenced value of a
                            ///< pointer.
+    TYPE_ARR_INDEX,        ///< Node for storing the index access of an array.
 } NodeType;
 
 /**

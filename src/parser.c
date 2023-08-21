@@ -549,6 +549,25 @@ AstNode *parse_type(AstNode **type_node, LexingState **state, ParsingContext *co
     if (*status == 0)
         return NULL;
 
+    if (check_next_token("[", state)) {
+        lex_token(state);
+
+        AstNode *arr_size = node_alloc();
+        if (!parse_int((*state)->curr_token, arr_size))
+            print_error(ERR_SYNTAX, "Unable to parse array size, expected valid integer");
+
+        if (!check_next_token("]", state))
+            print_error(ERR_SYNTAX, "Expected `]` after declaration of array size");
+
+        AstNode *arr_type = create_node_symbol("array");
+        AstNode *prev_type = node_alloc();
+        copy_node(prev_type, sym_node);
+        add_ast_node_child(arr_type, arr_size);
+        add_ast_node_child(arr_type, prev_type);
+        copy_node(sym_node, arr_type);
+        free(prev_type);
+    }
+
     copy_node(*type_node, sym_node);
     (*type_node)->pointer_level = pointer_indirect;
 
@@ -690,6 +709,9 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
 
                     // Handle lambda functions.
                     if (check_next_token("(", &state)) {
+                        if (is_external)
+                            print_error(ERR_SYNTAX,
+                                        "`ext` keyword cannot be used with lambda functions");
                         AstNode *lambda_func_node = node_alloc();
                         lambda_func_node->type = TYPE_FUNCTION;
                         AstNode *arg_list = node_alloc();
@@ -861,6 +883,9 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
             }
             free_node(res);
 
+            if (is_external)
+                print_error(ERR_SYNTAX, "`ext` keyword can only be used for functions");
+
             AstNode *sym_node = node_symbol_from_token_create(state->curr_token);
             // If the parsing flow reaches here, it means that we
             // can check a variable access.
@@ -885,6 +910,26 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                 node_var_access->type = TYPE_VAR_ACCESS;
                 node_var_access->ast_val.node_symbol = strdup(sym_node->ast_val.node_symbol);
                 *running_expr = *node_var_access;
+
+                if (check_next_token("[", &state)) {
+                    lex_token(&state);
+                    AstNode *array_index = node_alloc();
+
+                    if (!parse_int(state->curr_token, array_index))
+                        print_error(ERR_SYNTAX,
+                                    "Expected valid integer index for accessing array type : `%s`",
+                                    node_var_access->ast_val.node_symbol);
+
+                    if (!check_next_token("]", &state))
+                        print_error(ERR_SYNTAX, "Expected `]` after indexing array type : `%s`",
+                                    node_var_access->ast_val.node_symbol);
+
+                    AstNode *arr_access = node_alloc();
+                    arr_access->type = TYPE_ARR_INDEX;
+                    arr_access->ast_val.val = array_index->ast_val.val;
+                    add_ast_node_child(arr_access, node_var_access);
+                    *running_expr = *arr_access;
+                }
             }
 
             // Lex again to look forward.

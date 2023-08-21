@@ -76,12 +76,35 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
     int stat = -1;
 
     switch (temp_expr->type) {
+
     case TYPE_INT:;
         AstNode *ret_int_type = create_node_symbol("int");
         *ret_type = *ret_int_type;
         break;
-    case TYPE_ADDROF:;
+
+    case TYPE_ARR_INDEX:
         if (temp_expr->child == NULL || temp_expr->child->type != TYPE_VAR_ACCESS) {
+            print_type(temp_expr, NULL, temp_expr->child);
+            print_error(ERR_SYNTAX, "Expected valid variable access while indexing an array");
+        }
+        AstNode *arr_type = type_check_expr(context, context_to_enter, temp_expr->child);
+        if (stat == 0)
+            print_error(ERR_COMMON, "Couldn't find information for variable : `%s`",
+                        temp_expr->ast_val.node_symbol);
+
+        if (strcmp("array", arr_type->ast_val.node_symbol))
+            print_error(ERR_TYPE, "Expected array type for indexed access");
+
+        if (temp_expr->ast_val.val < 0 || arr_type->child->ast_val.val <= temp_expr->ast_val.val)
+            print_error(ERR_TYPE, "Encountered out of bound access for array : `%s`",
+                        temp_expr->child->ast_val.node_symbol);
+        *ret_type = *arr_type->child->next_child;
+        // ret_type->pointer_level += 1;
+        break;
+
+    case TYPE_ADDROF:;
+        if (temp_expr->child == NULL || (temp_expr->child->type != TYPE_VAR_ACCESS &&
+                                         temp_expr->child->type != TYPE_ARR_INDEX)) {
             print_type(temp_expr, NULL, temp_expr->child);
             print_error(ERR_SYNTAX, "Expected valid variable access for AddressOf operator");
         }
@@ -89,6 +112,7 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         *ret_type = *var_access_type;
         ret_type->pointer_level += 1;
         break;
+
     case TYPE_VAR_ACCESS:;
         ParsingContext *temp_ctx = context;
         AstNode *sym_type = NULL;

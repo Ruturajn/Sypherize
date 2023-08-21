@@ -99,6 +99,17 @@ AstNode *parser_get_type(ParsingContext *context, AstNode *identifier, int *stat
         return res;
     }
 
+    if (strcmp(identifier->ast_val.node_symbol, "array") == 0) {
+        AstNode *arr_type = parser_get_type(context, identifier->child->next_child, &status);
+        if (status == 0)
+            print_error(ERR_TYPE, "Unable to find base type for array");
+
+        // Return the total size of the array.
+        AstNode *res = node_alloc();
+        res->child = create_node_int(arr_type->child->ast_val.val * identifier->child->ast_val.val);
+        return res;
+    }
+
     while (temp_ctx != NULL) {
         AstNode *res = get_env(temp_ctx->env_type, identifier, &status);
         if (status) {
