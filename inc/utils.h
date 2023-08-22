@@ -11,11 +11,9 @@ extern "C" {
 #include <string.h>
 
 #ifndef _MSC_VER
-#define FUNC_NORETURN __attribute__((noreturn))
-#define FUNC_FORMAT(...) __attribute__((format(__VA_ARGS__)))
+#define NORETURN __attribute__((noreturn))
 #else
-#define FUNC_NORETURN
-#define FUNC_FORMAT(...)
+#define NORETURN
 #endif
 
 #define USAGE_STRING                                                                               \

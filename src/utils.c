@@ -28,6 +28,7 @@ char *read_file_data(char *file_dest) {
     return file_data;
 }
 
+NORETURN
 void print_error(ErrType err, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);

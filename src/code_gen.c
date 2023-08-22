@@ -14,54 +14,55 @@ int sym_idx = 0;
 
 char codegen_verbose = 1;
 
-enum ComparisonType {
-    COMP_EQ,
-    COMP_NE,
-    COMP_LT,
-    COMP_LE,
-    COMP_GT,
-    COMP_GE,
-
-    COMP_COUNT,
-};
-
-static const char *comp_suffixes_x86_84[COMP_COUNT] = {
+const char *comp_suffixes_x86_84[COMP_COUNT] = {
     "e", "ne", "l", "le", "g", "ge",
 };
-
-#define INIT_REGISTER(regs, register_desc, register_name)                                          \
-    ((regs)[register_desc] =                                                                       \
-         (Reg){.reg_name = (register_name), .reg_in_use = 0, .reg_desc = (register_desc)})
 
 CGContext *create_codegen_context(CGContext *parent_ctx) {
     RegPool pool;
 
+    // "The x64 ABI considers the registers RAX, RCX, RDX, R8, R9, R10, R11, and
+    // XMM0-XMM5 volatile"
+    // "The x64 ABI considers registers RBX, RBP, RDI, RSI, RSP, R12, R13, R14, R15,
+    // and XMM6-XMM15 nonvolatile"
     // Initialize the registers only when we are creating the global context.
     if (parent_ctx == NULL) {
-        Reg *registers = calloc(REG_X86_64_WIN_COUNT, sizeof(Reg));
+        Reg *registers = calloc(REG_X86_64_COUNT, sizeof(Reg));
         CHECK_NULL(registers, "Unable to allocate memory for registers array", NULL);
-        INIT_REGISTER(registers, REG_X86_64_WIN_RAX, "%rax");
-        INIT_REGISTER(registers, REG_X86_64_WIN_RCX, "%rcx");
-        INIT_REGISTER(registers, REG_X86_64_WIN_RDX, "%rdx");
-        INIT_REGISTER(registers, REG_X86_64_WIN_R8, "%r8");
-        INIT_REGISTER(registers, REG_X86_64_WIN_R9, "%r9");
-        INIT_REGISTER(registers, REG_X86_64_WIN_R10, "%r10");
-        INIT_REGISTER(registers, REG_X86_64_WIN_R11, "%r11");
+        INIT_REGISTER(registers, REG_X86_64_RAX, "%rax");
+        INIT_REGISTER(registers, REG_X86_64_RCX, "%rcx");
+        INIT_REGISTER(registers, REG_X86_64_RDX, "%rdx");
+        INIT_REGISTER(registers, REG_X86_64_R8, "%r8");
+        INIT_REGISTER(registers, REG_X86_64_R9, "%r9");
+        INIT_REGISTER(registers, REG_X86_64_R10, "%r10");
+        INIT_REGISTER(registers, REG_X86_64_R11, "%r11");
 
-        INIT_REGISTER(registers, REG_X86_64_WIN_R12, "%r12");
-        INIT_REGISTER(registers, REG_X86_64_WIN_R13, "%r13");
-        INIT_REGISTER(registers, REG_X86_64_WIN_R14, "%r14");
-        INIT_REGISTER(registers, REG_X86_64_WIN_R15, "%r15");
-        INIT_REGISTER(registers, REG_X86_64_WIN_RBX, "%rbx");
-        INIT_REGISTER(registers, REG_X86_64_WIN_RSI, "%rsi");
-        INIT_REGISTER(registers, REG_X86_64_WIN_RDI, "%rdi");
-        INIT_REGISTER(registers, REG_X86_64_WIN_RBP, "%rbp");
-        INIT_REGISTER(registers, REG_X86_64_WIN_RSP, "%rsp");
-        INIT_REGISTER(registers, REG_X86_64_WIN_RIP, "%rip");
+        INIT_REGISTER(registers, REG_X86_64_R12, "%r12");
+        INIT_REGISTER(registers, REG_X86_64_R13, "%r13");
+        INIT_REGISTER(registers, REG_X86_64_R14, "%r14");
+        INIT_REGISTER(registers, REG_X86_64_R15, "%r15");
+        INIT_REGISTER(registers, REG_X86_64_RBX, "%rbx");
+        INIT_REGISTER(registers, REG_X86_64_RSI, "%rsi");
+        INIT_REGISTER(registers, REG_X86_64_RDI, "%rdi");
+        INIT_REGISTER(registers, REG_X86_64_RBP, "%rbp");
+        INIT_REGISTER(registers, REG_X86_64_RSP, "%rsp");
+        INIT_REGISTER(registers, REG_X86_64_RIP, "%rip");
 
-        pool = (RegPool){.regs = registers,
-                         .scratch_reg_cnt = REG_X86_64_WIN_SCRATCH_COUNT,
-                         .reg_cnt = REG_X86_64_WIN_COUNT};
+        int num_scratch_regs = 7;
+        Reg **scratch_registers = calloc(num_scratch_regs, sizeof(Reg *));
+        CHECK_NULL(registers, "Unable to allocate memory for scratch registers array", NULL);
+        scratch_registers[0] = registers + REG_X86_64_RAX;
+        scratch_registers[1] = registers + REG_X86_64_RCX;
+        scratch_registers[2] = registers + REG_X86_64_RDX;
+        scratch_registers[3] = registers + REG_X86_64_R8;
+        scratch_registers[4] = registers + REG_X86_64_R9;
+        scratch_registers[5] = registers + REG_X86_64_R10;
+        scratch_registers[6] = registers + REG_X86_64_R11;
+
+        pool.regs = registers;
+        pool.scratch_regs = scratch_registers, pool.scratch_reg_cnt = num_scratch_regs,
+        pool.reg_cnt = REG_X86_64_COUNT;
+
     } else {
         // If parent exists use it's register pool.
         pool = parent_ctx->reg_pool;
@@ -75,8 +76,6 @@ CGContext *create_codegen_context(CGContext *parent_ctx) {
     new_ctx->reg_pool = pool;
     return new_ctx;
 }
-
-#undef INIT_REGISTER
 
 void free_codegen_context(CGContext *cg_ctx) {
     if (cg_ctx->parent_ctx == NULL) {
@@ -95,7 +94,7 @@ RegDescriptor reg_alloc(CGContext *cg_ctx) {
         print_error(ERR_COMMON, "Found empty register pool");
 
     // Iterate through the register pool to find un-used register.
-    Reg *reg_iterator = cg_ctx->reg_pool.regs;
+    Reg *reg_iterator = *cg_ctx->reg_pool.scratch_regs;
     for (RegDescriptor i = 0; i < cg_ctx->reg_pool.scratch_reg_cnt; i++) {
         if (reg_iterator[i].reg_in_use == 0) {
             reg_iterator[i].reg_in_use = 1;
@@ -123,7 +122,8 @@ void reg_dealloc(CGContext *cg_ctx, RegDescriptor reg_desc) {
     temp[reg_desc].reg_in_use = 0;
 }
 
-char *gen_label() {
+// Generate labels for lambda functions.
+static char *gen_label() {
     char *label = label_arr + label_idx;
     label_idx += snprintf(label, LABEL_ARR_SIZE - label_idx, ".L%d", label_cnt);
     label_idx++;
@@ -169,21 +169,145 @@ void print_regs(CGContext *cg_ctx) {
         printf("REG: %s, USE: %d\n", temp[i].reg_name, temp[i].reg_in_use);
 }
 
+const char *get_byte_reg_name_x86_64_win(CGContext *cg_ctx, RegDescriptor reg_desc) {
+    if (!is_valid_reg_desc(cg_ctx, reg_desc))
+        print_error(ERR_COMMON, "Encountered invalid register descriptor");
+
+    switch (reg_desc) {
+    case REG_X86_64_RAX:
+        return "%al";
+    case REG_X86_64_RCX:
+        return "%cl";
+    case REG_X86_64_RDX:
+        return "%dl";
+    case REG_X86_64_R8:
+        return "%r8b";
+    case REG_X86_64_R9:
+        return "%r9b";
+    case REG_X86_64_R10:
+        return "%r10b";
+    case REG_X86_64_R11:
+        return "%r11b";
+    case REG_X86_64_R12:
+        return "%r12b";
+    case REG_X86_64_R13:
+        return "%r13b";
+    case REG_X86_64_R14:
+        return "%r14b";
+    case REG_X86_64_R15:
+        return "%r15b";
+    case REG_X86_64_RBX:
+        return "%bl";
+    case REG_X86_64_RSI:
+        return "%sil";
+    case REG_X86_64_RDI:
+        return "%dil";
+    case REG_X86_64_RBP:
+        return "%bpl";
+    case REG_X86_64_RSP:
+        return "%spl";
+    case REG_X86_64_RIP:
+        break;
+    }
+    return cg_ctx->reg_pool.regs[reg_desc].reg_name;
+}
+
+const char *get_word_reg_name_x86_64_win(CGContext *cg_ctx, RegDescriptor reg_desc) {
+    if (!is_valid_reg_desc(cg_ctx, reg_desc))
+        print_error(ERR_COMMON, "Encountered invalid register descriptor");
+
+    switch (reg_desc) {
+    case REG_X86_64_RAX:
+        return "%ax";
+    case REG_X86_64_RCX:
+        return "%cx";
+    case REG_X86_64_RDX:
+        return "%dx";
+    case REG_X86_64_R8:
+        return "%r8w";
+    case REG_X86_64_R9:
+        return "%r9w";
+    case REG_X86_64_R10:
+        return "%r10w";
+    case REG_X86_64_R11:
+        return "%r11w";
+    case REG_X86_64_R12:
+        return "%r12w";
+    case REG_X86_64_R13:
+        return "%r13w";
+    case REG_X86_64_R14:
+        return "%r14w";
+    case REG_X86_64_R15:
+        return "%r15w";
+    case REG_X86_64_RBX:
+        return "%bx";
+    case REG_X86_64_RSI:
+        return "%si";
+    case REG_X86_64_RDI:
+        return "%di";
+    case REG_X86_64_RBP:
+        return "%bp";
+    case REG_X86_64_RSP:
+        return "%sp";
+    case REG_X86_64_RIP:
+        return "%ip";
+    }
+    return cg_ctx->reg_pool.regs[reg_desc].reg_name;
+}
+
+const char *get_double_word_reg_name_x86_64_win(CGContext *cg_ctx, RegDescriptor reg_desc) {
+    if (!is_valid_reg_desc(cg_ctx, reg_desc))
+        print_error(ERR_COMMON, "Encountered invalid register descriptor");
+
+    switch (reg_desc) {
+    case REG_X86_64_RAX:
+        return "%eax";
+    case REG_X86_64_RCX:
+        return "%ecx";
+    case REG_X86_64_RDX:
+        return "%edx";
+    case REG_X86_64_R8:
+        return "%r8d";
+    case REG_X86_64_R9:
+        return "%r9d";
+    case REG_X86_64_R10:
+        return "%r10d";
+    case REG_X86_64_R11:
+        return "%r11d";
+    case REG_X86_64_R12:
+        return "%r12d";
+    case REG_X86_64_R13:
+        return "%r13d";
+    case REG_X86_64_R14:
+        return "%r14d";
+    case REG_X86_64_R15:
+        return "%r15d";
+    case REG_X86_64_RBX:
+        return "%ebx";
+    case REG_X86_64_RSI:
+        return "%esi";
+    case REG_X86_64_RDI:
+        return "%edi";
+    case REG_X86_64_RBP:
+        return "%ebp";
+    case REG_X86_64_RSP:
+        return "%esp";
+    case REG_X86_64_RIP:
+        return "%eip";
+    }
+    return cg_ctx->reg_pool.regs[reg_desc].reg_name;
+}
+
 void target_x86_64_win_codegen_comp(CGContext *cg_ctx, AstNode *curr_expr,
                                     enum ComparisonType comp_type, FILE *fptr_code) {
     if (comp_type > COMP_COUNT)
         print_error(ERR_COMMON, "Encountered invalid comparison during code gen");
 
-    curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
+    curr_expr->result_reg_desc = reg_alloc(cg_ctx);
 
-    // To avoid encoding 8-bit registers, %r8b is being used currently. If the
-    // result is in %r8 we can directly use it without save/restore operations.
-    char is_r8_res = curr_expr->result_reg_desc == REG_X86_64_WIN_R8;
-
-    // If R8 is in use save it and clear it out.
-    if (!is_r8_res)
-        fprintf(fptr_code, "pushq %%r8\n");
-    fprintf(fptr_code, "xor %%r8, %%r8\n");
+    // Zero out result register.
+    fprintf(fptr_code, "xor %s, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc),
+            get_reg_name(cg_ctx, curr_expr->result_reg_desc));
 
     // Subtracts second operand from the first operand and sets the EFLAGS
     // ,i.e., OF, CF, etc. The set<op> then checks those flags for specific
@@ -191,15 +315,12 @@ void target_x86_64_win_codegen_comp(CGContext *cg_ctx, AstNode *curr_expr,
     fprintf(fptr_code, "cmp %s, %s\n",
             get_reg_name(cg_ctx, curr_expr->child->next_child->result_reg_desc),
             get_reg_name(cg_ctx, curr_expr->child->result_reg_desc));
-    fprintf(fptr_code, "set%s %%r8b\n", comp_suffixes_x86_84[comp_type]);
-    reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
+    fprintf(fptr_code, "set%s %s\n", comp_suffixes_x86_84[comp_type],
+            get_byte_reg_name_x86_64_win(cg_ctx, curr_expr->result_reg_desc));
 
-    // Restore R8 if it was in use, and move the result into the expression's
-    // result register.
-    if (!is_r8_res) {
-        fprintf(fptr_code, "movzbq %%r8b, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
-        fprintf(fptr_code, "popq %%r8\n");
-    }
+    // De-alloc LHS and RHS registers.
+    reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
+    reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
 }
 
 void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ctx_next_child,
@@ -378,7 +499,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
                                "pushq %%rdx\n");
 
             // Move result into RAX only if it isn't the result register.
-            if (curr_expr->child->result_reg_desc != REG_X86_64_WIN_RAX)
+            if (curr_expr->child->result_reg_desc != REG_X86_64_RAX)
                 fprintf(fptr_code, "mov %s, %%rax\n",
                         get_reg_name(cg_ctx, curr_expr->child->result_reg_desc));
 
@@ -397,11 +518,11 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
             // Move the result that is stored in RAX, into the expression's result register.
             curr_expr->result_reg_desc = reg_alloc(cg_ctx);
             if (is_modulus) {
-                if (curr_expr->result_reg_desc != REG_X86_64_WIN_RDX)
+                if (curr_expr->result_reg_desc != REG_X86_64_RDX)
                     fprintf(fptr_code, "mov %%rdx, %s\n",
                             get_reg_name(cg_ctx, curr_expr->result_reg_desc));
             } else {
-                if (curr_expr->result_reg_desc != REG_X86_64_WIN_RAX)
+                if (curr_expr->result_reg_desc != REG_X86_64_RAX)
                     fprintf(fptr_code, "mov %%rax, %s\n",
                             get_reg_name(cg_ctx, curr_expr->result_reg_desc));
             }
@@ -521,7 +642,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
             fprintf(fptr_code, "add $%d, %%rsp\n", param_count);
 
         curr_expr->result_reg_desc = reg_alloc(cg_ctx);
-        if (curr_expr->result_reg_desc != REG_X86_64_WIN_RAX) {
+        if (curr_expr->result_reg_desc != REG_X86_64_RAX) {
             fprintf(fptr_code, "mov %%rax, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
 
             // Restore the value for RAX from stack.
@@ -757,6 +878,10 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         if (arr_offset)
             fprintf(fptr_code, "add $%ld, %s\n", arr_offset,
                     get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+
+        // fprintf(fptr_code, "mov (%s), %s\n",
+        //         get_reg_name(cg_ctx, curr_expr->result_reg_desc),
+        //         get_reg_name(cg_ctx, curr_expr->result_reg_desc));
         break;
 
     default:
@@ -827,7 +952,7 @@ void target_x86_64_win_codegen_func(CGContext *cg_ctx, ParsingContext *context,
     }
 
     // Function footer.
-    if (last_expr->result_reg_desc != REG_X86_64_WIN_RAX)
+    if (last_expr->result_reg_desc != REG_X86_64_RAX)
         fprintf(fptr_code, "mov %s, %%rax\n", get_reg_name(cg_ctx, last_expr->result_reg_desc));
 
     fprintf(fptr_code, "add $%ld, %%rsp\n", -cg_ctx->local_offset);
@@ -885,7 +1010,7 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
         curr_expr = curr_expr->next_child;
     }
 
-    if (last_expr->result_reg_desc != REG_X86_64_WIN_RAX)
+    if (last_expr->result_reg_desc != REG_X86_64_RAX)
         fprintf(fptr_code, "mov %s, %%rax\n", get_reg_name(cg_ctx, last_expr->result_reg_desc));
     fprintf(fptr_code, "add $%ld, %%rsp\n", -cg_ctx->local_offset);
     fprintf(fptr_code, "%s", FUNC_FOOTER_x86_64);
