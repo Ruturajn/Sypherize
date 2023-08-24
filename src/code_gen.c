@@ -18,7 +18,7 @@ const char *comp_suffixes_x86_84[COMP_COUNT] = {
     "e", "ne", "l", "le", "g", "ge",
 };
 
-CGContext *create_codegen_context(CGContext *parent_ctx) {
+CGContext *create_codegen_context_gnu_as_win(CGContext *parent_ctx) {
     RegPool pool;
 
     // "The x64 ABI considers the registers RAX, RCX, RDX, R8, R9, R10, R11, and
@@ -74,6 +74,8 @@ CGContext *create_codegen_context(CGContext *parent_ctx) {
     new_ctx->local_env = create_env(NULL);
     new_ctx->local_offset = -32;
     new_ctx->reg_pool = pool;
+    new_ctx->target_fmt = TARGET_FMT_x86_64_GNU_AS;
+    new_ctx->target_call_conv = TARGET_CALL_CONV_WIN;
     return new_ctx;
 }
 
@@ -120,6 +122,83 @@ void reg_dealloc(CGContext *cg_ctx, RegDescriptor reg_desc) {
 
     Reg *temp = cg_ctx->reg_pool.regs;
     temp[reg_desc].reg_in_use = 0;
+}
+
+typedef enum Instructions_X86_64 {
+    INST_X86_64_ADD,
+    INST_X86_64_SUB,
+    INST_X86_64_MUL,
+    INST_X86_64_IMUL,
+    INST_X86_64_DIV,
+    INST_X86_64_IDIV,
+    INST_X86_64_PUSH,
+    INST_X86_64_POP,
+    INST_X86_64_RET,
+    INST_X86_64_MOV,
+    INST_X86_64_XOR,
+    INST_X86_64_CALL,
+    INST_X86_64_CMP,
+    INST_X86_64_COUNT,
+} Instructions_X86_64;
+
+const char *inst_mnemonic_x86_64(Instructions_X86_64 inst, TargetFormat target) {
+    switch (target) {
+    default:
+        break;
+    }
+    switch (inst) {
+    default:
+        print_error(ERR_COMMON, "Unable to convert Instructions_X86_64 to corresponding mnemonic");
+        break;
+    case INST_X86_64_ADD:
+        return "add";
+    case INST_X86_64_SUB:
+        return "sub";
+    case INST_X86_64_MUL:
+        return "mul";
+    case INST_X86_64_IMUL:
+        return "imul";
+    case INST_X86_64_DIV:
+        return "div";
+    case INST_X86_64_IDIV:
+        return "idiv";
+    case INST_X86_64_PUSH:
+        return "push";
+    case INST_X86_64_POP:
+        return "pop";
+    case INST_X86_64_RET:
+        return "ret";
+    case INST_X86_64_MOV:
+        return "mov";
+    case INST_X86_64_XOR:
+        return "xor";
+    case INST_X86_64_CALL:
+        return "call";
+    case INST_X86_64_CMP:
+        return "cmp";
+    }
+    return "";
+}
+
+void file_emit_x86_64_one_operand_inst(FILE *fptr_code, CGContext *cg_ctx, Instructions_X86_64 inst,
+                                       const char *operand) {
+    if (cg_ctx == NULL)
+        print_error(ERR_COMMON, "Encountered NULL code gen context");
+    fprintf(fptr_code, "%s %s\n", inst_mnemonic_x86_64(inst, cg_ctx->target_fmt), operand);
+}
+
+void file_emit_x86_64_two_operand_inst(FILE *fptr_code, CGContext *cg_ctx, Instructions_X86_64 inst,
+                                       const char *src_operand, const char *dest_operand) {
+    if (cg_ctx == NULL)
+        print_error(ERR_COMMON, "Encountered NULL code gen context");
+    switch (cg_ctx->target_fmt) {
+    default:
+        break;
+    case TARGET_FMT_x86_64_GNU_AS:
+        fprintf(fptr_code, "%s %s, %s\n", inst_mnemonic_x86_64(inst, cg_ctx->target_fmt),
+                src_operand, dest_operand);
+        break;
+    }
 }
 
 // Generate labels for lambda functions.
@@ -672,8 +751,8 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         else
             func_name = gen_label();
 
-        target_x86_64_win_codegen_func(cg_ctx, context, ctx_next_child, func_name, curr_expr,
-                                       fptr_code);
+        target_x86_64_gnu_as_codegen_func(cg_ctx, context, ctx_next_child, func_name, curr_expr,
+                                          fptr_code);
 
         /**
          * Now that functions are being treated as variables we can use
@@ -889,10 +968,10 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
     }
 }
 
-void target_x86_64_win_codegen_func(CGContext *cg_ctx, ParsingContext *context,
-                                    ParsingContext **ctx_next_child, char *func_name, AstNode *func,
-                                    FILE *fptr_code) {
-    cg_ctx = create_codegen_context(cg_ctx);
+void target_x86_64_gnu_as_codegen_func(CGContext *cg_ctx, ParsingContext *context,
+                                       ParsingContext **ctx_next_child, char *func_name,
+                                       AstNode *func, FILE *fptr_code) {
+    cg_ctx = create_codegen_context_gnu_as_win(cg_ctx);
 
     /**
      * Storing the offset for parameters passed to the function
@@ -1017,7 +1096,7 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
 }
 
 void target_codegen(ParsingContext *context, AstNode *program, char *output_file_path,
-                    TargetType type) {
+                    TargetFormat type, TargetCallingConvention call_conv) {
     if (context == NULL || program == NULL)
         print_error(ERR_COMMON, "NULL program node passed for code generation to "
                                 "`target_codegen()`");
@@ -1035,9 +1114,17 @@ void target_codegen(ParsingContext *context, AstNode *program, char *output_file
                         output_file_path);
     }
 
-    CGContext *cg_ctx = create_codegen_context(NULL);
+    CGContext *cg_ctx = NULL;
 
-    if (type == TARGET_DEFAULT || type == TARGET_x86_64_WIN)
+    if (call_conv == TARGET_CALL_CONV_WIN)
+        cg_ctx = create_codegen_context_gnu_as_win(NULL);
+    else if (call_conv == TARGET_CALL_CONV_LINUX) {
+        print_error(ERR_ARGS, "LINUX calling convention not yet supported :(");
+    } else {
+        print_error(ERR_ARGS, "Encountered invalid calling convention");
+    }
+
+    if (type == TARGET_FMT_DEFAULT || type == TARGET_FMT_x86_64_GNU_AS)
         target_x86_64_win_codegen_prog(context, program, cg_ctx, fptr_code);
 
     free_codegen_context(cg_ctx);

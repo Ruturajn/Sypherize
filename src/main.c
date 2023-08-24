@@ -13,7 +13,8 @@ int main(int argc, char **argv) {
 
     int out_file_idx = -1;
     int in_file_idx = -1;
-    enum TargetType out_fmt = TARGET_DEFAULT;
+    TargetFormat out_fmt = TARGET_FMT_DEFAULT;
+    TargetCallingConvention call_conv = TARGET_CALL_CONV_WIN;
     int is_verbose = -1;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
@@ -61,12 +62,35 @@ int main(int argc, char **argv) {
                             argv[i]);
             }
             if (strcmp(argv[i], "default") == 0)
-                out_fmt = TARGET_DEFAULT;
-            else if (strcmp(argv[i], "x86_64-windows") == 0)
-                out_fmt = TARGET_x86_64_WIN;
+                out_fmt = TARGET_FMT_DEFAULT;
+            else if (strcmp(argv[i], "x86_64-gnu-as") == 0)
+                out_fmt = TARGET_FMT_x86_64_GNU_AS;
             else {
                 printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS, "Expected valid output format, got : `%s`", argv[i]);
+            }
+        } else if (strcmp(argv[i], "-cc") == 0 || strcmp(argv[i], "--call-conv") == 0) {
+            i = i + 1;
+            if (i > argc) {
+                printf("\nSee `%s --help`\n\n", argv[0]);
+                print_error(ERR_ARGS, "Expected Output format after : `%s`", argv[i - 1]);
+            }
+            if (*argv[i] == '-') {
+                printf("\nSee `%s --help`\n\n", argv[0]);
+                print_error(ERR_ARGS,
+                            "Expected valid calling convention got another possible "
+                            "command line option : `%s`",
+                            argv[i]);
+            }
+            if (strcmp(argv[i], "default") == 0)
+                call_conv = TARGET_CALL_CONV_WIN;
+            else if (strcmp(argv[i], "linux") == 0)
+                call_conv = TARGET_CALL_CONV_LINUX;
+            else if (strcmp(argv[i], "windows") == 0)
+                call_conv = TARGET_CALL_CONV_WIN;
+            else {
+                printf("\nSee `%s --help`\n\n", argv[0]);
+                print_error(ERR_ARGS, "Expected valid calling convention, got : `%s`", argv[i]);
             }
         } else if (strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--verbose") == 0) {
             is_verbose = 1;
@@ -77,7 +101,7 @@ int main(int argc, char **argv) {
             if (*argv[i] == '-') {
                 printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS,
-                            "Expected valid output format got another possible "
+                            "Expected valid argument got another possible "
                             "command line option : `%s`",
                             argv[i]);
             }
@@ -111,7 +135,7 @@ int main(int argc, char **argv) {
     if (is_verbose == 1)
         printf("\n[+]CODE GENERATION BEGIN...\n");
     char *file_name = (out_file_idx == -1) ? "code_gen.s" : argv[out_file_idx];
-    target_codegen(curr_context, program, file_name, out_fmt);
+    target_codegen(curr_context, program, file_name, out_fmt, call_conv);
     if (is_verbose == 1)
         printf("[+]CODE GENERATION COMPLETE\n");
 

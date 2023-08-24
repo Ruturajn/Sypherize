@@ -35,10 +35,15 @@ typedef struct Reg {
     RegDescriptor reg_desc;
 } Reg;
 
-typedef enum TargetType {
-    TARGET_DEFAULT = 0,
-    TARGET_x86_64_WIN,
-} TargetType;
+typedef enum TargetFormat {
+    TARGET_FMT_DEFAULT = 0,
+    TARGET_FMT_x86_64_GNU_AS,
+} TargetFormat;
+
+typedef enum TargetCallingConvention {
+    TARGET_CALL_CONV_LINUX = 0,
+    TARGET_CALL_CONV_WIN,
+} TargetCallingConvention;
 
 typedef struct RegPool {
     Reg *regs;
@@ -50,11 +55,13 @@ typedef struct RegPool {
 typedef struct CGContext {
     struct CGContext *parent_ctx;
     Env *local_env;
-    RegPool reg_pool;
     long local_offset;
+    RegPool reg_pool;
+    TargetCallingConvention target_call_conv;
+    TargetFormat target_fmt;
 } CGContext;
 
-enum Regs_X86_64 {
+typedef enum Regs_X86_64 {
     REG_X86_64_RAX,
     REG_X86_64_RBX,
     REG_X86_64_RCX,
@@ -73,9 +80,9 @@ enum Regs_X86_64 {
     REG_X86_64_RSP,
     REG_X86_64_RIP,
     REG_X86_64_COUNT,
-};
+} Regs_X86_64;
 
-enum ComparisonType {
+typedef enum ComparisonType {
     COMP_EQ,
     COMP_NE,
     COMP_LT,
@@ -84,11 +91,11 @@ enum ComparisonType {
     COMP_GE,
 
     COMP_COUNT,
-};
+} ComparisonType;
 
 extern const char *comp_suffixes_x86_84[COMP_COUNT];
 
-CGContext *create_codegen_context(CGContext *parent_ctx);
+CGContext *create_codegen_context_gnu_as_win(CGContext *parent_ctx);
 
 void free_codegen_context(CGContext *cg_ctx);
 
@@ -111,15 +118,15 @@ const char *get_byte_reg_name_x86_64_win(CGContext *cg_ctx, RegDescriptor reg_de
 void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ctx_next_child,
                                     AstNode *curr_expr, CGContext *cg_ctx, FILE *fptr_code);
 
-void target_x86_64_win_codegen_func(CGContext *cg_ctx, ParsingContext *context,
-                                    ParsingContext **ctx_next_child, char *func_name, AstNode *func,
-                                    FILE *fptr_code);
+void target_x86_64_gnu_as_codegen_func(CGContext *cg_ctx, ParsingContext *context,
+                                       ParsingContext **ctx_next_child, char *func_name,
+                                       AstNode *func, FILE *fptr_code);
 
 void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, CGContext *cg_ctx,
                                     FILE *fptr_code);
 
 void target_codegen(ParsingContext *context, AstNode *program, char *output_file_path,
-                    TargetType type);
+                    TargetFormat type, TargetCallingConvention call_conv);
 
 #ifdef __cplusplus
 }

@@ -33,7 +33,7 @@ void print_error(ErrType err, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     fprintf(stderr, "\033[1;31m[ERROR]\033[1;37m %s:: ", err_strings[err]);
-    fprintf(stderr, fmt, args);
+    vfprintf(stderr, fmt, args);
     va_end(args);
     fprintf(stderr, "!\n");
     exit(EXIT_FAILURE);
@@ -43,7 +43,7 @@ void print_warning(ErrType err, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     fprintf(stderr, "\033[1;33m[WARN]\033[1;37m %s:: ", err_strings[err]);
-    fprintf(stderr, fmt, args);
+    vfprintf(stderr, fmt, args);
     va_end(args);
     fprintf(stderr, "!\n");
 }

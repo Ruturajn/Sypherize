@@ -25,11 +25,18 @@ extern "C" {
     "    sypherc [OPTIONS] INPUT_FILE\n"                                                           \
     "\n"                                                                                           \
     "OPTIONS:\n"                                                                                   \
+    "    -cc, --call-conv <CALLING_CONVENTION>\n"                                                  \
+    "            A valid calling convention for code generation\n"                                 \
+    "            VALID CALLING CONVENTIONS:\n"                                                     \
+    "            - `default`\n"                                                                    \
+    "            - `linux`\n"                                                                      \
+    "            - `windows`\n"                                                                    \
+    "\n"                                                                                           \
     "    -f, --format <OUTPUT_FORMAT>\n"                                                           \
     "            A valid output format for code generation\n"                                      \
     "            VALID FORMATS:\n"                                                                 \
-    "            - `x86_64-windows`\n"                                                             \
     "            - `default`\n"                                                                    \
+    "            - `x86_64-gnu-as`\n"                                                              \
     "\n"                                                                                           \
     "    -h, --help\n"                                                                             \
     "            Print this help information\n"                                                    \
