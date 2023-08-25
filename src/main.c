@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
             if (strcmp(argv[i], "default") == 0)
                 out_fmt = TARGET_FMT_DEFAULT;
             else if (strcmp(argv[i], "x86_64-gnu-as") == 0)
-                out_fmt = TARGET_FMT_x86_64_GNU_AS;
+                out_fmt = TARGET_FMT_X86_64_GNU_AS;
             else {
                 printf("\nSee `%s --help`\n\n", argv[0]);
                 print_error(ERR_ARGS, "Expected valid output format, got : `%s`", argv[i]);

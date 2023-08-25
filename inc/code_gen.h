@@ -37,7 +37,7 @@ typedef struct Reg {
 
 typedef enum TargetFormat {
     TARGET_FMT_DEFAULT = 0,
-    TARGET_FMT_x86_64_GNU_AS,
+    TARGET_FMT_X86_64_GNU_AS,
 } TargetFormat;
 
 typedef enum TargetCallingConvention {
@@ -115,8 +115,8 @@ void print_regs(CGContext *cg_ctx);
 
 const char *get_byte_reg_name_x86_64_win(CGContext *cg_ctx, RegDescriptor reg_desc);
 
-void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ctx_next_child,
-                                    AstNode *curr_expr, CGContext *cg_ctx, FILE *fptr_code);
+void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_next_child,
+                                AstNode *curr_expr, CGContext *cg_ctx, FILE *fptr_code);
 
 void target_x86_64_gnu_as_codegen_func(CGContext *cg_ctx, ParsingContext *context,
                                        ParsingContext **ctx_next_child, char *func_name,

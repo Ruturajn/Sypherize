@@ -3,6 +3,7 @@
 #include "../inc/env_funcs.h"
 #include "../inc/parser.h"
 #include "../inc/utils.h"
+#include <inttypes.h>
 
 char label_arr[LABEL_ARR_SIZE];
 int label_cnt = 0;
@@ -74,7 +75,7 @@ CGContext *create_codegen_context_gnu_as_win(CGContext *parent_ctx) {
     new_ctx->local_env = create_env(NULL);
     new_ctx->local_offset = -32;
     new_ctx->reg_pool = pool;
-    new_ctx->target_fmt = TARGET_FMT_x86_64_GNU_AS;
+    new_ctx->target_fmt = TARGET_FMT_X86_64_GNU_AS;
     new_ctx->target_call_conv = TARGET_CALL_CONV_WIN;
     return new_ctx;
 }
@@ -141,6 +142,14 @@ typedef enum Instructions_X86_64 {
     INST_X86_64_COUNT,
 } Instructions_X86_64;
 
+typedef enum Instructions_Type_X86_64 {
+    IMM_TO_MEM,
+    IMM_TO_REG,
+    MEM_TO_REG,
+    REG_TO_REG,
+    REG_TO_MEM,
+} Instructions_Type_X86_64;
+
 const char *inst_mnemonic_x86_64(Instructions_X86_64 inst, TargetFormat target) {
     switch (target) {
     default:
@@ -180,25 +189,86 @@ const char *inst_mnemonic_x86_64(Instructions_X86_64 inst, TargetFormat target) 
     return "";
 }
 
-void file_emit_x86_64_one_operand_inst(FILE *fptr_code, CGContext *cg_ctx, Instructions_X86_64 inst,
-                                       const char *operand) {
-    if (cg_ctx == NULL)
-        print_error(ERR_COMMON, "Encountered NULL code gen context");
-    fprintf(fptr_code, "%s %s\n", inst_mnemonic_x86_64(inst, cg_ctx->target_fmt), operand);
-}
+void file_emit_x86_64_gnu_as_mov(FILE *fptr_code, Instructions_Type_X86_64 inst_type,
+                                 va_list operands) {
 
-void file_emit_x86_64_two_operand_inst(FILE *fptr_code, CGContext *cg_ctx, Instructions_X86_64 inst,
-                                       const char *src_operand, const char *dest_operand) {
-    if (cg_ctx == NULL)
-        print_error(ERR_COMMON, "Encountered NULL code gen context");
-    switch (cg_ctx->target_fmt) {
+    switch (inst_type) {
     default:
+        print_error(ERR_COMMON, "Unhandled instruction type in file_emit_x86_64_inst()");
         break;
-    case TARGET_FMT_x86_64_GNU_AS:
-        fprintf(fptr_code, "%s %s, %s\n", inst_mnemonic_x86_64(inst, cg_ctx->target_fmt),
-                src_operand, dest_operand);
+    case IMM_TO_MEM:
+        // immediate value, memory offset, destination.
+        vfprintf(fptr_code, "mov $%" PRId64 ", %" PRId64 "(%s)\n", operands);
+        break;
+    case IMM_TO_REG:
+        // immediate value, destination.
+        vfprintf(fptr_code, "mov $%" PRId64 ", %s\n", operands);
+        break;
+    case MEM_TO_REG:
+        // immediate value, memory offset, source, destination.
+        vfprintf(fptr_code, "mov %" PRId64 "(%s), %s\n", operands);
+        break;
+    case REG_TO_REG:
+        // source, destination.
+        vfprintf(fptr_code, "mov %s, %s\n", operands);
+        break;
+    case REG_TO_MEM:
+        // source, memory offset, destination.
+        vfprintf(fptr_code, "mov %s, %" PRId64 "(%s)\n", operands);
         break;
     }
+}
+
+void file_emit_x86_64_inst(FILE *fptr_code, CGContext *cg_ctx, Instructions_X86_64 inst, ...) {
+    va_list operands;
+    va_start(operands, inst);
+
+    if (cg_ctx == NULL)
+        print_error(ERR_COMMON, "Encountered NULL code gen context");
+
+    // const char *mnemonic = inst_mnemonic_x86_64(inst, cg_ctx->target_fmt);
+
+    switch (cg_ctx->target_fmt) {
+    default:
+        print_error(ERR_COMMON, "Unhandled target format in file_emit_x86_64_inst()");
+        break;
+    case TARGET_FMT_X86_64_GNU_AS:
+        switch (inst) {
+        default:
+            print_error(ERR_COMMON, "Unhandled instruction in file_emit_x86_64_inst()");
+            break;
+        case INST_X86_64_ADD:
+            break;
+        case INST_X86_64_SUB:
+            break;
+        case INST_X86_64_MUL:
+            break;
+        case INST_X86_64_IMUL:
+            break;
+        case INST_X86_64_DIV:
+            break;
+        case INST_X86_64_IDIV:
+            break;
+        case INST_X86_64_PUSH:
+            break;
+        case INST_X86_64_POP:
+            break;
+        case INST_X86_64_RET:
+            break;
+        case INST_X86_64_MOV:;
+            Instructions_Type_X86_64 inst_type = va_arg(operands, Instructions_Type_X86_64);
+            file_emit_x86_64_gnu_as_mov(fptr_code, inst_type, operands);
+            break;
+        case INST_X86_64_XOR:
+            break;
+        case INST_X86_64_CALL:
+            break;
+        case INST_X86_64_CMP:
+            break;
+        }
+        break;
+    }
+    va_end(operands);
 }
 
 // Generate labels for lambda functions.
@@ -248,7 +318,7 @@ void print_regs(CGContext *cg_ctx) {
         printf("REG: %s, USE: %d\n", temp[i].reg_name, temp[i].reg_in_use);
 }
 
-const char *get_byte_reg_name_x86_64_win(CGContext *cg_ctx, RegDescriptor reg_desc) {
+const char *get_byte_reg_name_x86_64_gnu_as(CGContext *cg_ctx, RegDescriptor reg_desc) {
     if (!is_valid_reg_desc(cg_ctx, reg_desc))
         print_error(ERR_COMMON, "Encountered invalid register descriptor");
 
@@ -291,7 +361,7 @@ const char *get_byte_reg_name_x86_64_win(CGContext *cg_ctx, RegDescriptor reg_de
     return cg_ctx->reg_pool.regs[reg_desc].reg_name;
 }
 
-const char *get_word_reg_name_x86_64_win(CGContext *cg_ctx, RegDescriptor reg_desc) {
+const char *get_word_reg_name_x86_64_gnu_as(CGContext *cg_ctx, RegDescriptor reg_desc) {
     if (!is_valid_reg_desc(cg_ctx, reg_desc))
         print_error(ERR_COMMON, "Encountered invalid register descriptor");
 
@@ -334,7 +404,7 @@ const char *get_word_reg_name_x86_64_win(CGContext *cg_ctx, RegDescriptor reg_de
     return cg_ctx->reg_pool.regs[reg_desc].reg_name;
 }
 
-const char *get_double_word_reg_name_x86_64_win(CGContext *cg_ctx, RegDescriptor reg_desc) {
+const char *get_double_word_reg_name_x86_64_gnu_as(CGContext *cg_ctx, RegDescriptor reg_desc) {
     if (!is_valid_reg_desc(cg_ctx, reg_desc))
         print_error(ERR_COMMON, "Encountered invalid register descriptor");
 
@@ -395,15 +465,15 @@ void target_x86_64_win_codegen_comp(CGContext *cg_ctx, AstNode *curr_expr,
             get_reg_name(cg_ctx, curr_expr->child->next_child->result_reg_desc),
             get_reg_name(cg_ctx, curr_expr->child->result_reg_desc));
     fprintf(fptr_code, "set%s %s\n", comp_suffixes_x86_84[comp_type],
-            get_byte_reg_name_x86_64_win(cg_ctx, curr_expr->result_reg_desc));
+            get_byte_reg_name_x86_64_gnu_as(cg_ctx, curr_expr->result_reg_desc));
 
     // De-alloc LHS and RHS registers.
     reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
     reg_dealloc(cg_ctx, curr_expr->child->next_child->result_reg_desc);
 }
 
-void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ctx_next_child,
-                                    AstNode *curr_expr, CGContext *cg_ctx, FILE *fptr_code) {
+void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_next_child,
+                                AstNode *curr_expr, CGContext *cg_ctx, FILE *fptr_code) {
     switch (curr_expr->type) {
 
     case TYPE_VAR_DECLARATION:
@@ -444,8 +514,9 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Literal Integer : %ld\n", curr_expr->ast_val.val);
         curr_expr->result_reg_desc = reg_alloc(cg_ctx);
-        fprintf(fptr_code, "movq $%ld, %s\n", curr_expr->ast_val.val,
-                get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+        file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, IMM_TO_REG,
+                              curr_expr->ast_val.val,
+                              get_reg_name(cg_ctx, curr_expr->result_reg_desc));
         break;
 
     case TYPE_VAR_ACCESS:
@@ -487,10 +558,9 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         // Move the integers on the left and right hand side into different
         // registers.
         // See: https://www.felixcloutier.com/x86/
-        target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
-                                       fptr_code);
-        target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child->next_child,
-                                       cg_ctx, fptr_code);
+        target_x86_64_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx, fptr_code);
+        target_x86_64_codegen_expr(context, ctx_next_child, curr_expr->child->next_child, cg_ctx,
+                                   fptr_code);
 
         // Get the names of those registers, which contain the LHS and RHS
         // integers.
@@ -642,32 +712,28 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
             // onto stack in reverse order.
             if (call_params) {
                 // Place the first parameter into RCX or XMM0.
-                target_x86_64_win_codegen_expr(context, ctx_next_child, call_params, cg_ctx,
-                                               fptr_code);
+                target_x86_64_codegen_expr(context, ctx_next_child, call_params, cg_ctx, fptr_code);
                 fprintf(fptr_code, "mov %s, %%rcx\n",
                         get_reg_name(cg_ctx, call_params->result_reg_desc));
                 call_params = call_params->next_child;
             }
             if (call_params) {
                 // Place the second parameter into RDX or XMM1.
-                target_x86_64_win_codegen_expr(context, ctx_next_child, call_params, cg_ctx,
-                                               fptr_code);
+                target_x86_64_codegen_expr(context, ctx_next_child, call_params, cg_ctx, fptr_code);
                 fprintf(fptr_code, "mov %s, %%rdx\n",
                         get_reg_name(cg_ctx, call_params->result_reg_desc));
                 call_params = call_params->next_child;
             }
             if (call_params) {
                 // Place the third parameter into R8 or XMM2.
-                target_x86_64_win_codegen_expr(context, ctx_next_child, call_params, cg_ctx,
-                                               fptr_code);
+                target_x86_64_codegen_expr(context, ctx_next_child, call_params, cg_ctx, fptr_code);
                 fprintf(fptr_code, "mov %s, %%r8\n",
                         get_reg_name(cg_ctx, call_params->result_reg_desc));
                 call_params = call_params->next_child;
             }
             if (call_params) {
                 // Place the fourth parameter into R9 or XMM3.
-                target_x86_64_win_codegen_expr(context, ctx_next_child, call_params, cg_ctx,
-                                               fptr_code);
+                target_x86_64_codegen_expr(context, ctx_next_child, call_params, cg_ctx, fptr_code);
                 fprintf(fptr_code, "mov %s, %%r9\n",
                         get_reg_name(cg_ctx, call_params->result_reg_desc));
                 call_params = call_params->next_child;
@@ -680,8 +746,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         } else {
             // Push arguments onto the stack in order.
             while (call_params != NULL) {
-                target_x86_64_win_codegen_expr(context, ctx_next_child, call_params, cg_ctx,
-                                               fptr_code);
+                target_x86_64_codegen_expr(context, ctx_next_child, call_params, cg_ctx, fptr_code);
                 fprintf(fptr_code, "pushq %s\n",
                         get_reg_name(cg_ctx, call_params->result_reg_desc));
                 reg_dealloc(cg_ctx, call_params->result_reg_desc);
@@ -710,8 +775,8 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
             // var access the name of the "function variable" and call it's result
             // register. See TYPE_FUNCTION for more details.
 
-            target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
-                                           fptr_code);
+            target_x86_64_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
+                                       fptr_code);
             fprintf(fptr_code, "call *%s\n",
                     get_reg_name(cg_ctx, curr_expr->child->result_reg_desc));
             reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
@@ -788,8 +853,8 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
             print_error(ERR_COMMON,
                         "Unable to find valid variable access in a variable Re-assignment");
 
-        target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child->next_child,
-                                       cg_ctx, fptr_code);
+        target_x86_64_codegen_expr(context, ctx_next_child, curr_expr->child->next_child, cg_ctx,
+                                   fptr_code);
 
         char *res_string = NULL;
         char res_string_free = 0;
@@ -797,8 +862,8 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
             res_string = map_sym_to_addr_win(cg_ctx, temp_sym);
         } else {
             res_string_free = 1;
-            target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
-                                           fptr_code);
+            target_x86_64_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
+                                       fptr_code);
             const char *res_reg_name = get_reg_name(cg_ctx, curr_expr->child->result_reg_desc);
             char *res_string_copy = strdup(res_reg_name);
             size_t total_len = strlen(res_reg_name) + 3;
@@ -823,8 +888,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
     case TYPE_IF_CONDITION:;
         if (codegen_verbose)
             fprintf(fptr_code, ";#; IF Block\n");
-        target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
-                                       fptr_code);
+        target_x86_64_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx, fptr_code);
 
         if (codegen_verbose)
             fprintf(fptr_code, ";#; If Condition\n");
@@ -851,7 +915,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         AstNode *last_expr = NULL;
         AstNode *if_expr = curr_expr->child->next_child->child;
         while (if_expr != NULL) {
-            target_x86_64_win_codegen_expr(ctx, &ctx_child, if_expr, cg_ctx, fptr_code);
+            target_x86_64_codegen_expr(ctx, &ctx_child, if_expr, cg_ctx, fptr_code);
             if (last_expr != NULL)
                 reg_dealloc(cg_ctx, last_expr->result_reg_desc);
             last_expr = if_expr;
@@ -882,7 +946,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
 
             else_expr = else_expr->child;
             while (else_expr != NULL) {
-                target_x86_64_win_codegen_expr(ctx, &ctx_child, else_expr, cg_ctx, fptr_code);
+                target_x86_64_codegen_expr(ctx, &ctx_child, else_expr, cg_ctx, fptr_code);
                 if (last_expr != NULL)
                     reg_dealloc(cg_ctx, last_expr->result_reg_desc);
                 last_expr = else_expr;
@@ -904,8 +968,7 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
     case TYPE_DEREFERENCE:
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Dereference\n");
-        target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
-                                       fptr_code);
+        target_x86_64_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx, fptr_code);
         curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
         break;
 
@@ -913,8 +976,8 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
         if (codegen_verbose)
             fprintf(fptr_code, ";#; AddressOf\n");
         if (curr_expr->child->type == TYPE_ARR_INDEX) {
-            target_x86_64_win_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
-                                           fptr_code);
+            target_x86_64_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
+                                       fptr_code);
             curr_expr->result_reg_desc = curr_expr->child->result_reg_desc;
         } else {
             curr_expr->result_reg_desc = reg_alloc(cg_ctx);
@@ -968,10 +1031,30 @@ void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ct
     }
 }
 
+CGContext *create_from_codegen_context(CGContext *parent) {
+    if (parent == NULL)
+        print_error(ERR_COUNT, "Encountered NULL parent in create_from_codegen_context()");
+
+    CGContext *new_ctx = NULL;
+    if (parent->target_fmt == TARGET_FMT_X86_64_GNU_AS) {
+        if (parent->target_call_conv == TARGET_CALL_CONV_WIN)
+            new_ctx = create_codegen_context_gnu_as_win(parent);
+        else if (parent->target_call_conv == TARGET_CALL_CONV_LINUX) {
+            // cg_ctx = create_codegen_context_gnu_as_linux(cg_ctx);
+        }
+    }
+
+    if (new_ctx == NULL)
+        print_error(ERR_COMMON, "Could not create from codegen context");
+
+    return new_ctx;
+}
+
 void target_x86_64_gnu_as_codegen_func(CGContext *cg_ctx, ParsingContext *context,
                                        ParsingContext **ctx_next_child, char *func_name,
                                        AstNode *func, FILE *fptr_code) {
-    cg_ctx = create_codegen_context_gnu_as_win(cg_ctx);
+
+    cg_ctx = create_from_codegen_context(cg_ctx);
 
     /**
      * Storing the offset for parameters passed to the function
@@ -1024,7 +1107,7 @@ void target_x86_64_gnu_as_codegen_func(CGContext *cg_ctx, ParsingContext *contex
     AstNode *temp_expr = func->child->next_child->next_child->child;
     AstNode *last_expr = NULL;
     while (temp_expr != NULL) {
-        target_x86_64_win_codegen_expr(ctx, &ctx_child, temp_expr, cg_ctx, fptr_code);
+        target_x86_64_codegen_expr(ctx, &ctx_child, temp_expr, cg_ctx, fptr_code);
         reg_dealloc(cg_ctx, temp_expr->result_reg_desc);
         last_expr = temp_expr;
         temp_expr = temp_expr->next_child;
@@ -1042,8 +1125,8 @@ void target_x86_64_gnu_as_codegen_func(CGContext *cg_ctx, ParsingContext *contex
     cg_ctx = cg_ctx->parent_ctx;
 }
 
-void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, CGContext *cg_ctx,
-                                    FILE *fptr_code) {
+void target_x86_64_codegen_prog(ParsingContext *context, AstNode *program, CGContext *cg_ctx,
+                                FILE *fptr_code) {
 
     fprintf(fptr_code, ".section .data\n");
 
@@ -1083,7 +1166,7 @@ void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, C
             curr_expr = curr_expr->next_child;
             continue;
         }
-        target_x86_64_win_codegen_expr(context, &ctx_next_child, curr_expr, cg_ctx, fptr_code);
+        target_x86_64_codegen_expr(context, &ctx_next_child, curr_expr, cg_ctx, fptr_code);
         reg_dealloc(cg_ctx, curr_expr->result_reg_desc);
         last_expr = curr_expr;
         curr_expr = curr_expr->next_child;
@@ -1124,8 +1207,8 @@ void target_codegen(ParsingContext *context, AstNode *program, char *output_file
         print_error(ERR_ARGS, "Encountered invalid calling convention");
     }
 
-    if (type == TARGET_FMT_DEFAULT || type == TARGET_FMT_x86_64_GNU_AS)
-        target_x86_64_win_codegen_prog(context, program, cg_ctx, fptr_code);
+    if (type == TARGET_FMT_DEFAULT || type == TARGET_FMT_X86_64_GNU_AS)
+        target_x86_64_codegen_prog(context, program, cg_ctx, fptr_code);
 
     free_codegen_context(cg_ctx);
     fclose(fptr_code);
