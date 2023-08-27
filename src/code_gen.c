@@ -136,6 +136,7 @@ typedef enum Instructions_X86_64 {
     INST_X86_64_POP,
     INST_X86_64_RET,
     INST_X86_64_MOV,
+    INST_X86_64_LEA,
     INST_X86_64_XOR,
     INST_X86_64_CALL,
     INST_X86_64_CMP,
@@ -143,11 +144,16 @@ typedef enum Instructions_X86_64 {
 } Instructions_X86_64;
 
 typedef enum Instructions_Type_X86_64 {
-    IMM_TO_MEM,
-    IMM_TO_REG,
-    MEM_TO_REG,
-    REG_TO_REG,
-    REG_TO_MEM,
+    OPERAND_TYPE_REG,
+    OPERAND_TYPE_IMM,
+    OPERAND_TYPE_MEM,
+    OPERAND_TYPE_SYM,
+    OPERAND_TYPE_IMM_TO_MEM,
+    OPERAND_TYPE_IMM_TO_REG,
+    OPERAND_TYPE_MEM_TO_REG,
+    OPERAND_TYPE_SYM_TO_REG,
+    OPERAND_TYPE_REG_TO_REG,
+    OPERAND_TYPE_REG_TO_MEM,
 } Instructions_Type_X86_64;
 
 const char *inst_mnemonic_x86_64(Instructions_X86_64 inst, TargetFormat target) {
@@ -179,6 +185,8 @@ const char *inst_mnemonic_x86_64(Instructions_X86_64 inst, TargetFormat target) 
         return "ret";
     case INST_X86_64_MOV:
         return "mov";
+    case INST_X86_64_LEA:
+        return "lea";
     case INST_X86_64_XOR:
         return "xor";
     case INST_X86_64_CALL:
@@ -189,34 +197,67 @@ const char *inst_mnemonic_x86_64(Instructions_X86_64 inst, TargetFormat target) 
     return "";
 }
 
-void file_emit_x86_64_gnu_as_mov(FILE *fptr_code, Instructions_Type_X86_64 inst_type,
+void file_emit_x86_64_imm_to_mem(FILE *fptr_code, CGContext *cg_ctx, const char *mnemonic,
                                  va_list operands) {
 
-    switch (inst_type) {
-    default:
-        print_error(ERR_COMMON, "Unhandled instruction type in file_emit_x86_64_inst()");
-        break;
-    case IMM_TO_MEM:
-        // immediate value, memory offset, destination.
-        vfprintf(fptr_code, "mov $%" PRId64 ", %" PRId64 "(%s)\n", operands);
-        break;
-    case IMM_TO_REG:
-        // immediate value, destination.
-        vfprintf(fptr_code, "mov $%" PRId64 ", %s\n", operands);
-        break;
-    case MEM_TO_REG:
-        // immediate value, memory offset, source, destination.
-        vfprintf(fptr_code, "mov %" PRId64 "(%s), %s\n", operands);
-        break;
-    case REG_TO_REG:
-        // source, destination.
-        vfprintf(fptr_code, "mov %s, %s\n", operands);
-        break;
-    case REG_TO_MEM:
-        // source, memory offset, destination.
-        vfprintf(fptr_code, "mov %s, %" PRId64 "(%s)\n", operands);
-        break;
-    }
+    // immediate value, memory offset, destination.
+    int64_t imm_val = va_arg(operands, int64_t);
+    int64_t mem_offset = va_arg(operands, int64_t);
+    RegDescriptor mem_reg = va_arg(operands, RegDescriptor);
+    fprintf(fptr_code, "%s $%" PRId64 ", %" PRId64 "(%s)\n", mnemonic, imm_val, mem_offset,
+            get_reg_name(cg_ctx, mem_reg));
+}
+
+void file_emit_x86_64_imm_to_reg(FILE *fptr_code, CGContext *cg_ctx, const char *mnemonic,
+                                 va_list operands) {
+
+    // immediate value, destination.
+    int64_t imm_val = va_arg(operands, int64_t);
+    RegDescriptor dest_reg = va_arg(operands, RegDescriptor);
+    fprintf(fptr_code, "%s $%" PRId64 ", %s\n", mnemonic, imm_val, get_reg_name(cg_ctx, dest_reg));
+}
+
+void file_emit_x86_64_mem_to_reg(FILE *fptr_code, CGContext *cg_ctx, const char *mnemonic,
+                                 va_list operands) {
+
+    // memory offset, source, destination.
+    int64_t imm_val = va_arg(operands, int64_t);
+    RegDescriptor src_reg = va_arg(operands, RegDescriptor);
+    RegDescriptor dest_reg = va_arg(operands, RegDescriptor);
+    fprintf(fptr_code, "%s %" PRId64 "(%s), %s\n", mnemonic, imm_val, get_reg_name(cg_ctx, src_reg),
+            get_reg_name(cg_ctx, dest_reg));
+}
+
+void file_emit_x86_64_sym_to_reg(FILE *fptr_code, CGContext *cg_ctx, const char *mnemonic,
+                                 va_list operands) {
+
+    // name, source, destination.
+    const char *sym = va_arg(operands, const char *);
+    RegDescriptor src_reg = va_arg(operands, RegDescriptor);
+    RegDescriptor dest_reg = va_arg(operands, RegDescriptor);
+    fprintf(fptr_code, "%s %s(%s), %s\n", mnemonic, sym, get_reg_name(cg_ctx, src_reg),
+            get_reg_name(cg_ctx, dest_reg));
+}
+
+void file_emit_x86_64_reg_to_reg(FILE *fptr_code, CGContext *cg_ctx, const char *mnemonic,
+                                 va_list operands) {
+
+    // source, destination.
+    RegDescriptor reg_src = va_arg(operands, RegDescriptor);
+    RegDescriptor reg_dest = va_arg(operands, RegDescriptor);
+    fprintf(fptr_code, "%s %s, %s\n", mnemonic, get_reg_name(cg_ctx, reg_src),
+            get_reg_name(cg_ctx, reg_dest));
+}
+
+void file_emit_x86_64_reg_to_mem(FILE *fptr_code, CGContext *cg_ctx, const char *mnemonic,
+                                 va_list operands) {
+
+    // source, memory offset, destination.
+    RegDescriptor reg_src = va_arg(operands, RegDescriptor);
+    int64_t mem_offset = va_arg(operands, int64_t);
+    RegDescriptor reg_dest = va_arg(operands, RegDescriptor);
+    fprintf(fptr_code, "%s %s, %" PRId64 "(%s)\n", mnemonic, get_reg_name(cg_ctx, reg_src),
+            mem_offset, get_reg_name(cg_ctx, reg_dest));
 }
 
 void file_emit_x86_64_inst(FILE *fptr_code, CGContext *cg_ctx, Instructions_X86_64 inst, ...) {
@@ -226,43 +267,143 @@ void file_emit_x86_64_inst(FILE *fptr_code, CGContext *cg_ctx, Instructions_X86_
     if (cg_ctx == NULL)
         print_error(ERR_COMMON, "Encountered NULL code gen context");
 
-    // const char *mnemonic = inst_mnemonic_x86_64(inst, cg_ctx->target_fmt);
+    const char *mnemonic = inst_mnemonic_x86_64(inst, cg_ctx->target_fmt);
 
     switch (cg_ctx->target_fmt) {
+
     default:
         print_error(ERR_COMMON, "Unhandled target format in file_emit_x86_64_inst()");
         break;
+
     case TARGET_FMT_X86_64_GNU_AS:
         switch (inst) {
+
         default:
             print_error(ERR_COMMON, "Unhandled instruction in file_emit_x86_64_inst()");
             break;
+
         case INST_X86_64_ADD:
-            break;
         case INST_X86_64_SUB:
-            break;
-        case INST_X86_64_MUL:
-            break;
-        case INST_X86_64_IMUL:
-            break;
-        case INST_X86_64_DIV:
-            break;
-        case INST_X86_64_IDIV:
-            break;
-        case INST_X86_64_PUSH:
-            break;
-        case INST_X86_64_POP:
-            break;
-        case INST_X86_64_RET:
-            break;
         case INST_X86_64_MOV:;
             Instructions_Type_X86_64 inst_type = va_arg(operands, Instructions_Type_X86_64);
-            file_emit_x86_64_gnu_as_mov(fptr_code, inst_type, operands);
+            switch (inst_type) {
+
+            default:
+                print_error(ERR_DEV, "Unhandled instruction type in file_emit_x86_64_inst()");
+                break;
+
+            case OPERAND_TYPE_IMM_TO_MEM:;
+                file_emit_x86_64_imm_to_mem(fptr_code, cg_ctx, mnemonic, operands);
+                break;
+
+            case OPERAND_TYPE_IMM_TO_REG:;
+                file_emit_x86_64_imm_to_reg(fptr_code, cg_ctx, mnemonic, operands);
+                break;
+
+            case OPERAND_TYPE_MEM_TO_REG:;
+                file_emit_x86_64_mem_to_reg(fptr_code, cg_ctx, mnemonic, operands);
+                break;
+
+            case OPERAND_TYPE_REG_TO_REG:;
+                file_emit_x86_64_reg_to_reg(fptr_code, cg_ctx, mnemonic, operands);
+                break;
+
+            case OPERAND_TYPE_REG_TO_MEM:
+                file_emit_x86_64_reg_to_mem(fptr_code, cg_ctx, mnemonic, operands);
+                break;
+            }
             break;
+
+        case INST_X86_64_LEA:
+            inst_type = va_arg(operands, Instructions_Type_X86_64);
+            if (inst_type == OPERAND_TYPE_SYM_TO_REG) {
+                file_emit_x86_64_sym_to_reg(fptr_code, cg_ctx, mnemonic, operands);
+
+            } else if (inst_type == OPERAND_TYPE_MEM_TO_REG) {
+                file_emit_x86_64_mem_to_reg(fptr_code, cg_ctx, mnemonic, operands);
+
+            } else
+                print_error(ERR_DEV, "Invalid operand type for `lea` instruction");
+            break;
+
+        case INST_X86_64_MUL:
+            break;
+
+        case INST_X86_64_IMUL:
+            inst_type = va_arg(operands, Instructions_Type_X86_64);
+            if (inst_type == OPERAND_TYPE_MEM_TO_REG) {
+                file_emit_x86_64_mem_to_reg(fptr_code, cg_ctx, mnemonic, operands);
+
+            } else if (inst_type == OPERAND_TYPE_REG_TO_REG) {
+                file_emit_x86_64_reg_to_reg(fptr_code, cg_ctx, mnemonic, operands);
+
+            } else
+                print_error(ERR_DEV, "Invalid operand type for `imul` instruction");
+
+            break;
+
+        case INST_X86_64_DIV:
+            break;
+
+        case INST_X86_64_IDIV:
+            inst_type = va_arg(operands, Instructions_Type_X86_64);
+            if (inst_type == OPERAND_TYPE_MEM) {
+                int64_t mem_offset = va_arg(operands, int64_t);
+                RegDescriptor reg_desc = va_arg(operands, RegDescriptor);
+                fprintf(fptr_code, "%s %" PRId64 "(%s)\n", mnemonic, mem_offset,
+                        get_reg_name(cg_ctx, reg_desc));
+
+            } else if (inst_type == OPERAND_TYPE_REG) {
+                RegDescriptor reg_desc = va_arg(operands, RegDescriptor);
+                fprintf(fptr_code, "%s %s\n", mnemonic, get_reg_name(cg_ctx, reg_desc));
+
+            } else
+                print_error(ERR_DEV, "Invalid operand type for `idiv` instruction");
+            break;
+
+        case INST_X86_64_PUSH:;
+            inst_type = va_arg(operands, Instructions_Type_X86_64);
+            if (inst_type == OPERAND_TYPE_REG) {
+                RegDescriptor push_reg = va_arg(operands, RegDescriptor);
+                fprintf(fptr_code, "%s %s\n", mnemonic, get_reg_name(cg_ctx, push_reg));
+
+            } else if (inst_type == OPERAND_TYPE_MEM) {
+                int64_t mem_offset = va_arg(operands, int64_t);
+                RegDescriptor push_reg = va_arg(operands, RegDescriptor);
+                fprintf(fptr_code, "%s %" PRId64 "(%s)\n", mnemonic, mem_offset,
+                        get_reg_name(cg_ctx, push_reg));
+
+            } else if (inst_type == OPERAND_TYPE_IMM) {
+                int64_t imm_val = va_arg(operands, int64_t);
+                fprintf(fptr_code, "%s $%" PRId64 "\n", mnemonic, imm_val);
+
+            } else
+                print_error(ERR_DEV, "Invalid operand type for `push` instruction");
+            break;
+
+        case INST_X86_64_POP:
+            break;
+
+        case INST_X86_64_RET:
+            break;
+
         case INST_X86_64_XOR:
             break;
+
         case INST_X86_64_CALL:
+            inst_type = va_arg(operands, Instructions_Type_X86_64);
+            if (inst_type == OPERAND_TYPE_SYM) {
+                const char *sym = va_arg(operands, const char *);
+                fprintf(fptr_code, "%s %s\n", mnemonic, sym);
+
+            } else if (inst_type == OPERAND_TYPE_REG) {
+                RegDescriptor call_reg = va_arg(operands, RegDescriptor);
+                fprintf(fptr_code, "%s *%s\n", mnemonic, get_reg_name(cg_ctx, call_reg));
+
+            } else
+                print_error(ERR_DEV, "Invalid operand type for `call` instruction");
             break;
+
         case INST_X86_64_CMP:
             break;
         }
@@ -501,7 +642,8 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
             print_error(ERR_COMMON, "Couldn't find information for type : `%s`",
                         type_node->ast_val.node_symbol);
 
-        fprintf(fptr_code, "sub $%ld, %%rsp\n", size_in_bytes);
+        file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_SUB, OPERAND_TYPE_IMM_TO_REG,
+                              (int64_t)size_in_bytes, REG_X86_64_RSP);
         cg_ctx->local_offset -= size_in_bytes;
         if (!set_env(&cg_ctx->local_env, curr_expr->child, create_node_int(cg_ctx->local_offset)))
             print_error(ERR_COMMON,
@@ -514,9 +656,8 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
         if (codegen_verbose)
             fprintf(fptr_code, ";#; Literal Integer : %ld\n", curr_expr->ast_val.val);
         curr_expr->result_reg_desc = reg_alloc(cg_ctx);
-        file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, IMM_TO_REG,
-                              curr_expr->ast_val.val,
-                              get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+        file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_IMM_TO_REG,
+                              curr_expr->ast_val.val, curr_expr->result_reg_desc);
         break;
 
     case TYPE_VAR_ACCESS:
@@ -547,8 +688,9 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
                             "Unable to find information regarding local "
                             "variable offset for: `%s`",
                             curr_expr->ast_val.node_symbol);
-            fprintf(fptr_code, "mov %ld(%%rbp), %s\n", local_var_name->ast_val.val,
-                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_MEM_TO_REG,
+                                  local_var_name->ast_val.val, REG_X86_64_RBP,
+                                  curr_expr->result_reg_desc);
         }
         break;
 
@@ -579,7 +721,9 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
         } else if (strcmp(curr_expr->ast_val.node_symbol, "+") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->next_child->result_reg_desc;
             // Add those registers and save the result in the RHS register.
-            fprintf(fptr_code, "add %s, %s\n", reg_lhs, reg_rhs);
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_ADD, OPERAND_TYPE_REG_TO_REG,
+                                  curr_expr->child->result_reg_desc,
+                                  curr_expr->child->next_child->result_reg_desc);
 
             // De-allocate the LHS register since it is not in use anymore.
             reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
@@ -589,7 +733,9 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
             // Subtract those registers and save the result in the LHS register.
             // `sub` operation subtracts the first operand from the second
             // operand, and stores it in the second operand.
-            fprintf(fptr_code, "sub %s, %s\n", reg_rhs, reg_lhs);
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_SUB, OPERAND_TYPE_REG_TO_REG,
+                                  curr_expr->child->result_reg_desc,
+                                  curr_expr->child->next_child->result_reg_desc);
 
             // De-allocate the LHS register since it is not in use anymore.
             reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
@@ -630,7 +776,9 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "*") == 0) {
             curr_expr->result_reg_desc = curr_expr->child->next_child->result_reg_desc;
-            fprintf(fptr_code, "imul %s, %s\n", reg_lhs, reg_rhs);
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_IMUL, OPERAND_TYPE_REG_TO_REG,
+                                  curr_expr->child->result_reg_desc,
+                                  curr_expr->child->next_child->result_reg_desc);
 
             // De-allocate the RHS register since it is not in use anymore.
             reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
@@ -644,13 +792,15 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
 
             // Quotient is saved in RAX, and remainder is saved in RDX.
             // So there registers need to be saved.
-            fprintf(fptr_code, "pushq %%rax\n"
-                               "pushq %%rdx\n");
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_PUSH, OPERAND_TYPE_REG,
+                                  REG_X86_64_RAX);
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_PUSH, OPERAND_TYPE_REG,
+                                  REG_X86_64_RDX);
 
             // Move result into RAX only if it isn't the result register.
             if (curr_expr->child->result_reg_desc != REG_X86_64_RAX)
-                fprintf(fptr_code, "mov %s, %%rax\n",
-                        get_reg_name(cg_ctx, curr_expr->child->result_reg_desc));
+                file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                                      curr_expr->child->result_reg_desc, REG_X86_64_RAX);
 
             // Move the value from LHS into RAX. Use signed division instead of
             // unsigned to avoid division error, when using negative numbers.
@@ -661,19 +811,21 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
             fprintf(fptr_code, "cqto\n");
 
             // Call `idiv` instruction with the RHS register.
-            fprintf(fptr_code, "idiv %s\n",
-                    get_reg_name(cg_ctx, curr_expr->child->next_child->result_reg_desc));
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_IDIV, OPERAND_TYPE_REG,
+                                  curr_expr->child->next_child->result_reg_desc);
 
             // Move the result that is stored in RAX, into the expression's result register.
             curr_expr->result_reg_desc = reg_alloc(cg_ctx);
             if (is_modulus) {
                 if (curr_expr->result_reg_desc != REG_X86_64_RDX)
-                    fprintf(fptr_code, "mov %%rdx, %s\n",
-                            get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+                    file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV,
+                                          OPERAND_TYPE_REG_TO_REG, REG_X86_64_RDX,
+                                          curr_expr->result_reg_desc);
             } else {
                 if (curr_expr->result_reg_desc != REG_X86_64_RAX)
-                    fprintf(fptr_code, "mov %%rax, %s\n",
-                            get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+                    file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV,
+                                          OPERAND_TYPE_REG_TO_REG, REG_X86_64_RAX,
+                                          curr_expr->result_reg_desc);
             }
 
             fprintf(fptr_code, "pop %%rdx\n"
@@ -694,7 +846,8 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
 
         // Save RAX because, it may not be preserved after the function call,
         // because the return value is always placed into RAX.
-        fprintf(fptr_code, "pushq %%rax\n");
+        file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_PUSH, OPERAND_TYPE_REG,
+                              REG_X86_64_RAX);
 
         stat = -1;
         AstNode *func_call_type = parser_get_var(context, curr_expr->child, &stat);
@@ -713,42 +866,43 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
             if (call_params) {
                 // Place the first parameter into RCX or XMM0.
                 target_x86_64_codegen_expr(context, ctx_next_child, call_params, cg_ctx, fptr_code);
-                fprintf(fptr_code, "mov %s, %%rcx\n",
-                        get_reg_name(cg_ctx, call_params->result_reg_desc));
+                file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                                      call_params->result_reg_desc, REG_X86_64_RCX);
                 call_params = call_params->next_child;
             }
             if (call_params) {
                 // Place the second parameter into RDX or XMM1.
                 target_x86_64_codegen_expr(context, ctx_next_child, call_params, cg_ctx, fptr_code);
-                fprintf(fptr_code, "mov %s, %%rdx\n",
-                        get_reg_name(cg_ctx, call_params->result_reg_desc));
+                file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                                      call_params->result_reg_desc, REG_X86_64_RDX);
                 call_params = call_params->next_child;
             }
             if (call_params) {
                 // Place the third parameter into R8 or XMM2.
                 target_x86_64_codegen_expr(context, ctx_next_child, call_params, cg_ctx, fptr_code);
-                fprintf(fptr_code, "mov %s, %%r8\n",
-                        get_reg_name(cg_ctx, call_params->result_reg_desc));
+                file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                                      call_params->result_reg_desc, REG_X86_64_R8);
                 call_params = call_params->next_child;
             }
             if (call_params) {
                 // Place the fourth parameter into R9 or XMM3.
                 target_x86_64_codegen_expr(context, ctx_next_child, call_params, cg_ctx, fptr_code);
-                fprintf(fptr_code, "mov %s, %%r9\n",
-                        get_reg_name(cg_ctx, call_params->result_reg_desc));
+                file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                                      call_params->result_reg_desc, REG_X86_64_R9);
                 call_params = call_params->next_child;
             }
 
             // The rest of the paraameters need to be reversed and placed onto
             // the stack.
 
-            fprintf(fptr_code, "call %s\n", curr_expr->child->ast_val.node_symbol);
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_CALL, OPERAND_TYPE_SYM,
+                                  curr_expr->child->ast_val.node_symbol);
         } else {
             // Push arguments onto the stack in order.
             while (call_params != NULL) {
                 target_x86_64_codegen_expr(context, ctx_next_child, call_params, cg_ctx, fptr_code);
-                fprintf(fptr_code, "pushq %s\n",
-                        get_reg_name(cg_ctx, call_params->result_reg_desc));
+                file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_PUSH, OPERAND_TYPE_REG,
+                                      call_params->result_reg_desc);
                 reg_dealloc(cg_ctx, call_params->result_reg_desc);
                 call_params = call_params->next_child;
                 param_count += 8;
@@ -777,22 +931,25 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
 
             target_x86_64_codegen_expr(context, ctx_next_child, curr_expr->child, cg_ctx,
                                        fptr_code);
-            fprintf(fptr_code, "call *%s\n",
-                    get_reg_name(cg_ctx, curr_expr->child->result_reg_desc));
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_CALL, OPERAND_TYPE_REG,
+                                  curr_expr->child->result_reg_desc);
             reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
         }
 
         if (param_count > 0)
-            fprintf(fptr_code, "add $%d, %%rsp\n", param_count);
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_ADD, OPERAND_TYPE_IMM_TO_REG,
+                                  param_count, REG_X86_64_RSP);
 
         curr_expr->result_reg_desc = reg_alloc(cg_ctx);
         if (curr_expr->result_reg_desc != REG_X86_64_RAX) {
-            fprintf(fptr_code, "mov %%rax, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                                  REG_X86_64_RAX, curr_expr->result_reg_desc);
 
             // Restore the value for RAX from stack.
             fprintf(fptr_code, "pop %%rax\n");
         } else
-            fprintf(fptr_code, "add $8, %%rsp\n");
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_ADD, OPERAND_TYPE_IMM_TO_REG,
+                                  (int64_t)8, REG_X86_64_RSP);
         break;
 
     case TYPE_FUNCTION:;
@@ -839,8 +996,8 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
          */
 
         curr_expr->result_reg_desc = reg_alloc(cg_ctx);
-        fprintf(fptr_code, "lea %s(%%rip), %s\n", func_name,
-                get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+        file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_LEA, OPERAND_TYPE_SYM_TO_REG,
+                              func_name, REG_X86_64_RIP, curr_expr->result_reg_desc);
         break;
 
     case TYPE_VAR_REASSIGNMENT:
@@ -923,8 +1080,8 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
         }
 
         curr_expr->result_reg_desc = reg_alloc(cg_ctx);
-        fprintf(fptr_code, "mov %s, %s\n", get_reg_name(cg_ctx, last_expr->result_reg_desc),
-                get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+        file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                              last_expr->result_reg_desc, curr_expr->result_reg_desc);
         reg_dealloc(cg_ctx, last_expr->result_reg_desc);
         fprintf(fptr_code, "jmp %s\n", after_else_label);
 
@@ -953,13 +1110,14 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
                 else_expr = else_expr->next_child;
             }
 
-            fprintf(fptr_code, "mov %s, %s\n", get_reg_name(cg_ctx, last_expr->result_reg_desc),
-                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                                  last_expr->result_reg_desc, curr_expr->result_reg_desc);
             reg_dealloc(cg_ctx, last_expr->result_reg_desc);
         } else {
             // If there is an 'if' statement with no else we need to set the
             // result register for the 'if' statement.
-            fprintf(fptr_code, "mov $0, %s\n", get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_IMM_TO_REG, 0,
+                                  curr_expr->result_reg_desc);
         }
 
         fprintf(fptr_code, "%s:\n", after_else_label);
@@ -1018,8 +1176,8 @@ void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_ne
                 get_reg_name(cg_ctx, curr_expr->result_reg_desc));
 
         if (arr_offset)
-            fprintf(fptr_code, "add $%ld, %s\n", arr_offset,
-                    get_reg_name(cg_ctx, curr_expr->result_reg_desc));
+            file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_ADD, OPERAND_TYPE_IMM_TO_REG,
+                                  arr_offset, curr_expr->result_reg_desc);
 
         // fprintf(fptr_code, "mov (%s), %s\n",
         //         get_reg_name(cg_ctx, curr_expr->result_reg_desc),
@@ -1114,10 +1272,10 @@ void target_x86_64_gnu_as_codegen_func(CGContext *cg_ctx, ParsingContext *contex
     }
 
     // Function footer.
-    if (last_expr->result_reg_desc != REG_X86_64_RAX)
-        fprintf(fptr_code, "mov %s, %%rax\n", get_reg_name(cg_ctx, last_expr->result_reg_desc));
-
-    fprintf(fptr_code, "add $%ld, %%rsp\n", -cg_ctx->local_offset);
+    file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                          last_expr->result_reg_desc, REG_X86_64_RAX);
+    file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_ADD, OPERAND_TYPE_IMM_TO_REG,
+                          -cg_ctx->local_offset, REG_X86_64_RSP);
     fprintf(fptr_code, "%s", FUNC_FOOTER_x86_64);
 
     // Jump after function protection
@@ -1172,9 +1330,10 @@ void target_x86_64_codegen_prog(ParsingContext *context, AstNode *program, CGCon
         curr_expr = curr_expr->next_child;
     }
 
-    if (last_expr->result_reg_desc != REG_X86_64_RAX)
-        fprintf(fptr_code, "mov %s, %%rax\n", get_reg_name(cg_ctx, last_expr->result_reg_desc));
-    fprintf(fptr_code, "add $%ld, %%rsp\n", -cg_ctx->local_offset);
+    file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                          last_expr->result_reg_desc, REG_X86_64_RAX);
+    file_emit_x86_64_inst(fptr_code, cg_ctx, INST_X86_64_ADD, OPERAND_TYPE_IMM_TO_REG,
+                          -cg_ctx->local_offset, REG_X86_64_RSP);
     fprintf(fptr_code, "%s", FUNC_FOOTER_x86_64);
 }
 
