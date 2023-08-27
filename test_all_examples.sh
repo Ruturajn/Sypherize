@@ -5,7 +5,7 @@
 #Save current working directory.
 CWD=$(pwd)
 echo -e "\e[0;33m\n[ INFO ] : NAVIGATING to Sypherc ...\e[0;37m"
-WORKING_DIR=$(find ~ -name Sypherize)
+WORKING_DIR=./
 
 cd "${WORKING_DIR}"
 
