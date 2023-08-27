@@ -26,7 +26,8 @@ int parse_int(LexedToken *token, AstNode *node) {
 ParsingStack *create_parsing_stack(ParsingStack *parent_stack) {
     ParsingStack *new_stack = NULL;
     new_stack = (ParsingStack *)calloc(1, sizeof(ParsingStack));
-    CHECK_NULL(new_stack, "Unable to allocate memory for new parsing stack", NULL);
+    CHECK_NULL(new_stack, "Unable to allocate memory for new parsing stack",
+               NULL);
     new_stack->parent_stack = parent_stack;
     new_stack->op = NULL;
     new_stack->res = NULL;
@@ -37,7 +38,8 @@ ParsingStack *create_parsing_stack(ParsingStack *parent_stack) {
 ParsingContext *create_parsing_context(ParsingContext *parent_ctx) {
     ParsingContext *new_context = NULL;
     new_context = (ParsingContext *)calloc(1, sizeof(ParsingContext));
-    CHECK_NULL(new_context, "Unable to allocate memory for new parsing context", NULL);
+    CHECK_NULL(new_context, "Unable to allocate memory for new parsing context",
+               NULL);
     new_context->child = NULL;
     new_context->next_child = NULL;
     new_context->parent_ctx = parent_ctx;
@@ -71,9 +73,11 @@ ParsingContext *create_default_parsing_context() {
     return new_context;
 }
 
-void ast_add_type_node(Env **env_type, int node_type, AstNode *sym, long byte_size) {
+void ast_add_type_node(Env **env_type, int node_type, AstNode *sym,
+                       long byte_size) {
     if (sym == NULL || byte_size <= 0)
-        print_error(ERR_COMMON, "Unable to add a new type to the types environment");
+        print_error(ERR_COMMON,
+                    "Unable to add a new type to the types environment");
 
     AstNode *sz_node = node_alloc();
     sz_node->type = TYPE_INT;
@@ -84,12 +88,13 @@ void ast_add_type_node(Env **env_type, int node_type, AstNode *sym, long byte_si
     new_type_node->child = sz_node;
 
     if (!set_env(env_type, sym, new_type_node)) {
-        print_error(ERR_REDEFINITION, "Unable to redefine type : `%s`", sym->ast_val.node_symbol);
+        print_error(ERR_REDEFINITION, "Unable to redefine type : `%s`",
+                    sym->ast_val.node_symbol);
     }
 }
 
-void ast_add_binary_ops(ParsingContext **context, char *bin_op, int precedence, char *ret_type,
-                        char *lhs_type, char *rhs_type) {
+void ast_add_binary_ops(ParsingContext **context, char *bin_op, int precedence,
+                        char *ret_type, char *lhs_type, char *rhs_type) {
     AstNode *node_sym_op = create_node_symbol(bin_op);
     AstNode *node_bin_op_body = node_alloc();
     AstNode *node_prec = create_node_int(precedence);
@@ -115,14 +120,16 @@ void ast_add_binary_ops(ParsingContext **context, char *bin_op, int precedence, 
     }
 }
 
-void add_parsing_context_child(ParsingContext **root, ParsingContext *child_to_add) {
+void add_parsing_context_child(ParsingContext **root,
+                               ParsingContext *child_to_add) {
     if (*root == NULL)
         return;
 
     if ((*root)->child == NULL) {
         if (*root == child_to_add) {
-            print_warning(ERR_DEV, "Could not add new child to the parsing context due"
-                                   "to creation of possible circular linked list");
+            print_warning(ERR_DEV,
+                          "Could not add new child to the parsing context due"
+                          "to creation of possible circular linked list");
             return;
         }
         (*root)->child = child_to_add;
@@ -131,23 +138,26 @@ void add_parsing_context_child(ParsingContext **root, ParsingContext *child_to_a
 
     ParsingContext *temp_ctx = (*root)->child;
     if (temp_ctx == child_to_add) {
-        print_warning(ERR_DEV, "Could not add new child to the parsing context due"
-                               "to creation of possible circular linked list");
+        print_warning(ERR_DEV,
+                      "Could not add new child to the parsing context due"
+                      "to creation of possible circular linked list");
         return;
     }
     while (temp_ctx->next_child != NULL) {
         temp_ctx = temp_ctx->next_child;
         if (temp_ctx == child_to_add) {
-            print_warning(ERR_DEV, "Could not add new child to the parsing context due"
-                                   "to creation of possible circular linked list");
+            print_warning(ERR_DEV,
+                          "Could not add new child to the parsing context due"
+                          "to creation of possible circular linked list");
             return;
         }
     }
     temp_ctx->next_child = child_to_add;
 }
 
-int parse_binary_infix_op(LexingState **state, ParsingContext **context, long *running_precedence,
-                          AstNode **curr_expr, AstNode **running_expr, ParsingStack *curr_stack) {
+int parse_binary_infix_op(LexingState **state, ParsingContext **context,
+                          long *running_precedence, AstNode **curr_expr,
+                          AstNode **running_expr, ParsingStack *curr_stack) {
     LexingState temp_state = **state;
     LexingState *temp_state_ptr = &temp_state;
     lex_token(&temp_state_ptr);
@@ -156,7 +166,8 @@ int parse_binary_infix_op(LexingState **state, ParsingContext **context, long *r
     // While the end of a token isn't a white space character is a delimeter,
     // and isn't a NULL terminator keep extending the token. This is done to
     // catch multi-character operators.
-    char *token_end = (temp_state.curr_token->token_start + temp_state.curr_token->token_length);
+    char *token_end = (temp_state.curr_token->token_start +
+                       temp_state.curr_token->token_length);
     while (*token_end != '\0' && strchr(WHITESPACE, *token_end) == NULL &&
            strchr(DELIMS, *token_end) != NULL) {
         token_end += 1;
@@ -168,7 +179,8 @@ int parse_binary_infix_op(LexingState **state, ParsingContext **context, long *r
     ParsingContext *global_ctx = *context;
     while (global_ctx->parent_ctx != NULL)
         global_ctx = global_ctx->parent_ctx;
-    AstNode *bin_op_val = get_env(global_ctx->binary_ops, node_binary_op, &stat);
+    AstNode *bin_op_val =
+        get_env(global_ctx->binary_ops, node_binary_op, &stat);
     if (stat) {
         **state = temp_state;
         long temp_prec = bin_op_val->child->ast_val.val;
@@ -187,7 +199,8 @@ int parse_binary_infix_op(LexingState **state, ParsingContext **context, long *r
             AstNode *temp_expr_copy = node_alloc();
             copy_node(temp_expr_copy, *curr_expr);
             add_ast_node_child(node_bin_op_body, temp_expr_copy);
-            node_bin_op_body->ast_val.node_symbol = strdup(node_binary_op->ast_val.node_symbol);
+            node_bin_op_body->ast_val.node_symbol =
+                strdup(node_binary_op->ast_val.node_symbol);
             node_bin_op_body->next_child = NULL;
 
             AstNode *rhs_node = node_alloc();
@@ -205,7 +218,8 @@ int parse_binary_infix_op(LexingState **state, ParsingContext **context, long *r
             AstNode *temp_expr_copy = node_alloc();
             copy_node(temp_expr_copy, *running_expr);
             add_ast_node_child(node_bin_op_body, temp_expr_copy);
-            node_bin_op_body->ast_val.node_symbol = strdup(node_binary_op->ast_val.node_symbol);
+            node_bin_op_body->ast_val.node_symbol =
+                strdup(node_binary_op->ast_val.node_symbol);
             node_bin_op_body->next_child = NULL;
 
             AstNode *rhs_node = node_alloc();
@@ -265,7 +279,8 @@ void print_parsing_context(ParsingContext *context, int indent) {
     }
 }
 
-void lex_and_parse(char *file_dest, ParsingContext **curr_context, AstNode **program) {
+void lex_and_parse(char *file_dest, ParsingContext **curr_context,
+                   AstNode **program) {
 
     char *file_data = read_file_data(file_dest);
 
@@ -328,7 +343,8 @@ int check_invalid_var_access(ParsingContext *context, AstNode *sym_node) {
     return 0;
 }
 
-void parse_func_vars(AstNode **function_type, LexingState **state, ParsingContext *context) {
+void parse_func_vars(AstNode **function_type, LexingState **state,
+                     ParsingContext *context) {
     AstNode *param_type = node_alloc();
     int status = -1;
     parse_type(&param_type, state, context, &status);
@@ -337,8 +353,9 @@ void parse_func_vars(AstNode **function_type, LexingState **state, ParsingContex
 
     if (!check_next_token(":", state)) {
         if (!check_next_token(")", state)) {
-            print_error(ERR_SYNTAX, "Type annotation must be followed with a `:` in"
-                                    "function parameter list");
+            print_error(ERR_SYNTAX,
+                        "Type annotation must be followed with a `:` in"
+                        "function parameter list");
         }
         add_ast_node_child(*function_type, param_type);
         return;
@@ -362,8 +379,9 @@ void parse_func_vars(AstNode **function_type, LexingState **state, ParsingContex
 
             if (!check_next_token(",", state)) {
                 if (!check_next_token(")", state)) {
-                    print_error(ERR_SYNTAX, "Parameter list for function definition"
-                                            "must be delimited by a `,`");
+                    print_error(ERR_SYNTAX,
+                                "Parameter list for function definition"
+                                "must be delimited by a `,`");
                 }
                 break;
             }
@@ -373,9 +391,10 @@ void parse_func_vars(AstNode **function_type, LexingState **state, ParsingContex
         add_ast_node_child(*function_type, param_type);
 }
 
-StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **state,
-                                      AstNode **running_expr, ParsingContext **context,
-                                      long *running_precedence, AstNode **curr_expr) {
+StackOpRetVal
+stack_operator_continue(ParsingStack **curr_stack, LexingState **state,
+                        AstNode **running_expr, ParsingContext **context,
+                        long *running_precedence, AstNode **curr_expr) {
     if (*curr_stack == NULL)
         return STACK_OP_BREAK;
 
@@ -433,7 +452,8 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **s
                     return STACK_OP_CONT_PARSE;
 
                 } else
-                    print_error(ERR_SYNTAX, "Expected body after the `else` statement");
+                    print_error(ERR_SYNTAX,
+                                "Expected body after the `else` statement");
             }
             *curr_stack = (*curr_stack)->parent_stack;
             if (*curr_stack == NULL)
@@ -470,18 +490,23 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **s
     if (strcmp(op->ast_val.node_symbol, "lambda_params") == 0) {
         valid_op = 1;
         if ((*running_expr)->type != TYPE_VAR_DECLARATION)
-            print_error(ERR_SYNTAX, "Found invalid declaration of function parameters");
+            print_error(ERR_SYNTAX,
+                        "Found invalid declaration of function parameters");
         int status = -1;
-        AstNode *var_type = get_env((*context)->vars, (*running_expr)->child, &status);
+        AstNode *var_type =
+            get_env((*context)->vars, (*running_expr)->child, &status);
         if (status == 0)
-            print_error(ERR_COMMON, "Could not find type information for function parameter");
+            print_error(
+                ERR_COMMON,
+                "Could not find type information for function parameter");
 
         add_ast_node_child(*running_expr, var_type);
         if (check_next_token(")", state)) {
 
             // Parse function body.
             if (!check_next_token("{", state))
-                print_error(ERR_SYNTAX, "Couldn't find body for function definition");
+                print_error(ERR_SYNTAX,
+                            "Couldn't find body for function definition");
 
             if (check_next_token("}", state)) {
                 *context = (*context)->parent_ctx;
@@ -504,8 +529,8 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **s
         } else {
             // Parse function params
             if (!check_next_token(",", state))
-                print_error(ERR_SYNTAX,
-                            "Could not find end of parameter list in function definition");
+                print_error(ERR_SYNTAX, "Could not find end of parameter list "
+                                        "in function definition");
         }
     }
 
@@ -514,11 +539,12 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **s
         if (check_next_token(")", state)) {
             *running_expr = (*curr_stack)->res;
             *curr_stack = (*curr_stack)->parent_stack;
-            if (parse_binary_infix_op(state, context, running_precedence, curr_expr, running_expr,
-                                      *curr_stack))
+            if (parse_binary_infix_op(state, context, running_precedence,
+                                      curr_expr, running_expr, *curr_stack))
                 return STACK_OP_CONT_PARSE;
             return STACK_OP_CONT_CHECK;
-        } else if (strncmp_lexed_token((*state)->curr_token, ",") || check_next_token(",", state)) {
+        } else if (strncmp_lexed_token((*state)->curr_token, ",") ||
+                   check_next_token(",", state)) {
             (*curr_stack)->res->next_child = node_alloc();
             (*curr_stack)->res = (*curr_stack)->res->next_child;
             *running_expr = (*curr_stack)->res;
@@ -535,8 +561,8 @@ StackOpRetVal stack_operator_continue(ParsingStack **curr_stack, LexingState **s
     return STACK_OP_CONT_PARSE;
 }
 
-AstNode *parse_type(AstNode **type_node, LexingState **state, ParsingContext *context,
-                    int *status) {
+AstNode *parse_type(AstNode **type_node, LexingState **state,
+                    ParsingContext *context, int *status) {
     unsigned int pointer_indirect = 0;
     while (*(((*state)->curr_token)->token_start) == '@') {
         pointer_indirect += 1;
@@ -554,10 +580,12 @@ AstNode *parse_type(AstNode **type_node, LexingState **state, ParsingContext *co
 
         AstNode *arr_size = node_alloc();
         if (!parse_int((*state)->curr_token, arr_size))
-            print_error(ERR_SYNTAX, "Unable to parse array size, expected valid integer");
+            print_error(ERR_SYNTAX,
+                        "Unable to parse array size, expected valid integer");
 
         if (!check_next_token("]", state))
-            print_error(ERR_SYNTAX, "Expected `]` after declaration of array size");
+            print_error(ERR_SYNTAX,
+                        "Expected `]` after declaration of array size");
 
         AstNode *arr_type = create_node_symbol("array");
         AstNode *prev_type = node_alloc();
@@ -596,7 +624,8 @@ AstNode *parse_type(AstNode **type_node, LexingState **state, ParsingContext *co
     //             if (!check_next_token(",", temp_file_data, curr_token)) {
     //                 if (!check_next_token(")", temp_file_data, curr_token))
     //                     print_error(ERR_SYNTAX,
-    //                                 "Expected `,` between function parameters");
+    //                                 "Expected `,` between function
+    //                                 parameters");
     //                 else
     //                     break;
     //             }
@@ -623,7 +652,8 @@ int check_if_type(char *temp_file_data, ParsingContext *context) {
     return 0;
 }
 
-char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **context) {
+char *parse_tokens(LexingState *state, AstNode **curr_expr,
+                   ParsingContext **context) {
 
     ParsingStack *curr_stack = NULL;
     AstNode *running_expr = *curr_expr;
@@ -700,18 +730,21 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                 AstNode *curr_var_decl = node_alloc();
                 curr_var_decl->type = TYPE_VAR_DECLARATION;
 
-                AstNode *curr_type = node_symbol_from_token_create(state->curr_token);
+                AstNode *curr_type =
+                    node_symbol_from_token_create(state->curr_token);
                 curr_type->type = res->type;
 
                 // Lex again to look forward.
                 if (check_next_token(":", &state)) {
-                    CHECK_END(*state->file_data, "End of file during variable declaration", NULL);
+                    CHECK_END(*state->file_data,
+                              "End of file during variable declaration", NULL);
 
                     // Handle lambda functions.
                     if (check_next_token("(", &state)) {
                         if (is_external)
                             print_error(ERR_SYNTAX,
-                                        "`ext` keyword cannot be used with lambda functions");
+                                        "`ext` keyword cannot be used with "
+                                        "lambda functions");
                         AstNode *lambda_func_node = node_alloc();
                         lambda_func_node->type = TYPE_FUNCTION;
                         AstNode *arg_list = node_alloc();
@@ -723,7 +756,8 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                             // Parse function body.
                             if (!check_next_token("{", &state))
                                 print_error(ERR_SYNTAX,
-                                            "Couldn't find body for function definition");
+                                            "Couldn't find body for function "
+                                            "definition");
 
                             if (check_next_token("}", &state)) {
                                 *running_expr = *lambda_func_node;
@@ -764,12 +798,14 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                         continue;
                     }
                     lex_token(&state);
-                    AstNode *curr_sym = node_symbol_from_token_create(state->curr_token);
+                    AstNode *curr_sym =
+                        node_symbol_from_token_create(state->curr_token);
                     curr_sym->type = TYPE_SYM;
 
                     get_env((*context)->vars, curr_sym, &status);
                     if (status)
-                        print_error(ERR_REDEFINITION, "Redefinition of variable : `%s`",
+                        print_error(ERR_REDEFINITION,
+                                    "Redefinition of variable : `%s`",
                                     curr_sym->ast_val.node_symbol);
 
                     AstNode *sym_name = node_alloc();
@@ -795,21 +831,25 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
 
                             if (!check_next_token(",", &state)) {
                                 if (!check_next_token(")", &state)) {
-                                    print_error(ERR_SYNTAX, "Parameter list for function definition"
-                                                            "must be delimited by a `,`");
+                                    print_error(
+                                        ERR_SYNTAX,
+                                        "Parameter list for function definition"
+                                        "must be delimited by a `,`");
                                 }
                                 break;
                             }
                         }
 
-                        if (!set_env(&((*context)->vars), sym_name, function_type)) {
+                        if (!set_env(&((*context)->vars), sym_name,
+                                     function_type)) {
                             print_error(ERR_COMMON,
                                         "Unable to set environment binding for "
                                         "variable : `%s`",
                                         sym_name->ast_val.node_symbol);
                         }
                     } else {
-                        if (!set_env(&((*context)->vars), sym_name, type_node)) {
+                        if (!set_env(&((*context)->vars), sym_name,
+                                     type_node)) {
                             print_error(ERR_COMMON,
                                         "Unable to set environment binding for "
                                         "variable : `%s`",
@@ -849,12 +889,14 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                             continue;
                         }
                         print_error(ERR_SYNTAX,
-                                    "Expected `=` after `:` in variable declaration for : `%s`",
+                                    "Expected `=` after `:` in variable "
+                                    "declaration for : `%s`",
                                     sym_name->ast_val.node_symbol);
                     }
                     if (check_next_token("=", &state))
                         print_error(ERR_SYNTAX,
-                                    "Expected `:` before `=` in variable declaration for : `%s`",
+                                    "Expected `:` before `=` in variable "
+                                    "declaration for : `%s`",
                                     sym_name->ast_val.node_symbol);
 
                     // If the control flow is here, it means that it is a
@@ -863,30 +905,33 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                         *curr_stack->res = *curr_var_decl;
                         StackOpRetVal stack_op_ret = STACK_OP_INVALID;
                         do {
-                            stack_op_ret =
-                                stack_operator_continue(&curr_stack, &state, &running_expr, context,
-                                                        &running_precedence, curr_expr);
+                            stack_op_ret = stack_operator_continue(
+                                &curr_stack, &state, &running_expr, context,
+                                &running_precedence, curr_expr);
                         } while (stack_op_ret == STACK_OP_CONT_CHECK);
                         if (stack_op_ret == STACK_OP_CONT_PARSE)
                             continue;
                         else if (stack_op_ret == STACK_OP_BREAK)
                             break;
                         else if (stack_op_ret == STACK_OP_INVALID)
-                            print_error(
-                                ERR_COMMON,
-                                "Compiler Error - Stack operator not being handled correctly");
+                            print_error(ERR_COMMON,
+                                        "Compiler Error - Stack operator not "
+                                        "being handled correctly");
                     }
                     *running_expr = *curr_var_decl;
                     break;
                 } else
-                    print_error(ERR_SYNTAX, "Expected `:` after type declaration");
+                    print_error(ERR_SYNTAX,
+                                "Expected `:` after type declaration");
             }
             free_node(res);
 
             if (is_external)
-                print_error(ERR_SYNTAX, "`ext` keyword can only be used for functions");
+                print_error(ERR_SYNTAX,
+                            "`ext` keyword can only be used for functions");
 
-            AstNode *sym_node = node_symbol_from_token_create(state->curr_token);
+            AstNode *sym_node =
+                node_symbol_from_token_create(state->curr_token);
             // If the parsing flow reaches here, it means that we
             // can check a variable access.
             AstNode *node_var_access = NULL;
@@ -908,7 +953,8 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
 
                 node_var_access = node_alloc();
                 node_var_access->type = TYPE_VAR_ACCESS;
-                node_var_access->ast_val.node_symbol = strdup(sym_node->ast_val.node_symbol);
+                node_var_access->ast_val.node_symbol =
+                    strdup(sym_node->ast_val.node_symbol);
                 *running_expr = *node_var_access;
 
                 if (check_next_token("[", &state)) {
@@ -917,12 +963,15 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
 
                     if (!parse_int(state->curr_token, array_index))
                         print_error(ERR_SYNTAX,
-                                    "Expected valid integer index for accessing array type : `%s`",
+                                    "Expected valid integer index for "
+                                    "accessing array type : `%s`",
                                     node_var_access->ast_val.node_symbol);
 
                     if (!check_next_token("]", &state))
-                        print_error(ERR_SYNTAX, "Expected `]` after indexing array type : `%s`",
-                                    node_var_access->ast_val.node_symbol);
+                        print_error(
+                            ERR_SYNTAX,
+                            "Expected `]` after indexing array type : `%s`",
+                            node_var_access->ast_val.node_symbol);
 
                     AstNode *arr_access = node_alloc();
                     arr_access->type = TYPE_ARR_INDEX;
@@ -934,7 +983,8 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
 
             // Lex again to look forward.
             if (check_next_token(":", &state)) {
-                CHECK_END(*state->file_data, "End of file during variable re-assignment : `%s`",
+                CHECK_END(*state->file_data,
+                          "End of file during variable re-assignment : `%s`",
                           sym_node->ast_val.node_symbol);
 
                 AstNode *var_bind = parser_get_var(*context, sym_node, &status);
@@ -986,7 +1036,8 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
             } else {
                 if (curr_stack == NULL && check_next_token("=", &state))
                     print_error(ERR_SYNTAX,
-                                "Expected `:` before `=` in variable re-assignment of : `%s`",
+                                "Expected `:` before `=` in variable "
+                                "re-assignment of : `%s`",
                                 node_var_access->ast_val.node_symbol);
                 if (check_next_token("(", &state)) {
                     status = -1;
@@ -1001,8 +1052,9 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
 
                         if (check_next_token(")", &state)) {
                             add_ast_node_child(running_expr, arg_list);
-                            if (parse_binary_infix_op(&state, context, &running_precedence,
-                                                      curr_expr, &running_expr, curr_stack))
+                            if (parse_binary_infix_op(
+                                    &state, context, &running_precedence,
+                                    curr_expr, &running_expr, curr_stack))
                                 continue;
                             StackOpRetVal stack_op_ret = STACK_OP_INVALID;
                             do {
@@ -1016,7 +1068,8 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
                                 break;
                             else if (stack_op_ret == STACK_OP_INVALID)
                                 print_error(ERR_COMMON,
-                                            "Compiler Error - Stack operator not being handled "
+                                            "Compiler Error - Stack operator "
+                                            "not being handled "
                                             "correctly");
                         }
 
@@ -1038,8 +1091,8 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
             }
         }
 
-        if (parse_binary_infix_op(&state, context, &running_precedence, curr_expr, &running_expr,
-                                  curr_stack))
+        if (parse_binary_infix_op(&state, context, &running_precedence,
+                                  curr_expr, &running_expr, curr_stack))
             continue;
 
         if (curr_stack == NULL)
@@ -1047,16 +1100,19 @@ char *parse_tokens(LexingState *state, AstNode **curr_expr, ParsingContext **con
 
         StackOpRetVal stack_op_ret = STACK_OP_INVALID;
         do {
-            stack_op_ret = stack_operator_continue(&curr_stack, &state, &running_expr, context,
-                                                   &running_precedence, curr_expr);
+            stack_op_ret = stack_operator_continue(
+                &curr_stack, &state, &running_expr, context,
+                &running_precedence, curr_expr);
         } while (stack_op_ret == STACK_OP_CONT_CHECK);
         if (stack_op_ret == STACK_OP_CONT_PARSE)
             continue;
         else if (stack_op_ret == STACK_OP_BREAK)
             break;
         else if (stack_op_ret == STACK_OP_INVALID)
-            print_error(ERR_COMMON, "Compiler Error - Stack operator not being handled correctly",
-                        NULL, 0);
+            print_error(
+                ERR_COMMON,
+                "Compiler Error - Stack operator not being handled correctly",
+                NULL, 0);
     }
     return state->file_data;
 }

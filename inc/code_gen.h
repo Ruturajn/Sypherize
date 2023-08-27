@@ -12,18 +12,19 @@ extern "C" {
 #define LABEL_ARR_SIZE 1024
 #define SYM_ARR_SIZE 1024
 
-#define FUNC_FOOTER_x86_64                                                                         \
-    "pop %rbp\n"                                                                                   \
+#define FUNC_FOOTER_x86_64                                                     \
+    "pop %rbp\n"                                                               \
     "ret\n"
 
-#define FUNC_HEADER_x86_64                                                                         \
-    "push %rbp\n"                                                                                  \
-    "mov %rsp, %rbp\n"                                                                             \
+#define FUNC_HEADER_x86_64                                                     \
+    "push %rbp\n"                                                              \
+    "mov %rsp, %rbp\n"                                                         \
     "sub $32, %rsp\n"
 
-#define INIT_REGISTER(regs, register_desc, register_name)                                          \
-    ((regs)[register_desc] =                                                                       \
-         (Reg){.reg_name = (register_name), .reg_in_use = 0, .reg_desc = (register_desc)})
+#define INIT_REGISTER(regs, register_desc, register_name)                      \
+    ((regs)[register_desc] = (Reg){.reg_name = (register_name),                \
+                                   .reg_in_use = 0,                            \
+                                   .reg_desc = (register_desc)})
 
 extern char codegen_verbose;
 
@@ -113,20 +114,26 @@ char *map_sym_to_addr_win(CGContext *cg_ctx, AstNode *sym_node);
 
 void print_regs(CGContext *cg_ctx);
 
-const char *get_byte_reg_name_x86_64_win(CGContext *cg_ctx, RegDescriptor reg_desc);
+const char *get_byte_reg_name_x86_64_win(CGContext *cg_ctx,
+                                         RegDescriptor reg_desc);
 
-void target_x86_64_codegen_expr(ParsingContext *context, ParsingContext **ctx_next_child,
-                                AstNode *curr_expr, CGContext *cg_ctx, FILE *fptr_code);
+void target_x86_64_codegen_expr(ParsingContext *context,
+                                ParsingContext **ctx_next_child,
+                                AstNode *curr_expr, CGContext *cg_ctx,
+                                FILE *fptr_code);
 
-void target_x86_64_gnu_as_codegen_func(CGContext *cg_ctx, ParsingContext *context,
-                                       ParsingContext **ctx_next_child, char *func_name,
-                                       AstNode *func, FILE *fptr_code);
+void target_x86_64_gnu_as_codegen_func(CGContext *cg_ctx,
+                                       ParsingContext *context,
+                                       ParsingContext **ctx_next_child,
+                                       char *func_name, AstNode *func,
+                                       FILE *fptr_code);
 
-void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, CGContext *cg_ctx,
-                                    FILE *fptr_code);
+void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program,
+                                    CGContext *cg_ctx, FILE *fptr_code);
 
-void target_codegen(ParsingContext *context, AstNode *program, char *output_file_path,
-                    TargetFormat type, TargetCallingConvention call_conv);
+void target_codegen(ParsingContext *context, AstNode *program,
+                    char *output_file_path, TargetFormat type,
+                    TargetCallingConvention call_conv);
 
 #ifdef __cplusplus
 }

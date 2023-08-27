@@ -5,7 +5,8 @@
 #include "../inc/utils.h"
 
 int cmp_type(AstNode *node1, AstNode *node2) {
-    if ((node1->type != node2->type) || (node1->pointer_level != node2->pointer_level))
+    if ((node1->type != node2->type) ||
+        (node1->pointer_level != node2->pointer_level))
         return 0;
     AstNode *temp_node1 = node1->child;
     AstNode *temp_node2 = node2->child;
@@ -22,10 +23,13 @@ int cmp_type(AstNode *node1, AstNode *node2) {
 
 int cmp_type_sym(AstNode *node1, AstNode *node2) {
     if (node1->type != TYPE_SYM || node2->type != TYPE_SYM)
-        print_warning(ERR_COMMON, "Compairing symbols of nodes that aren't type TYPE_SYM");
+        print_warning(ERR_COMMON,
+                      "Compairing symbols of nodes that aren't type TYPE_SYM");
 
-    if ((node1->type != node2->type) || (node1->pointer_level != node2->pointer_level) ||
-        ((node1->ast_val.node_symbol != NULL && node2->ast_val.node_symbol != NULL) &&
+    if ((node1->type != node2->type) ||
+        (node1->pointer_level != node2->pointer_level) ||
+        ((node1->ast_val.node_symbol != NULL &&
+          node2->ast_val.node_symbol != NULL) &&
          (strcmp(node1->ast_val.node_symbol, node2->ast_val.node_symbol) != 0)))
         return 0;
 
@@ -69,8 +73,8 @@ void print_type(AstNode *expr, AstNode *expected_type, AstNode *got_type) {
     print_ast_node(got_type, 0);
 }
 
-AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_enter,
-                         AstNode *expr) {
+AstNode *type_check_expr(ParsingContext *context,
+                         ParsingContext **context_to_enter, AstNode *expr) {
     AstNode *temp_expr = expr;
     AstNode *ret_type = node_alloc();
     int stat = -1;
@@ -83,32 +87,43 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         break;
 
     case TYPE_ARR_INDEX:
-        if (temp_expr->child == NULL || temp_expr->child->type != TYPE_VAR_ACCESS) {
+        if (temp_expr->child == NULL ||
+            temp_expr->child->type != TYPE_VAR_ACCESS) {
             print_type(temp_expr, NULL, temp_expr->child);
-            print_error(ERR_SYNTAX, "Expected valid variable access while indexing an array");
+            print_error(
+                ERR_SYNTAX,
+                "Expected valid variable access while indexing an array");
         }
-        AstNode *arr_type = type_check_expr(context, context_to_enter, temp_expr->child);
+        AstNode *arr_type =
+            type_check_expr(context, context_to_enter, temp_expr->child);
         if (stat == 0)
-            print_error(ERR_COMMON, "Couldn't find information for variable : `%s`",
+            print_error(ERR_COMMON,
+                        "Couldn't find information for variable : `%s`",
                         temp_expr->ast_val.node_symbol);
 
         if (strcmp("array", arr_type->ast_val.node_symbol))
             print_error(ERR_TYPE, "Expected array type for indexed access");
 
-        if (temp_expr->ast_val.val < 0 || arr_type->child->ast_val.val <= temp_expr->ast_val.val)
-            print_error(ERR_TYPE, "Encountered out of bound access for array : `%s`",
+        if (temp_expr->ast_val.val < 0 ||
+            arr_type->child->ast_val.val <= temp_expr->ast_val.val)
+            print_error(ERR_TYPE,
+                        "Encountered out of bound access for array : `%s`",
                         temp_expr->child->ast_val.node_symbol);
         *ret_type = *arr_type->child->next_child;
         // ret_type->pointer_level += 1;
         break;
 
     case TYPE_ADDROF:;
-        if (temp_expr->child == NULL || (temp_expr->child->type != TYPE_VAR_ACCESS &&
-                                         temp_expr->child->type != TYPE_ARR_INDEX)) {
+        if (temp_expr->child == NULL ||
+            (temp_expr->child->type != TYPE_VAR_ACCESS &&
+             temp_expr->child->type != TYPE_ARR_INDEX)) {
             print_type(temp_expr, NULL, temp_expr->child);
-            print_error(ERR_SYNTAX, "Expected valid variable access for AddressOf operator");
+            print_error(
+                ERR_SYNTAX,
+                "Expected valid variable access for AddressOf operator");
         }
-        AstNode *var_access_type = type_check_expr(context, context_to_enter, temp_expr->child);
+        AstNode *var_access_type =
+            type_check_expr(context, context_to_enter, temp_expr->child);
         *ret_type = *var_access_type;
         ret_type->pointer_level += 1;
         break;
@@ -117,7 +132,8 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         ParsingContext *temp_ctx = context;
         AstNode *sym_type = NULL;
         while (temp_ctx != NULL) {
-            sym_type = get_env_from_sym(temp_ctx->vars, expr->ast_val.node_symbol, &stat);
+            sym_type = get_env_from_sym(temp_ctx->vars,
+                                        expr->ast_val.node_symbol, &stat);
             if (stat)
                 break;
             temp_ctx = temp_ctx->parent_ctx;
@@ -125,13 +141,15 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
                 free_node(sym_type);
         }
         if (stat == 0)
-            print_error(ERR_COMMON, "Couldn't find information for variable : `%s`",
+            print_error(ERR_COMMON,
+                        "Couldn't find information for variable : `%s`",
                         expr->ast_val.node_symbol);
 
         *ret_type = *sym_type;
         break;
     case TYPE_DEREFERENCE:;
-        AstNode *deref_type = type_check_expr(context, context_to_enter, temp_expr->child);
+        AstNode *deref_type =
+            type_check_expr(context, context_to_enter, temp_expr->child);
         if (deref_type->pointer_level == 0) {
             print_type(temp_expr, NULL, temp_expr->child);
             print_error(ERR_TYPE, "Only pointer types can be dereferenced");
@@ -145,7 +163,8 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         // the same type.
 
         // Type check the condition of the if statement.
-        AstNode *if_cond = type_check_expr(context, context_to_enter, temp_expr->child);
+        AstNode *if_cond =
+            type_check_expr(context, context_to_enter, temp_expr->child);
         free_node(if_cond);
 
         ParsingContext *to_enter = (*context_to_enter)->child;
@@ -154,7 +173,8 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         AstNode *if_body_expr = temp_expr->child->next_child->child;
         AstNode *if_expr_ret_type = NULL;
         while (if_body_expr != NULL) {
-            if_expr_ret_type = type_check_expr(*context_to_enter, &to_enter, if_body_expr);
+            if_expr_ret_type =
+                type_check_expr(*context_to_enter, &to_enter, if_body_expr);
             if (if_body_expr->next_child != NULL)
                 free_node(if_expr_ret_type);
             if_body_expr = if_body_expr->next_child;
@@ -163,8 +183,8 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         // Turns out doing this doesn't cause any issues for empty IF bodies,
         // because there is NULL node added to the body.
         if (if_expr_ret_type == NULL)
-            print_error(ERR_TYPE,
-                        "No return type found for the last expression in the IF-THEN body");
+            print_error(ERR_TYPE, "No return type found for the last "
+                                  "expression in the IF-THEN body");
 
         (*context_to_enter) = (*context_to_enter)->next_child;
 
@@ -172,10 +192,12 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         // last expressions of both the IF body and the ELSE body.
         if (temp_expr->child->next_child->next_child != NULL) {
             to_enter = (*context_to_enter)->child;
-            AstNode *else_body_expr = temp_expr->child->next_child->next_child->child;
+            AstNode *else_body_expr =
+                temp_expr->child->next_child->next_child->child;
             AstNode *else_expr_ret_type = NULL;
             while (else_body_expr != NULL) {
-                else_expr_ret_type = type_check_expr(*context_to_enter, &to_enter, else_body_expr);
+                else_expr_ret_type = type_check_expr(*context_to_enter,
+                                                     &to_enter, else_body_expr);
                 if (else_body_expr->next_child != NULL)
                     free_node(else_expr_ret_type);
                 else_body_expr = else_body_expr->next_child;
@@ -184,7 +206,8 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
 
             if (cmp_type_sym(if_expr_ret_type, else_expr_ret_type) == 0) {
                 print_type(temp_expr, if_expr_ret_type, else_expr_ret_type);
-                print_error(ERR_TYPE, "IF-THEN body and the ELSE body do not return the same type");
+                print_error(ERR_TYPE, "IF-THEN body and the ELSE body do not "
+                                      "return the same type");
             }
         }
         *ret_type = *if_expr_ret_type;
@@ -192,10 +215,12 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
     case TYPE_FUNCTION:;
         if (temp_expr->child->next_child->next_child->child) {
             to_enter = (*context_to_enter)->child;
-            AstNode *function_body = temp_expr->child->next_child->next_child->child;
+            AstNode *function_body =
+                temp_expr->child->next_child->next_child->child;
             AstNode *expr_type = NULL;
             while (function_body != NULL) {
-                expr_type = type_check_expr(*context_to_enter, &to_enter, function_body);
+                expr_type = type_check_expr(*context_to_enter, &to_enter,
+                                            function_body);
                 function_body = function_body->next_child;
                 if (function_body != NULL)
                     free_node(expr_type);
@@ -204,12 +229,12 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
             copy_node(ret_type, temp_expr->child);
 
             if (stat == 0)
-                print_error(ERR_COMMON,
-                            "Couldn't find information for return type of the function");
+                print_error(ERR_COMMON, "Couldn't find information for return "
+                                        "type of the function");
             if (cmp_type_sym(expr_type, ret_type) == 0) {
                 print_type(temp_expr, ret_type, expr_type);
-                print_error(ERR_TYPE,
-                            "Found Mismatched type for function return type and last expression");
+                print_error(ERR_TYPE, "Found Mismatched type for function "
+                                      "return type and last expression");
             }
             (*context_to_enter) = (*context_to_enter)->next_child;
         }
@@ -228,9 +253,8 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
 
         while (param_types != NULL) {
             if (param_types->type != TYPE_VAR_DECLARATION)
-                print_error(
-                    ERR_TYPE,
-                    "Parameter list in function definition must be a valid variable declaration");
+                print_error(ERR_TYPE, "Parameter list in function definition "
+                                      "must be a valid variable declaration");
 
             AstNode *param_ret_type = node_alloc();
             copy_node(param_ret_type, param_types->child->next_child);
@@ -241,14 +265,16 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         break;
     case TYPE_VAR_REASSIGNMENT:;
         // Get the return type of the left hand side of a variable declaration.
-        AstNode *lhs_ret_type = type_check_expr(context, context_to_enter, temp_expr->child);
+        AstNode *lhs_ret_type =
+            type_check_expr(context, context_to_enter, temp_expr->child);
         // Get the return type of the left hand side of a variable declaration.
-        AstNode *rhs_ret_type =
-            type_check_expr(context, context_to_enter, temp_expr->child->next_child);
+        AstNode *rhs_ret_type = type_check_expr(context, context_to_enter,
+                                                temp_expr->child->next_child);
         if (cmp_type_sym(lhs_ret_type, rhs_ret_type) == 0) {
             print_type(temp_expr, lhs_ret_type, rhs_ret_type);
             free_node(rhs_ret_type);
-            print_error(ERR_TYPE, "Mismatched types for variable re-assignment");
+            print_error(ERR_TYPE,
+                        "Mismatched types for variable re-assignment");
         }
         ret_type = lhs_ret_type;
         free_node(rhs_ret_type);
@@ -260,23 +286,28 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         AstNode *op_sym = create_node_symbol(temp_expr->ast_val.node_symbol);
         AstNode *op_data = get_env(temp_ctx->binary_ops, op_sym, &stat);
         if (!stat)
-            print_error(ERR_COMMON, "Couldn't find information for operator : `%s`",
+            print_error(ERR_COMMON,
+                        "Couldn't find information for operator : `%s`",
                         temp_expr->ast_val.node_symbol);
 
-        AstNode *op_used_lhs_type = type_check_expr(context, context_to_enter, expr->child);
+        AstNode *op_used_lhs_type =
+            type_check_expr(context, context_to_enter, expr->child);
         AstNode *op_decl_lhs_type = op_data->child->next_child->next_child;
         if (cmp_type_sym(op_used_lhs_type, op_decl_lhs_type) == 0) {
             print_type(temp_expr, op_decl_lhs_type, op_used_lhs_type);
-            print_error(ERR_TYPE, "Found Mismatched LHS type for operator : `%s`",
+            print_error(ERR_TYPE,
+                        "Found Mismatched LHS type for operator : `%s`",
                         temp_expr->ast_val.node_symbol);
         }
 
         AstNode *op_used_rhs_type =
             type_check_expr(context, context_to_enter, expr->child->next_child);
-        AstNode *op_decl_rhs_type = op_data->child->next_child->next_child->next_child;
+        AstNode *op_decl_rhs_type =
+            op_data->child->next_child->next_child->next_child;
         if (cmp_type_sym(op_used_rhs_type, op_decl_rhs_type) == 0) {
             print_type(temp_expr, op_decl_rhs_type, op_used_rhs_type);
-            print_error(ERR_TYPE, "Found Mismatched RHS type for operator : `%s`",
+            print_error(ERR_TYPE,
+                        "Found Mismatched RHS type for operator : `%s`",
                         temp_expr->ast_val.node_symbol);
         }
 
@@ -288,7 +319,8 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         *ret_type = *op_decl_ret_type;
         break;
     case TYPE_FUNCTION_CALL:;
-        AstNode *var_func_type = parser_get_var(context, temp_expr->child, &stat);
+        AstNode *var_func_type =
+            parser_get_var(context, temp_expr->child, &stat);
         if (!stat) {
             print_error(ERR_COMMON,
                         "Function definition not found :"
@@ -299,7 +331,8 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         // Make sure that the variable used is of FUNCTION type.
         if (strcmp(var_func_type->ast_val.node_symbol, "function") != 0 &&
             strcmp(var_func_type->ast_val.node_symbol, "ext function") != 0)
-            print_error(ERR_TYPE, "Called function must be of function type : `%s`",
+            print_error(ERR_TYPE,
+                        "Called function must be of function type : `%s`",
                         temp_expr->child->ast_val.node_symbol);
 
         AstNode *func_param_list = var_func_type->child->next_child;
@@ -307,19 +340,23 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
         AstNode *param_list_type = NULL;
         AstNode *param_call_type = NULL;
         while (func_call_params != NULL && func_param_list != NULL) {
-            param_call_type = type_check_expr(context, context_to_enter, func_call_params);
+            param_call_type =
+                type_check_expr(context, context_to_enter, func_call_params);
 
             AstNode *complete_param_list_type = node_alloc();
             copy_node(complete_param_list_type, func_param_list);
 
             if (stat == 0)
-                print_error(ERR_COMMON, "Unable to find type information for : `%s`",
-                            func_param_list->child->next_child->ast_val.node_symbol);
+                print_error(
+                    ERR_COMMON, "Unable to find type information for : `%s`",
+                    func_param_list->child->next_child->ast_val.node_symbol);
             if (param_call_type->type == TYPE_NULL)
                 break;
             if (cmp_type_sym(param_call_type, complete_param_list_type) == 0) {
-                print_type(temp_expr, complete_param_list_type, param_call_type);
-                print_error(ERR_TYPE, "Mismatched argument type for function call : `%s`",
+                print_type(temp_expr, complete_param_list_type,
+                           param_call_type);
+                print_error(ERR_TYPE,
+                            "Mismatched argument type for function call : `%s`",
                             temp_expr->child->ast_val.node_symbol);
             }
             func_param_list = func_param_list->next_child;
@@ -352,7 +389,8 @@ AstNode *type_check_expr(ParsingContext *context, ParsingContext **context_to_en
     case TYPE_VAR_DECLARATION:
         break;
     default:
-        print_warning(ERR_DEV, "Found unhandled expression type during type-checking");
+        print_warning(ERR_DEV,
+                      "Found unhandled expression type during type-checking");
         print_ast_node(temp_expr, 0);
         break;
     }

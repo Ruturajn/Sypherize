@@ -16,44 +16,44 @@ extern "C" {
 #define NORETURN
 #endif
 
-#define USAGE_STRING                                                                               \
-    "Sypherc 0.1\n"                                                                                \
-    "Ruturajn <nanotiruturaj@gmail.com>\n"                                                         \
-    "Compiler for Sypher\n"                                                                        \
-    "\n"                                                                                           \
-    "USAGE:\n"                                                                                     \
-    "    sypherc [OPTIONS] INPUT_FILE\n"                                                           \
-    "\n"                                                                                           \
-    "OPTIONS:\n"                                                                                   \
-    "    -cc, --call-conv <CALLING_CONVENTION>\n"                                                  \
-    "            A valid calling convention for code generation\n"                                 \
-    "            VALID CALLING CONVENTIONS:\n"                                                     \
-    "            - `default`\n"                                                                    \
-    "            - `linux`\n"                                                                      \
-    "            - `windows`\n"                                                                    \
-    "\n"                                                                                           \
-    "    -f, --format <OUTPUT_FORMAT>\n"                                                           \
-    "            A valid output format for code generation\n"                                      \
-    "            VALID FORMATS:\n"                                                                 \
-    "            - `default`\n"                                                                    \
-    "            - `x86_64-gnu-as`\n"                                                              \
-    "\n"                                                                                           \
-    "    -h, --help\n"                                                                             \
-    "            Print this help information\n"                                                    \
-    "\n"                                                                                           \
-    "    -i, --input <INPUT_FILE_PATH>\n"                                                          \
-    "            Path to the input file\n"                                                         \
-    "\n"                                                                                           \
-    "    -o, --output <OUTPUT_FILE_PATH>\n"                                                        \
-    "            Path to the output file\n"                                                        \
-    "\n"                                                                                           \
-    "    -v, --version\n"                                                                          \
-    "            Print out current version of Sypherize\n"                                         \
-    "\n"                                                                                           \
-    "    -V, --verbose\n"                                                                          \
-    "            Print out extra debugging information\n"                                          \
-    "\n"                                                                                           \
-    "NOTE - Everything else is treated as an input file\n"                                         \
+#define USAGE_STRING                                                           \
+    "Sypherc 0.1\n"                                                            \
+    "Ruturajn <nanotiruturaj@gmail.com>\n"                                     \
+    "Compiler for Sypher\n"                                                    \
+    "\n"                                                                       \
+    "USAGE:\n"                                                                 \
+    "    sypherc [OPTIONS] INPUT_FILE\n"                                       \
+    "\n"                                                                       \
+    "OPTIONS:\n"                                                               \
+    "    -cc, --call-conv <CALLING_CONVENTION>\n"                              \
+    "            A valid calling convention for code generation\n"             \
+    "            VALID CALLING CONVENTIONS:\n"                                 \
+    "            - `default`\n"                                                \
+    "            - `linux`\n"                                                  \
+    "            - `windows`\n"                                                \
+    "\n"                                                                       \
+    "    -f, --format <OUTPUT_FORMAT>\n"                                       \
+    "            A valid output format for code generation\n"                  \
+    "            VALID FORMATS:\n"                                             \
+    "            - `default`\n"                                                \
+    "            - `x86_64-gnu-as`\n"                                          \
+    "\n"                                                                       \
+    "    -h, --help\n"                                                         \
+    "            Print this help information\n"                                \
+    "\n"                                                                       \
+    "    -i, --input <INPUT_FILE_PATH>\n"                                      \
+    "            Path to the input file\n"                                     \
+    "\n"                                                                       \
+    "    -o, --output <OUTPUT_FILE_PATH>\n"                                    \
+    "            Path to the output file\n"                                    \
+    "\n"                                                                       \
+    "    -v, --version\n"                                                      \
+    "            Print out current version of Sypherize\n"                     \
+    "\n"                                                                       \
+    "    -V, --verbose\n"                                                      \
+    "            Print out extra debugging information\n"                      \
+    "\n"                                                                       \
+    "NOTE - Everything else is treated as an input file\n"                     \
     "\n"
 
 #define VERSION_STRING "Sypherize 0.1\n"
@@ -62,22 +62,22 @@ extern "C" {
  * @brief Checks if a `ptr` is NULL, is so calls `print_error`, with exit
  *        enabled.
  */
-#define CHECK_NULL(ptr, fmt, str)                                                                  \
-    {                                                                                              \
-        if (ptr == NULL) {                                                                         \
-            print_error(ERR_MEM, fmt, str, 0);                                                     \
-        }                                                                                          \
+#define CHECK_NULL(ptr, fmt, str)                                              \
+    {                                                                          \
+        if (ptr == NULL) {                                                     \
+            print_error(ERR_MEM, fmt, str);                                    \
+        }                                                                      \
     }
 
 /**
  * @brief Checks if a `ptr` is at the end of file, is so calls `print_error`
  *        with exit enabled.
  */
-#define CHECK_END(ptr, fmt, str)                                                                   \
-    {                                                                                              \
-        if (ptr == '\0') {                                                                         \
-            print_error(ERR_EOF, fmt, str, 0);                                                     \
-        }                                                                                          \
+#define CHECK_END(ptr, fmt, str)                                               \
+    {                                                                          \
+        if (ptr == '\0') {                                                     \
+            print_error(ERR_EOF, fmt, str);                                    \
+        }                                                                      \
     }
 
 typedef enum ErrType {

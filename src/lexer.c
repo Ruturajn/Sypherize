@@ -74,7 +74,8 @@ void extend_curr_token(LexingState **state) {
 }
 
 int check_next_token(char *string_to_cmp, LexingState **state) {
-    if (string_to_cmp == NULL || (*state)->file_data == NULL || (*state)->curr_token == NULL) {
+    if (string_to_cmp == NULL || (*state)->file_data == NULL ||
+        (*state)->curr_token == NULL) {
         print_error(ERR_COMMON, "NULL pointer passed to `check_next_token()`");
         return 0;
     }
