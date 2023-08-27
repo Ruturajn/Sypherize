@@ -67,7 +67,7 @@ clean_doxygen:
 	rm -rf $(DOXYGEN_DIR)
 
 help:
-	@echo "\n"
+	@printf "\n"
 	@printf "\033[1;33mUSAGE:\033[1;37m\n"
 	@printf "    make <TAGRET>\n"
 	@printf "\n"

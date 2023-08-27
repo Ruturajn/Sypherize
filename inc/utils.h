@@ -17,40 +17,40 @@ extern "C" {
 #endif
 
 #define USAGE_STRING                                                           \
-    "Sypherc 0.1\n"                                                            \
+    "\033[1;36mSypherc 0.1\033[1;37m\n"                                        \
     "Ruturajn <nanotiruturaj@gmail.com>\n"                                     \
-    "Compiler for Sypher\n"                                                    \
+    "A Compiler for Sypher\n"                                                  \
     "\n"                                                                       \
-    "USAGE:\n"                                                                 \
+    "\033[1;33mUSAGE:\033[1;37m\n"                                             \
     "    sypherc [OPTIONS] INPUT_FILE\n"                                       \
     "\n"                                                                       \
-    "OPTIONS:\n"                                                               \
-    "    -cc, --call-conv <CALLING_CONVENTION>\n"                              \
+    "\033[1;33mOPTIONS:\033[1;37m\n"                                           \
+    "    \033[1;35m-cc, --call-conv <CALLING_CONVENTION>\033[1;37m\n"          \
     "            A valid calling convention for code generation\n"             \
     "            VALID CALLING CONVENTIONS:\n"                                 \
     "            - `default`\n"                                                \
     "            - `linux`\n"                                                  \
     "            - `windows`\n"                                                \
     "\n"                                                                       \
-    "    -f, --format <OUTPUT_FORMAT>\n"                                       \
+    "    \033[1;35m-f, --format <OUTPUT_FORMAT>\033[1;37m\n"                   \
     "            A valid output format for code generation\n"                  \
     "            VALID FORMATS:\n"                                             \
     "            - `default`\n"                                                \
     "            - `x86_64-gnu-as`\n"                                          \
     "\n"                                                                       \
-    "    -h, --help\n"                                                         \
+    "    \033[1;35m-h, --help\033[1;37m\n"                                     \
     "            Print this help information\n"                                \
     "\n"                                                                       \
-    "    -i, --input <INPUT_FILE_PATH>\n"                                      \
+    "    \033[1;35m-i, --input <INPUT_FILE_PATH>\033[1;37m\n"                  \
     "            Path to the input file\n"                                     \
     "\n"                                                                       \
-    "    -o, --output <OUTPUT_FILE_PATH>\n"                                    \
+    "    \033[1;35m-o, --output <OUTPUT_FILE_PATH>\033[1;37m\n"                \
     "            Path to the output file\n"                                    \
     "\n"                                                                       \
-    "    -v, --version\n"                                                      \
+    "    \033[1;35m-v, --version\033[1;37m\n"                                  \
     "            Print out current version of Sypherize\n"                     \
     "\n"                                                                       \
-    "    -V, --verbose\n"                                                      \
+    "    \033[1;35m-V, --verbose\033[1;37m\n"                                  \
     "            Print out extra debugging information\n"                      \
     "\n"                                                                       \
     "NOTE - Everything else is treated as an input file\n"                     \
