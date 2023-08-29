@@ -19,80 +19,6 @@ const char *comp_suffixes_x86_84[COMP_COUNT] = {
     "e", "ne", "l", "le", "g", "ge",
 };
 
-CGContext *create_codegen_context_gnu_as_win(CGContext *parent_ctx) {
-    RegPool pool;
-
-    // "The x64 ABI considers the registers RAX, RCX, RDX, R8, R9, R10, R11, and
-    // XMM0-XMM5 volatile"
-    // "The x64 ABI considers registers RBX, RBP, RDI, RSI, RSP, R12, R13, R14,
-    // R15, and XMM6-XMM15 nonvolatile" Initialize the registers only when we
-    // are creating the global context.
-    if (parent_ctx == NULL) {
-        Reg *registers = calloc(REG_X86_64_COUNT, sizeof(Reg));
-        CHECK_NULL(registers, "Unable to allocate memory for registers array",
-                   NULL);
-        INIT_REGISTER(registers, REG_X86_64_RAX, "%rax");
-        INIT_REGISTER(registers, REG_X86_64_RCX, "%rcx");
-        INIT_REGISTER(registers, REG_X86_64_RDX, "%rdx");
-        INIT_REGISTER(registers, REG_X86_64_R8, "%r8");
-        INIT_REGISTER(registers, REG_X86_64_R9, "%r9");
-        INIT_REGISTER(registers, REG_X86_64_R10, "%r10");
-        INIT_REGISTER(registers, REG_X86_64_R11, "%r11");
-
-        INIT_REGISTER(registers, REG_X86_64_R12, "%r12");
-        INIT_REGISTER(registers, REG_X86_64_R13, "%r13");
-        INIT_REGISTER(registers, REG_X86_64_R14, "%r14");
-        INIT_REGISTER(registers, REG_X86_64_R15, "%r15");
-        INIT_REGISTER(registers, REG_X86_64_RBX, "%rbx");
-        INIT_REGISTER(registers, REG_X86_64_RSI, "%rsi");
-        INIT_REGISTER(registers, REG_X86_64_RDI, "%rdi");
-        INIT_REGISTER(registers, REG_X86_64_RBP, "%rbp");
-        INIT_REGISTER(registers, REG_X86_64_RSP, "%rsp");
-        INIT_REGISTER(registers, REG_X86_64_RIP, "%rip");
-
-        int num_scratch_regs = 7;
-        Reg **scratch_registers = calloc(num_scratch_regs, sizeof(Reg *));
-        CHECK_NULL(registers,
-                   "Unable to allocate memory for scratch registers array",
-                   NULL);
-        scratch_registers[0] = registers + REG_X86_64_RAX;
-        scratch_registers[1] = registers + REG_X86_64_RCX;
-        scratch_registers[2] = registers + REG_X86_64_RDX;
-        scratch_registers[3] = registers + REG_X86_64_R8;
-        scratch_registers[4] = registers + REG_X86_64_R9;
-        scratch_registers[5] = registers + REG_X86_64_R10;
-        scratch_registers[6] = registers + REG_X86_64_R11;
-
-        pool.regs = registers;
-        pool.scratch_regs = scratch_registers,
-        pool.scratch_reg_cnt = num_scratch_regs,
-        pool.reg_cnt = REG_X86_64_COUNT;
-
-    } else {
-        // If parent exists use it's register pool.
-        pool = parent_ctx->reg_pool;
-    }
-
-    CGContext *new_ctx = calloc(1, sizeof(CGContext));
-    CHECK_NULL(new_ctx, "Unable to allocate memory for new codegen context",
-               NULL);
-    new_ctx->parent_ctx = parent_ctx;
-    new_ctx->local_env = create_env(NULL);
-    new_ctx->local_offset = -32;
-    new_ctx->reg_pool = pool;
-    new_ctx->target_fmt = TARGET_FMT_X86_64_GNU_AS;
-    new_ctx->target_call_conv = TARGET_CALL_CONV_WIN;
-    return new_ctx;
-}
-
-void free_codegen_context(CGContext *cg_ctx) {
-    if (cg_ctx->parent_ctx == NULL) {
-        free(cg_ctx->reg_pool.regs);
-    }
-    // Free environments.
-    free(cg_ctx);
-}
-
 char is_valid_reg_desc(CGContext *cg_ctx, RegDescriptor reg_desc) {
     return reg_desc >= 0 && reg_desc <= cg_ctx->reg_pool.reg_cnt;
 }
@@ -114,335 +40,12 @@ RegDescriptor reg_alloc(CGContext *cg_ctx) {
     return -1;
 }
 
-const char *get_reg_name(CGContext *cg_ctx, RegDescriptor reg_desc) {
-    if (!is_valid_reg_desc(cg_ctx, reg_desc))
-        print_error(ERR_COMMON, "Encountered invalid register descriptor");
-
-    Reg *temp = cg_ctx->reg_pool.regs;
-    return temp[reg_desc].reg_name;
-}
-
 void reg_dealloc(CGContext *cg_ctx, RegDescriptor reg_desc) {
     if (!is_valid_reg_desc(cg_ctx, reg_desc))
         print_error(ERR_COMMON, "Encountered invalid register descriptor");
 
     Reg *temp = cg_ctx->reg_pool.regs;
     temp[reg_desc].reg_in_use = 0;
-}
-
-typedef enum Instructions_X86_64 {
-    INST_X86_64_ADD,
-    INST_X86_64_SUB,
-    INST_X86_64_MUL,
-    INST_X86_64_IMUL,
-    INST_X86_64_DIV,
-    INST_X86_64_IDIV,
-    INST_X86_64_PUSH,
-    INST_X86_64_POP,
-    INST_X86_64_RET,
-    INST_X86_64_MOV,
-    INST_X86_64_LEA,
-    INST_X86_64_XOR,
-    INST_X86_64_CALL,
-    INST_X86_64_CMP,
-    INST_X86_64_COUNT,
-} Instructions_X86_64;
-
-typedef enum Instructions_Type_X86_64 {
-    OPERAND_TYPE_REG,
-    OPERAND_TYPE_IMM,
-    OPERAND_TYPE_MEM,
-    OPERAND_TYPE_SYM,
-    OPERAND_TYPE_IMM_TO_MEM,
-    OPERAND_TYPE_IMM_TO_REG,
-    OPERAND_TYPE_MEM_TO_REG,
-    OPERAND_TYPE_SYM_TO_REG,
-    OPERAND_TYPE_REG_TO_REG,
-    OPERAND_TYPE_REG_TO_MEM,
-} Instructions_Type_X86_64;
-
-const char *inst_mnemonic_x86_64(Instructions_X86_64 inst,
-                                 TargetFormat target) {
-    switch (target) {
-    default:
-        break;
-    }
-    switch (inst) {
-    default:
-        print_error(
-            ERR_COMMON,
-            "Unable to convert Instructions_X86_64 to corresponding mnemonic");
-        break;
-    case INST_X86_64_ADD:
-        return "add";
-    case INST_X86_64_SUB:
-        return "sub";
-    case INST_X86_64_MUL:
-        return "mul";
-    case INST_X86_64_IMUL:
-        return "imul";
-    case INST_X86_64_DIV:
-        return "div";
-    case INST_X86_64_IDIV:
-        return "idiv";
-    case INST_X86_64_PUSH:
-        return "push";
-    case INST_X86_64_POP:
-        return "pop";
-    case INST_X86_64_RET:
-        return "ret";
-    case INST_X86_64_MOV:
-        return "mov";
-    case INST_X86_64_LEA:
-        return "lea";
-    case INST_X86_64_XOR:
-        return "xor";
-    case INST_X86_64_CALL:
-        return "call";
-    case INST_X86_64_CMP:
-        return "cmp";
-    }
-    return "";
-}
-
-void file_emit_x86_64_imm_to_mem(FILE *fptr_code, CGContext *cg_ctx,
-                                 const char *mnemonic, va_list operands) {
-
-    // immediate value, memory offset, destination.
-    int64_t imm_val = va_arg(operands, int64_t);
-    int64_t mem_offset = va_arg(operands, int64_t);
-    RegDescriptor mem_reg = va_arg(operands, RegDescriptor);
-    fprintf(fptr_code, "%s $%" PRId64 ", %" PRId64 "(%s)\n", mnemonic, imm_val,
-            mem_offset, get_reg_name(cg_ctx, mem_reg));
-}
-
-void file_emit_x86_64_imm_to_reg(FILE *fptr_code, CGContext *cg_ctx,
-                                 const char *mnemonic, va_list operands) {
-
-    // immediate value, destination.
-    int64_t imm_val = va_arg(operands, int64_t);
-    RegDescriptor dest_reg = va_arg(operands, RegDescriptor);
-    fprintf(fptr_code, "%s $%" PRId64 ", %s\n", mnemonic, imm_val,
-            get_reg_name(cg_ctx, dest_reg));
-}
-
-void file_emit_x86_64_mem_to_reg(FILE *fptr_code, CGContext *cg_ctx,
-                                 const char *mnemonic, va_list operands) {
-
-    // memory offset, source, destination.
-    int64_t imm_val = va_arg(operands, int64_t);
-    RegDescriptor src_reg = va_arg(operands, RegDescriptor);
-    RegDescriptor dest_reg = va_arg(operands, RegDescriptor);
-    fprintf(fptr_code, "%s %" PRId64 "(%s), %s\n", mnemonic, imm_val,
-            get_reg_name(cg_ctx, src_reg), get_reg_name(cg_ctx, dest_reg));
-}
-
-void file_emit_x86_64_sym_to_reg(FILE *fptr_code, CGContext *cg_ctx,
-                                 const char *mnemonic, va_list operands) {
-
-    // name, source, destination.
-    const char *sym = va_arg(operands, const char *);
-    RegDescriptor src_reg = va_arg(operands, RegDescriptor);
-    RegDescriptor dest_reg = va_arg(operands, RegDescriptor);
-    fprintf(fptr_code, "%s %s(%s), %s\n", mnemonic, sym,
-            get_reg_name(cg_ctx, src_reg), get_reg_name(cg_ctx, dest_reg));
-}
-
-void file_emit_x86_64_reg_to_reg(FILE *fptr_code, CGContext *cg_ctx,
-                                 const char *mnemonic, va_list operands) {
-
-    // source, destination.
-    RegDescriptor reg_src = va_arg(operands, RegDescriptor);
-    RegDescriptor reg_dest = va_arg(operands, RegDescriptor);
-    fprintf(fptr_code, "%s %s, %s\n", mnemonic, get_reg_name(cg_ctx, reg_src),
-            get_reg_name(cg_ctx, reg_dest));
-}
-
-void file_emit_x86_64_reg_to_mem(FILE *fptr_code, CGContext *cg_ctx,
-                                 const char *mnemonic, va_list operands) {
-
-    // source, memory offset, destination.
-    RegDescriptor reg_src = va_arg(operands, RegDescriptor);
-    int64_t mem_offset = va_arg(operands, int64_t);
-    RegDescriptor reg_dest = va_arg(operands, RegDescriptor);
-    fprintf(fptr_code, "%s %s, %" PRId64 "(%s)\n", mnemonic,
-            get_reg_name(cg_ctx, reg_src), mem_offset,
-            get_reg_name(cg_ctx, reg_dest));
-}
-
-void file_emit_x86_64_inst(FILE *fptr_code, CGContext *cg_ctx,
-                           Instructions_X86_64 inst, ...) {
-    va_list operands;
-    va_start(operands, inst);
-
-    if (cg_ctx == NULL)
-        print_error(ERR_COMMON, "Encountered NULL code gen context");
-
-    const char *mnemonic = inst_mnemonic_x86_64(inst, cg_ctx->target_fmt);
-
-    switch (cg_ctx->target_fmt) {
-
-    default:
-        print_error(ERR_COMMON,
-                    "Unhandled target format in file_emit_x86_64_inst()");
-        break;
-
-    case TARGET_FMT_X86_64_GNU_AS:
-        switch (inst) {
-
-        default:
-            print_error(ERR_COMMON,
-                        "Unhandled instruction in file_emit_x86_64_inst()");
-            break;
-
-        case INST_X86_64_ADD:
-        case INST_X86_64_SUB:
-        case INST_X86_64_MOV:;
-            Instructions_Type_X86_64 inst_type =
-                va_arg(operands, Instructions_Type_X86_64);
-            switch (inst_type) {
-
-            default:
-                print_error(
-                    ERR_DEV,
-                    "Unhandled instruction type in file_emit_x86_64_inst()");
-                break;
-
-            case OPERAND_TYPE_IMM_TO_MEM:;
-                file_emit_x86_64_imm_to_mem(fptr_code, cg_ctx, mnemonic,
-                                            operands);
-                break;
-
-            case OPERAND_TYPE_IMM_TO_REG:;
-                file_emit_x86_64_imm_to_reg(fptr_code, cg_ctx, mnemonic,
-                                            operands);
-                break;
-
-            case OPERAND_TYPE_MEM_TO_REG:;
-                file_emit_x86_64_mem_to_reg(fptr_code, cg_ctx, mnemonic,
-                                            operands);
-                break;
-
-            case OPERAND_TYPE_REG_TO_REG:;
-                file_emit_x86_64_reg_to_reg(fptr_code, cg_ctx, mnemonic,
-                                            operands);
-                break;
-
-            case OPERAND_TYPE_REG_TO_MEM:
-                file_emit_x86_64_reg_to_mem(fptr_code, cg_ctx, mnemonic,
-                                            operands);
-                break;
-            }
-            break;
-
-        case INST_X86_64_LEA:
-            inst_type = va_arg(operands, Instructions_Type_X86_64);
-            if (inst_type == OPERAND_TYPE_SYM_TO_REG) {
-                file_emit_x86_64_sym_to_reg(fptr_code, cg_ctx, mnemonic,
-                                            operands);
-
-            } else if (inst_type == OPERAND_TYPE_MEM_TO_REG) {
-                file_emit_x86_64_mem_to_reg(fptr_code, cg_ctx, mnemonic,
-                                            operands);
-
-            } else
-                print_error(ERR_DEV,
-                            "Invalid operand type for `lea` instruction");
-            break;
-
-        case INST_X86_64_MUL:
-            break;
-
-        case INST_X86_64_IMUL:
-            inst_type = va_arg(operands, Instructions_Type_X86_64);
-            if (inst_type == OPERAND_TYPE_MEM_TO_REG) {
-                file_emit_x86_64_mem_to_reg(fptr_code, cg_ctx, mnemonic,
-                                            operands);
-
-            } else if (inst_type == OPERAND_TYPE_REG_TO_REG) {
-                file_emit_x86_64_reg_to_reg(fptr_code, cg_ctx, mnemonic,
-                                            operands);
-
-            } else
-                print_error(ERR_DEV,
-                            "Invalid operand type for `imul` instruction");
-
-            break;
-
-        case INST_X86_64_DIV:
-            break;
-
-        case INST_X86_64_IDIV:
-            inst_type = va_arg(operands, Instructions_Type_X86_64);
-            if (inst_type == OPERAND_TYPE_MEM) {
-                int64_t mem_offset = va_arg(operands, int64_t);
-                RegDescriptor reg_desc = va_arg(operands, RegDescriptor);
-                fprintf(fptr_code, "%s %" PRId64 "(%s)\n", mnemonic, mem_offset,
-                        get_reg_name(cg_ctx, reg_desc));
-
-            } else if (inst_type == OPERAND_TYPE_REG) {
-                RegDescriptor reg_desc = va_arg(operands, RegDescriptor);
-                fprintf(fptr_code, "%s %s\n", mnemonic,
-                        get_reg_name(cg_ctx, reg_desc));
-
-            } else
-                print_error(ERR_DEV,
-                            "Invalid operand type for `idiv` instruction");
-            break;
-
-        case INST_X86_64_PUSH:;
-            inst_type = va_arg(operands, Instructions_Type_X86_64);
-            if (inst_type == OPERAND_TYPE_REG) {
-                RegDescriptor push_reg = va_arg(operands, RegDescriptor);
-                fprintf(fptr_code, "%s %s\n", mnemonic,
-                        get_reg_name(cg_ctx, push_reg));
-
-            } else if (inst_type == OPERAND_TYPE_MEM) {
-                int64_t mem_offset = va_arg(operands, int64_t);
-                RegDescriptor push_reg = va_arg(operands, RegDescriptor);
-                fprintf(fptr_code, "%s %" PRId64 "(%s)\n", mnemonic, mem_offset,
-                        get_reg_name(cg_ctx, push_reg));
-
-            } else if (inst_type == OPERAND_TYPE_IMM) {
-                int64_t imm_val = va_arg(operands, int64_t);
-                fprintf(fptr_code, "%s $%" PRId64 "\n", mnemonic, imm_val);
-
-            } else
-                print_error(ERR_DEV,
-                            "Invalid operand type for `push` instruction");
-            break;
-
-        case INST_X86_64_POP:
-            break;
-
-        case INST_X86_64_RET:
-            break;
-
-        case INST_X86_64_XOR:
-            break;
-
-        case INST_X86_64_CALL:
-            inst_type = va_arg(operands, Instructions_Type_X86_64);
-            if (inst_type == OPERAND_TYPE_SYM) {
-                const char *sym = va_arg(operands, const char *);
-                fprintf(fptr_code, "%s %s\n", mnemonic, sym);
-
-            } else if (inst_type == OPERAND_TYPE_REG) {
-                RegDescriptor call_reg = va_arg(operands, RegDescriptor);
-                fprintf(fptr_code, "%s *%s\n", mnemonic,
-                        get_reg_name(cg_ctx, call_reg));
-
-            } else
-                print_error(ERR_DEV,
-                            "Invalid operand type for `call` instruction");
-            break;
-
-        case INST_X86_64_CMP:
-            break;
-        }
-        break;
-    }
-    va_end(operands);
 }
 
 // Generate labels for lambda functions.
@@ -458,171 +61,46 @@ static char *gen_label() {
     return label;
 }
 
-char *map_sym_to_addr_win(CGContext *cg_ctx, AstNode *sym_node) {
-    // if (sym_node == NULL || sym_node->ast_val.node_symbol == NULL || cg_ctx
-    // == NULL)
-    //     return NULL;
-    char *sym = sym_arr + sym_idx;
-    if (cg_ctx->parent_ctx == NULL)
-        sym_idx += snprintf(sym, SYM_ARR_SIZE - sym_idx, "%s(%%rip)",
-                            sym_node->ast_val.node_symbol);
-    else {
-        int stat = -1;
-        AstNode *var_stack_offset = get_env(cg_ctx->local_env, sym_node, &stat);
-        if (!stat)
-            print_error(ERR_COMMON,
-                        "Unable to get information from locals environment in "
-                        "code gen context "
-                        "for : `%s`",
-                        sym_node->ast_val.node_symbol);
-        sym_idx += snprintf(sym, SYM_ARR_SIZE - sym_idx, "%ld(%%rbp)",
-                            var_stack_offset->ast_val.val);
+typedef struct SymToAddr {
+    enum {
+        SYM_ADDR_GLOBAL,
+        SYM_ADDR_LOCAL,
+    } type;
+    union {
+        const char *global;
+        long local;
+    } val;
+
+} SymToAddr;
+
+SymToAddr map_sym_to_addr_win(CGContext *cg_ctx, AstNode *sym_node) {
+    if (sym_node == NULL || sym_node->ast_val.node_symbol == NULL ||
+        cg_ctx == NULL)
+        print_error(ERR_DEV,
+                    "map_sym_to_addr_win() : NULL symbol/codegen context");
+
+    SymToAddr sym_addr;
+
+    if (cg_ctx->parent_ctx == NULL) {
+        sym_addr.type = SYM_ADDR_GLOBAL;
+        sym_addr.val.global = sym_node->ast_val.node_symbol;
+        return sym_addr;
     }
-    sym_idx++;
-    if (sym_idx > LABEL_ARR_SIZE) {
-        sym_idx = 0;
-        sym = map_sym_to_addr_win(cg_ctx, sym_node);
-    }
-    sym_cnt++;
-    return sym;
-}
 
-void print_regs(CGContext *cg_ctx) {
-    Reg *temp = cg_ctx->reg_pool.regs;
-    for (RegDescriptor i = 0; i < cg_ctx->reg_pool.reg_cnt; i++)
-        printf("REG: %s, USE: %d\n", temp[i].reg_name, temp[i].reg_in_use);
-}
+    int stat = -1;
+    AstNode *local_var = get_env(cg_ctx->local_env, sym_node, &stat);
+    if (stat == 0)
+        print_error(ERR_COMMON,
+                    "Unable to find information in code gen "
+                    "context for : `%s`",
+                    sym_node->ast_val.node_symbol);
 
-const char *get_byte_reg_name_x86_64_gnu_as(CGContext *cg_ctx,
-                                            RegDescriptor reg_desc) {
-    if (!is_valid_reg_desc(cg_ctx, reg_desc))
-        print_error(ERR_COMMON, "Encountered invalid register descriptor");
+    long addr = local_var->ast_val.val;
+    free(local_var);
+    sym_addr.type = SYM_ADDR_LOCAL;
+    sym_addr.val.local = addr;
 
-    switch (reg_desc) {
-    case REG_X86_64_RAX:
-        return "%al";
-    case REG_X86_64_RCX:
-        return "%cl";
-    case REG_X86_64_RDX:
-        return "%dl";
-    case REG_X86_64_R8:
-        return "%r8b";
-    case REG_X86_64_R9:
-        return "%r9b";
-    case REG_X86_64_R10:
-        return "%r10b";
-    case REG_X86_64_R11:
-        return "%r11b";
-    case REG_X86_64_R12:
-        return "%r12b";
-    case REG_X86_64_R13:
-        return "%r13b";
-    case REG_X86_64_R14:
-        return "%r14b";
-    case REG_X86_64_R15:
-        return "%r15b";
-    case REG_X86_64_RBX:
-        return "%bl";
-    case REG_X86_64_RSI:
-        return "%sil";
-    case REG_X86_64_RDI:
-        return "%dil";
-    case REG_X86_64_RBP:
-        return "%bpl";
-    case REG_X86_64_RSP:
-        return "%spl";
-    case REG_X86_64_RIP:
-        break;
-    }
-    return cg_ctx->reg_pool.regs[reg_desc].reg_name;
-}
-
-const char *get_word_reg_name_x86_64_gnu_as(CGContext *cg_ctx,
-                                            RegDescriptor reg_desc) {
-    if (!is_valid_reg_desc(cg_ctx, reg_desc))
-        print_error(ERR_COMMON, "Encountered invalid register descriptor");
-
-    switch (reg_desc) {
-    case REG_X86_64_RAX:
-        return "%ax";
-    case REG_X86_64_RCX:
-        return "%cx";
-    case REG_X86_64_RDX:
-        return "%dx";
-    case REG_X86_64_R8:
-        return "%r8w";
-    case REG_X86_64_R9:
-        return "%r9w";
-    case REG_X86_64_R10:
-        return "%r10w";
-    case REG_X86_64_R11:
-        return "%r11w";
-    case REG_X86_64_R12:
-        return "%r12w";
-    case REG_X86_64_R13:
-        return "%r13w";
-    case REG_X86_64_R14:
-        return "%r14w";
-    case REG_X86_64_R15:
-        return "%r15w";
-    case REG_X86_64_RBX:
-        return "%bx";
-    case REG_X86_64_RSI:
-        return "%si";
-    case REG_X86_64_RDI:
-        return "%di";
-    case REG_X86_64_RBP:
-        return "%bp";
-    case REG_X86_64_RSP:
-        return "%sp";
-    case REG_X86_64_RIP:
-        return "%ip";
-    }
-    return cg_ctx->reg_pool.regs[reg_desc].reg_name;
-}
-
-const char *get_double_word_reg_name_x86_64_gnu_as(CGContext *cg_ctx,
-                                                   RegDescriptor reg_desc) {
-    if (!is_valid_reg_desc(cg_ctx, reg_desc))
-        print_error(ERR_COMMON, "Encountered invalid register descriptor");
-
-    switch (reg_desc) {
-    case REG_X86_64_RAX:
-        return "%eax";
-    case REG_X86_64_RCX:
-        return "%ecx";
-    case REG_X86_64_RDX:
-        return "%edx";
-    case REG_X86_64_R8:
-        return "%r8d";
-    case REG_X86_64_R9:
-        return "%r9d";
-    case REG_X86_64_R10:
-        return "%r10d";
-    case REG_X86_64_R11:
-        return "%r11d";
-    case REG_X86_64_R12:
-        return "%r12d";
-    case REG_X86_64_R13:
-        return "%r13d";
-    case REG_X86_64_R14:
-        return "%r14d";
-    case REG_X86_64_R15:
-        return "%r15d";
-    case REG_X86_64_RBX:
-        return "%ebx";
-    case REG_X86_64_RSI:
-        return "%esi";
-    case REG_X86_64_RDI:
-        return "%edi";
-    case REG_X86_64_RBP:
-        return "%ebp";
-    case REG_X86_64_RSP:
-        return "%esp";
-    case REG_X86_64_RIP:
-        return "%eip";
-    }
-    return cg_ctx->reg_pool.regs[reg_desc].reg_name;
+    return sym_addr;
 }
 
 void target_x86_64_win_codegen_comp(CGContext *cg_ctx, AstNode *curr_expr,
