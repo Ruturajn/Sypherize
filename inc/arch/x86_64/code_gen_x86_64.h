@@ -28,7 +28,7 @@ extern "C" {
 
 CGContext *create_codegen_context_gnu_as_win(CGContext *parent_ctx);
 
-void free_codegen_context(CGContext *cg_ctx);
+void free_codegen_context_gnu_as_win(CGContext *cg_ctx);
 
 CGContext *create_cgcontext_arch_x86_64(TargetFormat fmt,
                                         TargetCallingConvention call_conv,
@@ -54,11 +54,11 @@ RegDescriptor code_gen_func_call_arch_x86_64(CGContext *cg_ctx,
 
 void code_gen_cleanup_arch_x86_64(CGContext *cg_ctx);
 
-RegDescriptor code_gen_get_global_addr_arch_x86_64(CGContext *cg_ctx,
-                                                   const char *sym);
+void code_gen_get_global_addr_arch_x86_64(CGContext *cg_ctx, const char *sym,
+                                          RegDescriptor target_reg);
 
-RegDescriptor code_gen_get_local_addr_arch_x86_64(CGContext *cg_ctx,
-                                                  long offset);
+void code_gen_get_local_addr_arch_x86_64(CGContext *cg_ctx, long offset,
+                                         RegDescriptor target_reg);
 
 void code_gen_get_global_addr_into_arch_x86_64(CGContext *cg_ctx,
                                                const char *sym,
@@ -137,7 +137,8 @@ void code_gen_func_header_arch_x86_64(CGContext *cg_ctx);
 
 void code_gen_func_footer_arch_x86_64(CGContext *cg_ctx);
 
-void code_gen_set_func_ret_val_arch_x86_64(CGContext *cg_ctx);
+void code_gen_set_func_ret_val_arch_x86_64(CGContext *cg_ctx,
+                                           RegDescriptor prev_reg);
 
 void code_gen_set_entry_point_arch_x86_64(CGContext *cg_ctx);
 

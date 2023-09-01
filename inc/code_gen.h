@@ -77,6 +77,7 @@ typedef struct CGContext {
     long local_offset;
     RegPool reg_pool;
     FILE *fptr_code;
+    void *arch_data;
     TargetCallingConvention target_call_conv;
     TargetFormat target_fmt;
     TargetAssemblyDialect target_asm_dialect;

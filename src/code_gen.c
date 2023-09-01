@@ -15,10 +15,6 @@ int sym_idx = 0;
 
 char codegen_verbose = 1;
 
-const char *comp_suffixes_x86_84[COMP_COUNT] = {
-    "e", "ne", "l", "le", "g", "ge",
-};
-
 char is_valid_reg_desc(CGContext *cg_ctx, RegDescriptor reg_desc) {
     return reg_desc >= 0 && reg_desc <= cg_ctx->reg_pool.reg_cnt;
 }

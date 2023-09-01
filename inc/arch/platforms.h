@@ -12,7 +12,7 @@ CGContext *create_cgcontext(TargetFormat fmt, TargetCallingConvention call_conv,
 
 CGContext *create_cgcontext_child(CGContext *parent_ctx);
 
-void free_cgcontext_child(CGContext *parent_ctx);
+void free_cgcontext_child(CGContext *cg_ctx);
 
 void code_gen_setup_func_call(CGContext *cg_ctx);
 
@@ -100,7 +100,7 @@ void code_gen_func_header(CGContext *cg_ctx);
 
 void code_gen_func_footer(CGContext *cg_ctx);
 
-void code_gen_set_func_ret_val(CGContext *cg_ctx);
+void code_gen_set_func_ret_val(CGContext *cg_ctx, RegDescriptor prev_reg);
 
 void code_gen_set_entry_point(CGContext *cg_ctx);
 
