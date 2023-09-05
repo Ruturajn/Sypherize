@@ -32,7 +32,6 @@ extern "C" {
     "            - `linux`\n"                                                  \
     "            - `windows`\n"                                                \
     "\n"                                                                       \
-    "\033[1;33mOPTIONS:\033[1;37m\n"                                           \
     "    \033[1;35m-ad, --asm-dialect <ASSEMBLY_DIALECT>\033[1;37m\n"          \
     "            A valid assembly dialect for code generation\n"               \
     "            VALID ASSEMBLY DIALECTS:\n"                                   \
