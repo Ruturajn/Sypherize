@@ -4,6 +4,7 @@
 #include "../inc/parser.h"
 #include "../inc/type_check.h"
 #include "../inc/utils.h"
+#include <string.h>
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -181,7 +182,24 @@ int main(int argc, char **argv) {
     if (is_verbose == 1)
         printf("\n[+]CODE GENERATION BEGIN...\n");
 
-    char *file_name = (out_file_idx == -1) ? "code_gen.s" : argv[out_file_idx];
+    // If the output file name is not passed, use the input
+    // file name as the base name for the assembly file.
+    char *file_name = NULL;
+    if (out_file_idx == -1) {
+        file_name = strrchr(argv[in_file_idx], '/');
+        file_name += 1; // Skip the `/`.
+        int file_name_len = strlen(file_name);
+
+        // TODO: Input file extensions will also need to
+        // checked some time in the future to enforce proper usage.
+
+        // Remove the last character of the extension, which
+        // should be `.sy` for sypher files.
+        file_name[file_name_len - 1] = '\0';
+
+    } else
+        file_name = argv[out_file_idx];
+
     target_codegen(curr_context, program, file_name, out_fmt, dialect,
                    call_conv);
 
