@@ -23,7 +23,7 @@ BIN_DIR=../../bin
 
 #==============================================================================
 
-.PHONY: all clean build_and_bin_dir compile_msg run doxygen help clean_doxygen test
+.PHONY: all compile_msg
 
 all: $(SRCS) $(BUILD_DIR) $(BIN_DIR) $(OBJS)
 
