@@ -8,7 +8,7 @@ CGContext *create_cgcontext(TargetFormat fmt, TargetCallingConvention call_conv,
 
     if (fmt == TARGET_FMT_X86_64_GNU_AS) {
         if (call_conv == TARGET_CALL_CONV_WIN)
-            cg_ctx = create_codegen_context_gnu_as_win(NULL);
+            cg_ctx = create_cgcontext_gnu_as_win(NULL);
         else if (call_conv == TARGET_CALL_CONV_LINUX) {
             print_error(ERR_ARGS,
                         "LINUX calling convention not yet supported :(");
@@ -41,7 +41,7 @@ CGContext *create_cgcontext_child(CGContext *parent_ctx) {
     case TARGET_FMT_X86_64_GNU_AS:
         switch (parent_ctx->target_call_conv) {
         case TARGET_CALL_CONV_WIN:
-            new_ctx = create_codegen_context_gnu_as_win(parent_ctx);
+            new_ctx = create_cgcontext_gnu_as_win(parent_ctx);
             break;
         case TARGET_CALL_CONV_LINUX:
             print_error(ERR_COMMON, "LINUX calling convention not yet "
@@ -57,7 +57,7 @@ CGContext *create_cgcontext_child(CGContext *parent_ctx) {
     return new_ctx;
 }
 
-void free_cgcontext_child(CGContext *cg_ctx) {
+void free_cgcontext(CGContext *cg_ctx) {
 
     switch (cg_ctx->target_fmt) {
     default:
@@ -68,7 +68,7 @@ void free_cgcontext_child(CGContext *cg_ctx) {
     case TARGET_FMT_X86_64_GNU_AS:
         switch (cg_ctx->target_call_conv) {
         case TARGET_CALL_CONV_WIN:
-            free_codegen_context_gnu_as_win(cg_ctx);
+            free_cgcontext_gnu_as_win(cg_ctx);
             break;
         case TARGET_CALL_CONV_LINUX:
             print_error(ERR_COMMON, "LINUX calling convention not yet "
@@ -123,7 +123,7 @@ void code_gen_func_arg(CGContext *cg_ctx, RegDescriptor arg_reg) {
 
 RegDescriptor code_gen_ext_func_call(CGContext *cg_ctx, const char *func_name) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = -1;
     switch (cg_ctx->target_fmt) {
     case TARGET_FMT_X86_64_GNU_AS:
         res_reg = code_gen_ext_func_call_arch_x86_64(cg_ctx, func_name);
@@ -138,7 +138,7 @@ RegDescriptor code_gen_ext_func_call(CGContext *cg_ctx, const char *func_name) {
 
 RegDescriptor code_gen_func_call(CGContext *cg_ctx, RegDescriptor func_reg) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = -1;
     switch (cg_ctx->target_fmt) {
     case TARGET_FMT_X86_64_GNU_AS:
         res_reg = code_gen_func_call_arch_x86_64(cg_ctx, func_reg);
@@ -181,7 +181,7 @@ void code_gen_get_global_addr_into(CGContext *cg_ctx, const char *sym,
 
     switch (cg_ctx->target_fmt) {
     case TARGET_FMT_X86_64_GNU_AS:
-        code_gen_get_global_into_arch_x86_64(cg_ctx, sym, target_reg);
+        code_gen_get_global_addr_into_arch_x86_64(cg_ctx, sym, target_reg);
         break;
     default:
         print_error(ERR_COMMON, "Encountered unknown target_fmt in "
@@ -205,14 +205,14 @@ void code_gen_get_local_addr_into(CGContext *cg_ctx, long offset,
 
 RegDescriptor code_gen_get_global(CGContext *cg_ctx, const char *sym) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = reg_alloc(cg_ctx);
     code_gen_get_global_into(cg_ctx, sym, res_reg);
     return res_reg;
 }
 
 RegDescriptor code_gen_get_local(CGContext *cg_ctx, long offset) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = reg_alloc(cg_ctx);
     code_gen_get_local_into(cg_ctx, offset, res_reg);
     return res_reg;
 }
@@ -325,7 +325,7 @@ void code_gen_branch(CGContext *cg_ctx, const char *jmp_label) {
 
 RegDescriptor code_gen_get_imm(CGContext *cg_ctx, long data) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = -1;
     switch (cg_ctx->target_fmt) {
     case TARGET_FMT_X86_64_GNU_AS:
         res_reg = code_gen_get_imm_arch_x86_64(cg_ctx, data);
@@ -366,7 +366,7 @@ void code_gen_copy_reg(CGContext *cg_ctx, RegDescriptor src_reg,
 RegDescriptor code_gen_compare(CGContext *cg_ctx, ComparisonType comp_type,
                                RegDescriptor lhs_reg, RegDescriptor rhs_reg) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = -1;
     switch (cg_ctx->target_fmt) {
     case TARGET_FMT_X86_64_GNU_AS:
         res_reg =
@@ -382,7 +382,7 @@ RegDescriptor code_gen_compare(CGContext *cg_ctx, ComparisonType comp_type,
 RegDescriptor code_gen_add(CGContext *cg_ctx, RegDescriptor src_reg,
                            RegDescriptor dest_reg) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = -1;
     switch (cg_ctx->target_fmt) {
     case TARGET_FMT_X86_64_GNU_AS:
         res_reg = code_gen_add_arch_x86_64(cg_ctx, src_reg, dest_reg);
@@ -397,7 +397,7 @@ RegDescriptor code_gen_add(CGContext *cg_ctx, RegDescriptor src_reg,
 RegDescriptor code_gen_sub(CGContext *cg_ctx, RegDescriptor src_reg,
                            RegDescriptor dest_reg) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = -1;
     switch (cg_ctx->target_fmt) {
     case TARGET_FMT_X86_64_GNU_AS:
         res_reg = code_gen_sub_arch_x86_64(cg_ctx, src_reg, dest_reg);
@@ -412,7 +412,7 @@ RegDescriptor code_gen_sub(CGContext *cg_ctx, RegDescriptor src_reg,
 RegDescriptor code_gen_mul(CGContext *cg_ctx, RegDescriptor src_reg,
                            RegDescriptor dest_reg) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = -1;
     switch (cg_ctx->target_fmt) {
     case TARGET_FMT_X86_64_GNU_AS:
         res_reg = code_gen_mul_arch_x86_64(cg_ctx, src_reg, dest_reg);
@@ -427,7 +427,7 @@ RegDescriptor code_gen_mul(CGContext *cg_ctx, RegDescriptor src_reg,
 RegDescriptor code_gen_div(CGContext *cg_ctx, RegDescriptor src_reg,
                            RegDescriptor dest_reg) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = -1;
     switch (cg_ctx->target_fmt) {
     case TARGET_FMT_X86_64_GNU_AS:
         res_reg = code_gen_div_arch_x86_64(cg_ctx, src_reg, dest_reg);
@@ -442,7 +442,7 @@ RegDescriptor code_gen_div(CGContext *cg_ctx, RegDescriptor src_reg,
 RegDescriptor code_gen_mod(CGContext *cg_ctx, RegDescriptor src_reg,
                            RegDescriptor dest_reg) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = -1;
     switch (cg_ctx->target_fmt) {
     case TARGET_FMT_X86_64_GNU_AS:
         res_reg = code_gen_mod_arch_x86_64(cg_ctx, src_reg, dest_reg);
@@ -457,7 +457,7 @@ RegDescriptor code_gen_mod(CGContext *cg_ctx, RegDescriptor src_reg,
 RegDescriptor code_gen_shift_left(CGContext *cg_ctx, RegDescriptor src_reg,
                                   RegDescriptor dest_reg) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = -1;
     switch (cg_ctx->target_fmt) {
     case TARGET_FMT_X86_64_GNU_AS:
         res_reg = code_gen_shift_left_arch_x86_64(cg_ctx, src_reg, dest_reg);
@@ -473,7 +473,7 @@ RegDescriptor code_gen_shift_right_arithmetic(CGContext *cg_ctx,
                                               RegDescriptor src_reg,
                                               RegDescriptor dest_reg) {
 
-    RegDescriptor res_reg;
+    RegDescriptor res_reg = -1;
     switch (cg_ctx->target_fmt) {
     case TARGET_FMT_X86_64_GNU_AS:
         res_reg = code_gen_shift_right_arithmetic_arch_x86_64(cg_ctx, src_reg,

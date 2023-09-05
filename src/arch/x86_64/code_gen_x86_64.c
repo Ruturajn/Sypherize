@@ -29,8 +29,10 @@ typedef enum Regs_X86_64 {
 } Regs_X86_64;
 
 DEFINE_REG_NAME_LOOKUP_FUNC(get_reg_name, 64)
-DEFINE_REG_NAME_LOOKUP_FUNC(get_reg_name_32, 32)
-DEFINE_REG_NAME_LOOKUP_FUNC(get_reg_name_16, 16)
+// Following functions are commented out due to unused errors.
+// They will need to be defined again, when needed.
+// DEFINE_REG_NAME_LOOKUP_FUNC(get_reg_name_32, 32)
+// DEFINE_REG_NAME_LOOKUP_FUNC(get_reg_name_16, 16)
 DEFINE_REG_NAME_LOOKUP_FUNC(get_reg_name_8, 8)
 
 #undef REGISTER_NAME_64
@@ -192,6 +194,7 @@ const char *inst_mnemonic_x86_64(CGContext *cg_ctx, Instructions_X86_64 inst,
         case INST_X86_64_CQO:
             return "cqto";
         }
+        break;
 
     case TARGET_ASM_DIALECT_INTEL:
         switch (inst) {
@@ -200,6 +203,7 @@ const char *inst_mnemonic_x86_64(CGContext *cg_ctx, Instructions_X86_64 inst,
         case INST_X86_64_CQO:
             return "cqo";
         }
+        break;
     }
     print_error(
         ERR_COMMON,
@@ -306,7 +310,7 @@ static void file_emit_x86_64_reg_to_reg(CGContext *cg_ctx, const char *mnemonic,
     RegDescriptor reg_dest = va_arg(operands, RegDescriptor);
 
     // Don't emit `mov` if the source and destination are the same.
-    if (reg_src == reg_dest)
+    if (reg_src == reg_dest && strcmp(mnemonic, "mov") == 0)
         return;
 
     switch (cg_ctx->target_asm_dialect) {
@@ -352,13 +356,13 @@ static void file_emit_x86_64_reg_to_sym(CGContext *cg_ctx, const char *mnemonic,
                                         va_list operands) {
 
     // name, source, destination.
-    const char *sym = va_arg(operands, const char *);
     RegDescriptor src_reg = va_arg(operands, RegDescriptor);
+    const char *sym = va_arg(operands, const char *);
     RegDescriptor dest_reg = va_arg(operands, RegDescriptor);
     switch (cg_ctx->target_asm_dialect) {
     case TARGET_ASM_DIALECT_ATT:
-        fprintf(cg_ctx->fptr_code, "%s %%%s, %s(%%%s)\n", mnemonic, sym,
-                get_reg_name(src_reg), get_reg_name(dest_reg));
+        fprintf(cg_ctx->fptr_code, "%s %%%s, %s(%%%s)\n", mnemonic,
+                get_reg_name(src_reg), sym, get_reg_name(dest_reg));
         break;
     case TARGET_ASM_DIALECT_INTEL:
         fprintf(cg_ctx->fptr_code, "%s [%s + %s], %s\n", mnemonic,
@@ -513,7 +517,7 @@ static void file_emit_x86_64(CGContext *cg_ctx, Instructions_X86_64 inst, ...) {
             file_emit_x86_64_mem_to_reg(cg_ctx, mnemonic, operands);
             break;
         case OPERAND_TYPE_REG_TO_REG:
-            file_emit_x86_64_sym_to_reg(cg_ctx, mnemonic, operands);
+            file_emit_x86_64_reg_to_reg(cg_ctx, mnemonic, operands);
             break;
         }
         break;
@@ -626,11 +630,11 @@ static void file_emit_x86_64(CGContext *cg_ctx, Instructions_X86_64 inst, ...) {
             break;
         case TARGET_ASM_DIALECT_ATT:
             fprintf(cg_ctx->fptr_code, "%s%s %%%s\n", mnemonic,
-                    comp_suffixes_x86_84[comp_type], get_reg_name(reg_desc));
+                    comp_suffixes_x86_84[comp_type], get_reg_name_8(reg_desc));
             break;
         case TARGET_ASM_DIALECT_INTEL:
             fprintf(cg_ctx->fptr_code, "%s%s %s\n", mnemonic,
-                    comp_suffixes_x86_84[comp_type], get_reg_name(reg_desc));
+                    comp_suffixes_x86_84[comp_type], get_reg_name_8(reg_desc));
             break;
         }
         break;
@@ -697,7 +701,7 @@ static void file_emit_x86_64(CGContext *cg_ctx, Instructions_X86_64 inst, ...) {
             file_emit_x86_64_mem_to_reg(cg_ctx, mnemonic, operands);
             break;
         case OPERAND_TYPE_REG_TO_REG:
-            file_emit_x86_64_sym_to_reg(cg_ctx, mnemonic, operands);
+            file_emit_x86_64_reg_to_reg(cg_ctx, mnemonic, operands);
             break;
         }
         break;
@@ -715,7 +719,7 @@ typedef struct ArchData {
     char is_rax_in_use;
 } ArchData;
 
-CGContext *create_codegen_context_gnu_as_win(CGContext *parent_ctx) {
+CGContext *create_cgcontext_gnu_as_win(CGContext *parent_ctx) {
     RegPool pool;
 
     // "The x64 ABI considers the registers RAX, RCX, RDX, R8, R9, R10, R11, and
@@ -778,7 +782,7 @@ CGContext *create_codegen_context_gnu_as_win(CGContext *parent_ctx) {
     return new_ctx;
 }
 
-void free_codegen_context_gnu_as_win(CGContext *cg_ctx) {
+void free_cgcontext_gnu_as_win(CGContext *cg_ctx) {
     if (cg_ctx->parent_ctx == NULL) {
         free(cg_ctx->reg_pool.regs);
         free(cg_ctx->reg_pool.scratch_regs);
@@ -909,8 +913,8 @@ static RegDescriptor bit_shift(CGContext *cg_ctx,
 void code_gen_setup_func_call_arch_x86_64(CGContext *cg_ctx) {
 
     ArchData *arch_data = cg_ctx->arch_data;
-    if (arch_data->func_call == FUNC_CALL_NONE)
-        print_error(ERR_COMMON, "Function call can only be prepared for a"
+    if (arch_data->func_call != FUNC_CALL_NONE)
+        print_error(ERR_COMMON, "Function call can only be prepared for a "
                                 "non NONE function call type");
 
     arch_data->is_rax_in_use = cg_ctx->reg_pool.regs[REG_X86_64_RAX].reg_in_use;
@@ -940,16 +944,20 @@ void code_gen_ext_func_arg_arch_x86_64(CGContext *cg_ctx,
     case TARGET_CALL_CONV_WIN:
         switch (arch_data->num_call_args++) {
         case 0:
-            file_emit_x86_64(cg_ctx, INST_X86_64_MOV, arg_reg, REG_X86_64_RCX);
+            file_emit_x86_64(cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                             arg_reg, REG_X86_64_RCX);
             break;
         case 1:
-            file_emit_x86_64(cg_ctx, INST_X86_64_MOV, arg_reg, REG_X86_64_RDX);
+            file_emit_x86_64(cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                             arg_reg, REG_X86_64_RDX);
             break;
         case 2:
-            file_emit_x86_64(cg_ctx, INST_X86_64_MOV, arg_reg, REG_X86_64_R8);
+            file_emit_x86_64(cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                             arg_reg, REG_X86_64_R8);
             break;
         case 3:
-            file_emit_x86_64(cg_ctx, INST_X86_64_MOV, arg_reg, REG_X86_64_R9);
+            file_emit_x86_64(cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
+                             arg_reg, REG_X86_64_R9);
             break;
         default:
             print_error(ERR_COMMON, "Unsupported amount of parameters for"
@@ -1087,8 +1095,8 @@ void code_gen_get_local_into_arch_x86_64(CGContext *cg_ctx, long offset,
 void code_gen_store_global_arch_x86_64(CGContext *cg_ctx, const char *sym,
                                        RegDescriptor from_reg) {
 
-    file_emit_x86_64(cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_SYM, sym,
-                     from_reg, REG_X86_64_RIP);
+    file_emit_x86_64(cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_SYM, from_reg,
+                     sym, REG_X86_64_RIP);
 }
 
 void code_gen_store_local_arch_x86_64(CGContext *cg_ctx, long offset,
@@ -1122,7 +1130,7 @@ void code_gen_branch_if_zero_arch_x86_64(CGContext *cg_ctx,
 
 void code_gen_branch_arch_x86_64(CGContext *cg_ctx, const char *jmp_label) {
 
-    file_emit_x86_64(cg_ctx, INST_X86_64_JMP, jmp_label);
+    file_emit_x86_64(cg_ctx, INST_X86_64_JMP, OPERAND_TYPE_SYM, jmp_label);
 }
 
 RegDescriptor code_gen_get_imm_arch_x86_64(CGContext *cg_ctx, long data) {
@@ -1154,9 +1162,11 @@ RegDescriptor code_gen_compare_arch_x86_64(CGContext *cg_ctx,
         print_error(ERR_COMMON, "Encountered invalid ComparisonType");
 
     RegDescriptor res_reg = reg_alloc(cg_ctx);
-    file_emit_x86_64(cg_ctx, INST_X86_64_XOR, res_reg, res_reg);
+    file_emit_x86_64(cg_ctx, INST_X86_64_XOR, OPERAND_TYPE_REG_TO_REG, res_reg,
+                     res_reg);
 
-    file_emit_x86_64(cg_ctx, INST_X86_64_CMP, rhs_reg, lhs_reg);
+    file_emit_x86_64(cg_ctx, INST_X86_64_CMP, OPERAND_TYPE_REG_TO_REG, rhs_reg,
+                     lhs_reg);
     file_emit_x86_64(cg_ctx, INST_X86_64_SETCC, comp_type, res_reg);
 
     reg_dealloc(cg_ctx, rhs_reg);

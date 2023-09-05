@@ -12,7 +12,7 @@ CGContext *create_cgcontext(TargetFormat fmt, TargetCallingConvention call_conv,
 
 CGContext *create_cgcontext_child(CGContext *parent_ctx);
 
-void free_cgcontext_child(CGContext *cg_ctx);
+void free_cgcontext(CGContext *cg_ctx);
 
 void code_gen_setup_func_call(CGContext *cg_ctx);
 

@@ -92,7 +92,10 @@ RegDescriptor reg_alloc(CGContext *cg_ctx);
 // Free (Mark as not in use) the register that is in use.
 void reg_dealloc(CGContext *cg_ctx, RegDescriptor reg_desc);
 
-void print_regs(CGContext *cg_ctx);
+void target_codegen(ParsingContext *context, AstNode *program,
+                    char *output_file_path, TargetFormat type,
+                    TargetAssemblyDialect dialect,
+                    TargetCallingConvention call_conv);
 
 #ifdef __cplusplus
 }

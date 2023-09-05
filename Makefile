@@ -7,8 +7,8 @@ TARGET=sypherc
 
 #==============================================================================
 
-SRCS=$(wildcard ./src/*.c)
-INCS=./inc
+SRCS=$(wildcard ./src/*.c ./src/arch/*.c ./src/arch/x86_64/*.c)
+INCS=-I ./inc -I ./inc/arch -I ./inc/arch/x86_64
 
 OBJS=$(notdir $(SRCS:.c=.o))
 
@@ -22,7 +22,13 @@ FILE_PATH=./examples/simple.sy
 #==============================================================================
 
 %.o:./src/%.c compile_msg
-	$(CC) -c $(CFLAGS) $< -o ./$(BUILD_DIR)/$@
+	$(CC) -c $(CFLAGS) $(INCS) $< -o ./$(BUILD_DIR)/$@
+
+%.o:./src/arch/%.c compile_msg
+	$(CC) -c $(CFLAGS) $(INCS) $< -o ./$(BUILD_DIR)/$@
+
+%.o:./src/arch/x86_64/%.c compile_msg
+	$(CC) -c $(CFLAGS) $(INCS) $< -o ./$(BUILD_DIR)/$@
 
 #==============================================================================
 
@@ -39,7 +45,7 @@ compile_msg:
 
 $(TARGET): $(SRCS) $(BUILD_DIR) $(BIN_DIR) $(OBJS)
 	@printf "\033[1;32m[+] Linking into executable ...\033[1;37m\n"
-	$(CC) $(CFLAGS) $(addprefix ./$(BUILD_DIR)/,$(OBJS)) -I $(INCS) -o ./$(BIN_DIR)/$(TARGET)
+	$(CC) $(CFLAGS) $(addprefix ./$(BUILD_DIR)/,$(OBJS)) $(INCS) -o ./$(BIN_DIR)/$(TARGET)
 	@printf "\033[1;36m[+] DONE\033[1;37m\n"
 
 clean:

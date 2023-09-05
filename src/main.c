@@ -15,6 +15,7 @@ int main(int argc, char **argv) {
     int in_file_idx = -1;
     TargetFormat out_fmt = TARGET_FMT_DEFAULT;
     TargetCallingConvention call_conv = TARGET_CALL_CONV_WIN;
+    TargetAssemblyDialect dialect = TARGET_ASM_DIALECT_DEFAULT;
     int is_verbose = -1;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
@@ -112,6 +113,33 @@ int main(int argc, char **argv) {
                    strcmp(argv[i], "--version") == 0) {
             printf("%s", VERSION_STRING);
             return 0;
+        } else if (strcmp(argv[i], "-ad") == 0 ||
+                   strcmp(argv[i], "--asm-dialect") == 0) {
+            i = i + 1;
+            if (i > argc) {
+                printf("\nSee `%s --help`\n\n", argv[0]);
+                print_error(ERR_ARGS, "Expected Output format after : `%s`",
+                            argv[i - 1]);
+            }
+            if (*argv[i] == '-') {
+                printf("\nSee `%s --help`\n\n", argv[0]);
+                print_error(ERR_ARGS,
+                            "Expected valid output format got another possible "
+                            "command line option : `%s`",
+                            argv[i]);
+            }
+            if (strcmp(argv[i], "default") == 0)
+                dialect = TARGET_ASM_DIALECT_DEFAULT;
+            else if (strcmp(argv[i], "att") == 0)
+                dialect = TARGET_ASM_DIALECT_ATT;
+            else if (strcmp(argv[i], "intel") == 0)
+                dialect = TARGET_ASM_DIALECT_INTEL;
+            else {
+                printf("\nSee `%s --help`\n\n", argv[0]);
+                print_error(ERR_ARGS,
+                            "Expected valid output format, got : `%s`",
+                            argv[i]);
+            }
         } else {
             if (*argv[i] == '-') {
                 printf("\nSee `%s --help`\n\n", argv[0]);
@@ -137,6 +165,7 @@ int main(int argc, char **argv) {
     // Open the file, lex and parse the file.
     if (in_file_idx == -1)
         print_error(ERR_ARGS, "Expected valid input file path");
+
     lex_and_parse(argv[in_file_idx], &curr_context, &program);
 
     if (is_verbose == 1) {
@@ -151,12 +180,15 @@ int main(int argc, char **argv) {
     // Start Code generation.
     if (is_verbose == 1)
         printf("\n[+]CODE GENERATION BEGIN...\n");
+
     char *file_name = (out_file_idx == -1) ? "code_gen.s" : argv[out_file_idx];
-    target_codegen(curr_context, program, file_name, out_fmt, call_conv);
+    target_codegen(curr_context, program, file_name, out_fmt, dialect,
+                   call_conv);
+
     if (is_verbose == 1)
         printf("[+]CODE GENERATION COMPLETE\n");
 
     free_node(program);
 
-    exit(EXIT_SUCCESS);
+    return 0;
 }

@@ -26,9 +26,9 @@ extern "C" {
     FUNC(RSP, "rsp", "esp", "sp", "spl")                                       \
     FUNC(RIP, "rip", "eip", "ip", "ipl")
 
-CGContext *create_codegen_context_gnu_as_win(CGContext *parent_ctx);
+CGContext *create_cgcontext_gnu_as_win(CGContext *parent_ctx);
 
-void free_codegen_context_gnu_as_win(CGContext *cg_ctx);
+void free_cgcontext_gnu_as_win(CGContext *cg_ctx);
 
 CGContext *create_cgcontext_arch_x86_64(TargetFormat fmt,
                                         TargetCallingConvention call_conv,
