@@ -659,12 +659,12 @@ static void file_emit_x86_64(CGContext *cg_ctx, Instructions_X86_64 inst, ...) {
                                         "`sal/shr/sar`");
                 break;
             case TARGET_ASM_DIALECT_ATT:
-                fprintf(cg_ctx->fptr_code, "%s %%%s, %%%s", mnemonic,
+                fprintf(cg_ctx->fptr_code, "%s %%%s, %%%s\n", mnemonic,
                         get_reg_name_8(REG_X86_64_RCX),
                         get_reg_name(shift_reg));
                 break;
             case TARGET_ASM_DIALECT_INTEL:
-                fprintf(cg_ctx->fptr_code, "%s %s, %s", mnemonic,
+                fprintf(cg_ctx->fptr_code, "%s %s, %s\n", mnemonic,
                         get_reg_name(shift_reg),
                         get_reg_name_8(REG_X86_64_RCX));
                 break;
@@ -815,7 +815,7 @@ static RegDescriptor div_and_mod(CGContext *cg_ctx, char ret_quotient,
     Reg *reg_rdx = cg_ctx->reg_pool.regs + REG_X86_64_RDX;
 
     char is_rax_pushed = reg_rax->reg_in_use && ((reg_rhs != REG_X86_64_RAX) &&
-                                                 (reg_lhs != REG_X86_64_RDX));
+                                                 (reg_lhs != REG_X86_64_RAX));
     char is_rdx_pushed = reg_rdx->reg_in_use && ((reg_rhs != REG_X86_64_RDX) &&
                                                  (reg_lhs != REG_X86_64_RDX));
 
@@ -1047,6 +1047,10 @@ void code_gen_cleanup_arch_x86_64(CGContext *cg_ctx) {
                          REG_X86_64_RSP);
         break;
     case FUNC_CALL_INTERNAL:
+        if (arch_data->num_call_args)
+            file_emit_x86_64(cg_ctx, INST_X86_64_ADD, OPERAND_TYPE_IMM_TO_REG,
+                             (int64_t)(arch_data->num_call_args * 8),
+                             REG_X86_64_RSP);
         break;
     default:
         print_error(ERR_COMMON, "No previous call to cleanup");
@@ -1124,7 +1128,7 @@ void code_gen_branch_if_zero_arch_x86_64(CGContext *cg_ctx,
                                          const char *jmp_label) {
 
     file_emit_x86_64(cg_ctx, INST_X86_64_TEST, OPERAND_TYPE_REG_TO_REG,
-                     reg_desc);
+                     reg_desc, reg_desc);
     file_emit_x86_64(cg_ctx, INST_X86_64_JCC, JMP_TYPE_Z, jmp_label);
 }
 

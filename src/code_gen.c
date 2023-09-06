@@ -198,16 +198,19 @@ void target_codegen_expr(ParsingContext *context,
                             curr_expr->child->next_child, cg_ctx, fptr_code);
 
         if (strcmp(curr_expr->ast_val.node_symbol, ">") == 0) {
-            code_gen_compare(cg_ctx, COMP_GT, curr_expr->child->result_reg_desc,
-                             curr_expr->child->next_child->result_reg_desc);
+            curr_expr->result_reg_desc = code_gen_compare(
+                cg_ctx, COMP_GT, curr_expr->child->result_reg_desc,
+                curr_expr->child->next_child->result_reg_desc);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "<") == 0) {
-            code_gen_compare(cg_ctx, COMP_LT, curr_expr->child->result_reg_desc,
-                             curr_expr->child->next_child->result_reg_desc);
+            curr_expr->result_reg_desc = code_gen_compare(
+                cg_ctx, COMP_LT, curr_expr->child->result_reg_desc,
+                curr_expr->child->next_child->result_reg_desc);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "==") == 0) {
-            code_gen_compare(cg_ctx, COMP_EQ, curr_expr->child->result_reg_desc,
-                             curr_expr->child->next_child->result_reg_desc);
+            curr_expr->result_reg_desc = code_gen_compare(
+                cg_ctx, COMP_EQ, curr_expr->child->result_reg_desc,
+                curr_expr->child->next_child->result_reg_desc);
 
         } else if (strcmp(curr_expr->ast_val.node_symbol, "+") == 0) {
             curr_expr->result_reg_desc =
@@ -330,7 +333,8 @@ void target_codegen_expr(ParsingContext *context,
                                 cg_ctx, fptr_code);
             curr_expr->result_reg_desc =
                 code_gen_func_call(cg_ctx, curr_expr->child->result_reg_desc);
-            reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
+            if (curr_expr->result_reg_desc != curr_expr->child->result_reg_desc)
+                reg_dealloc(cg_ctx, curr_expr->child->result_reg_desc);
         }
 
         code_gen_cleanup(cg_ctx);
