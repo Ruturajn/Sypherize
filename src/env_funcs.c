@@ -61,7 +61,8 @@ AstNode *get_env_from_sym(Env *env_to_get, char *identifier, int *stat) {
     IdentifierBind *curr_bind = env_to_get->binding;
     AstNode *val = node_alloc();
     while (curr_bind != NULL) {
-        if (strcmp(curr_bind->identifier->ast_val.node_symbol, identifier) == 0) {
+        if (strcmp(curr_bind->identifier->ast_val.node_symbol, identifier) ==
+            0) {
             *stat = 1;
             copy_node(val, curr_bind->id_val);
             return val;
@@ -87,11 +88,13 @@ AstNode *get_env_from_val(Env *env_to_get, AstNode *val, int *stat) {
     return id;
 }
 
-AstNode *parser_get_type(ParsingContext *context, AstNode *identifier, int *stat) {
+AstNode *parser_get_type(ParsingContext *context, AstNode *identifier,
+                         int *stat) {
     ParsingContext *temp_ctx = context;
     int status = -1;
 
-    if (identifier->pointer_level > 0 || strcmp(identifier->ast_val.node_symbol, "function") == 0 ||
+    if (identifier->pointer_level > 0 ||
+        strcmp(identifier->ast_val.node_symbol, "function") == 0 ||
         strcmp(identifier->ast_val.node_symbol, "ext function") == 0) {
         AstNode *res = node_alloc();
         res->child = create_node_int(8);
@@ -100,13 +103,15 @@ AstNode *parser_get_type(ParsingContext *context, AstNode *identifier, int *stat
     }
 
     if (strcmp(identifier->ast_val.node_symbol, "array") == 0) {
-        AstNode *arr_type = parser_get_type(context, identifier->child->next_child, &status);
+        AstNode *arr_type =
+            parser_get_type(context, identifier->child->next_child, &status);
         if (status == 0)
             print_error(ERR_TYPE, "Unable to find base type for array");
 
         // Return the total size of the array.
         AstNode *res = node_alloc();
-        res->child = create_node_int(arr_type->child->ast_val.val * identifier->child->ast_val.val);
+        res->child = create_node_int(arr_type->child->ast_val.val *
+                                     identifier->child->ast_val.val);
         return res;
     }
 
@@ -123,7 +128,8 @@ AstNode *parser_get_type(ParsingContext *context, AstNode *identifier, int *stat
     return res;
 }
 
-AstNode *parser_get_var(ParsingContext *context, AstNode *identifier, int *stat) {
+AstNode *parser_get_var(ParsingContext *context, AstNode *identifier,
+                        int *stat) {
     ParsingContext *temp_ctx = context;
     int status = -1;
 
@@ -140,7 +146,8 @@ AstNode *parser_get_var(ParsingContext *context, AstNode *identifier, int *stat)
     return res;
 }
 
-AstNode *parser_get_func(ParsingContext *context, AstNode *identifier, int *stat) {
+AstNode *parser_get_func(ParsingContext *context, AstNode *identifier,
+                         int *stat) {
     ParsingContext *temp_ctx = context;
     int status = -1;
     while (temp_ctx != NULL) {

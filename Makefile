@@ -4,13 +4,7 @@
 CC=gcc
 CFLAGS=-g -Wall -Werror -Wextra -pedantic
 TARGET=sypherc
-
-#==============================================================================
-
-SRCS=$(wildcard ./src/*.c)
-INCS=./inc
-
-OBJS=$(notdir $(SRCS:.c=.o))
+INCS=-I ../inc -I ../inc/arch -I ../inc/arch/x86_64
 
 #==============================================================================
 
@@ -21,12 +15,12 @@ FILE_PATH=./examples/simple.sy
 
 #==============================================================================
 
-%.o:./src/%.c compile_msg
-	$(CC) -c $(CFLAGS) $< -o ./$(BUILD_DIR)/$@
+SRCS = $(wildcard src/*.c src/arch/*.c src/arch/x86_64/*.c)
+OBJS = $(addprefix ./$(BUILD_DIR)/,$(notdir $(SRCS:.c=.o)))
 
 #==============================================================================
 
-.PHONY: all clean build_and_bin_dir compile_msg run doxygen help clean_doxygen test
+.PHONY: all clean build_and_bin_dir run doxygen help clean_doxygen test
 
 all: build_and_bin_dir $(TARGET)
 
@@ -37,22 +31,17 @@ build_and_bin_dir:
 compile_msg:
 	@printf "\033[1;34m[+] Compiling into object files ...\033[1;37m\n"
 
-$(TARGET): $(SRCS) $(BUILD_DIR) $(BIN_DIR) $(OBJS)
+$(TARGET):
+	@$(MAKE) -C ./src
+	@$(MAKE) -C ./src/arch
+	@$(MAKE) -C ./src/arch/x86_64
 	@printf "\033[1;32m[+] Linking into executable ...\033[1;37m\n"
-	$(CC) $(CFLAGS) $(addprefix ./$(BUILD_DIR)/,$(OBJS)) -I $(INCS) -o ./$(BIN_DIR)/$(TARGET)
+	$(CC) $(CFLAGS) $(OBJS) $(INCS) -o ./$(BIN_DIR)/$(TARGET)
 	@printf "\033[1;36m[+] DONE\033[1;37m\n"
 
 clean:
 	@printf "\033[1;33m[+] Cleaning generated build files ...\033[1;37m\n"
 	rm -rf $(BUILD_DIR) $(BIN_DIR)
-
-doxygen:
-	@printf "\033[1;34m[+] Re-creating docs directory ...\033[1;37m\n"
-	rm -rf $(DOXYGEN_DIR)
-	mkdir -p $(DOXYGEN_DIR)
-	@printf "\033[1;34m[+] Generating Documentation ...\033[1;37m\n"
-	@doxygen Doxyfile
-	@$(MAKE) -C ./$(DOXYGEN_DIR)/latex/
 
 run: clean all
 	@printf "\033[1;33m[+] Running the executable ...\033[1;37m\n"
@@ -62,12 +51,20 @@ test:
 	@printf "\033[1;33m[+] Running the executable ...\033[1;37m\n"
 	./$(BIN_DIR)/$(TARGET) $(FILE_PATH)
 
+doxygen:
+	@printf "\033[1;34m[+] Re-creating docs directory ...\033[1;37m\n"
+	rm -rf $(DOXYGEN_DIR)
+	mkdir -p $(DOXYGEN_DIR)
+	@printf "\033[1;34m[+] Generating Documentation ...\033[1;37m\n"
+	@doxygen Doxyfile
+	@$(MAKE) -C ./$(DOXYGEN_DIR)/latex/
+
 clean_doxygen:
 	@printf "\033[1;33m[+] Cleaning generated docs ...\033[1;37m\n"
 	rm -rf $(DOXYGEN_DIR)
 
 help:
-	@echo "\n"
+	@printf "\n"
 	@printf "\033[1;33mUSAGE:\033[1;37m\n"
 	@printf "    make <TAGRET>\n"
 	@printf "\n"

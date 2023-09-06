@@ -72,17 +72,31 @@ Compiling this project:
 ```
 Sypherc 0.1
 Ruturajn <nanotiruturaj@gmail.com>
-Compiler for Sypher
+A Compiler for Sypher
 
 USAGE:
     sypherc [OPTIONS] INPUT_FILE
 
 OPTIONS:
+    -cc, --call-conv <CALLING_CONVENTION>
+            A valid calling convention for code generation
+            VALID CALLING CONVENTIONS:
+            - `default`
+            - `linux`
+            - `windows`
+
+    -ad, --asm-dialect <ASSEMBLY_DIALECT>
+            A valid assembly dialect for code generation
+            VALID ASSEMBLY DIALECTS:
+            - `default`
+            - `att`
+            - `intel`
+
     -f, --format <OUTPUT_FORMAT>
             A valid output format for code generation
             VALID FORMATS:
-            - `x86_64-windows`
             - `default`
+            - `x86_64-gnu-as`
 
     -h, --help
             Print this help information

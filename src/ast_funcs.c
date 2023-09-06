@@ -20,20 +20,23 @@ char *get_node_str(AstNode *node) {
         snprintf(node_buf, NODE_BUF_SIZE, "INT : %ld", node->ast_val.val);
         break;
     case TYPE_BINARY_OPERATOR:
-        snprintf(node_buf, NODE_BUF_SIZE, "BINARY OP : %s", node->ast_val.node_symbol);
+        snprintf(node_buf, NODE_BUF_SIZE, "BINARY OP : %s",
+                 node->ast_val.node_symbol);
         break;
     case TYPE_VAR_DECLARATION:
         snprintf(node_buf, NODE_BUF_SIZE, "VAR DECL");
         break;
     case TYPE_VAR_ACCESS:
-        snprintf(node_buf, NODE_BUF_SIZE, "VAR ACCESS : %s", node->ast_val.node_symbol);
+        snprintf(node_buf, NODE_BUF_SIZE, "VAR ACCESS : %s",
+                 node->ast_val.node_symbol);
         break;
     case TYPE_SYM:
         if (node->pointer_level == 0)
-            snprintf(node_buf, NODE_BUF_SIZE, "SYM : %s", node->ast_val.node_symbol);
+            snprintf(node_buf, NODE_BUF_SIZE, "SYM : %s",
+                     node->ast_val.node_symbol);
         else
-            snprintf(node_buf, NODE_BUF_SIZE, "SYM : %s (INDIRECT: %d)", node->ast_val.node_symbol,
-                     node->pointer_level);
+            snprintf(node_buf, NODE_BUF_SIZE, "SYM : %s (INDIRECT: %d)",
+                     node->ast_val.node_symbol, node->pointer_level);
         break;
     case TYPE_VAR_REASSIGNMENT:
         snprintf(node_buf, NODE_BUF_SIZE, "VAR REASSIGNMENT");
@@ -112,10 +115,13 @@ int node_cmp(AstNode *node1, AstNode *node2) {
     case TYPE_BINARY_OPERATOR:
     case TYPE_VAR_ACCESS:
     case TYPE_SYM:
-        if (node1->ast_val.node_symbol != NULL && node2->ast_val.node_symbol != NULL &&
-            (strcmp(node1->ast_val.node_symbol, node2->ast_val.node_symbol) == 0))
+        if (node1->ast_val.node_symbol != NULL &&
+            node2->ast_val.node_symbol != NULL &&
+            (strcmp(node1->ast_val.node_symbol, node2->ast_val.node_symbol) ==
+             0))
             return 1;
-        else if (node1->ast_val.node_symbol == NULL && node2->ast_val.node_symbol == NULL)
+        else if (node1->ast_val.node_symbol == NULL &&
+                 node2->ast_val.node_symbol == NULL)
             return 1;
         break;
     default:
@@ -191,7 +197,8 @@ AstNode *node_symbol_from_token_create(LexedToken *token) {
 
     AstNode *node = node_alloc();
     char *symbol_str = (char *)calloc(token->token_length + 1, sizeof(char));
-    CHECK_NULL(symbol_str, "Unable to allocate memory for a new symbol node", NULL);
+    CHECK_NULL(symbol_str, "Unable to allocate memory for a new symbol node",
+               NULL);
     memcpy(symbol_str, token->token_start, token->token_length);
     symbol_str[token->token_length] = '\0';
     node->ast_val.node_symbol = symbol_str;
@@ -259,8 +266,9 @@ void add_ast_node_child(AstNode *parent_node, AstNode *child_to_add) {
     while (temp_child->next_child != NULL) {
         temp_child = temp_child->next_child;
         if (temp_child == child_to_add) {
-            print_warning(ERR_DEV, "Could not add new child to the AST due"
-                                   "to creation of possible circular linked list");
+            print_warning(ERR_DEV,
+                          "Could not add new child to the AST due"
+                          "to creation of possible circular linked list");
             return;
         }
     }

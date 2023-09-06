@@ -12,30 +12,61 @@ extern "C" {
 #define LABEL_ARR_SIZE 1024
 #define SYM_ARR_SIZE 1024
 
-#define FUNC_FOOTER_x86_64                                                                         \
-    "pop %rbp\n"                                                                                   \
+#define FUNC_FOOTER_x86_64                                                     \
+    "pop %rbp\n"                                                               \
     "ret\n"
 
-#define FUNC_HEADER_x86_64                                                                         \
-    "push %rbp\n"                                                                                  \
-    "mov %rsp, %rbp\n"                                                                             \
+#define FUNC_HEADER_x86_64                                                     \
+    "push %rbp\n"                                                              \
+    "mov %rsp, %rbp\n"                                                         \
     "sub $32, %rsp\n"
+
+typedef enum TargetFormat {
+    TARGET_FMT_X86_64_GNU_AS,
+    TARGET_FMT_COUNT,
+
+    TARGET_FMT_DEFAULT = TARGET_FMT_X86_64_GNU_AS,
+} TargetFormat;
+
+typedef enum TargetCallingConvention {
+    TARGET_CALL_CONV_WIN,
+    TARGET_CALL_CONV_LINUX,
+    TARGET_CALL_CONV_COUNT,
+
+    TARGET_CALL_CONV_DEFAULT = TARGET_CALL_CONV_WIN,
+} TargetCallingConvention;
+
+typedef enum TargetAssemblyDialect {
+    TARGET_ASM_DIALECT_ATT,
+    TARGET_ASM_DIALECT_INTEL,
+    TARGET_ASM_DIALECT_COUNT,
+
+    TARGET_ASM_DIALECT_DEFAULT = TARGET_ASM_DIALECT_ATT,
+} TargetAssemblyDialect;
+
+typedef enum ComparisonType {
+    COMP_EQ,
+    COMP_NE,
+    COMP_LT,
+    COMP_LE,
+    COMP_GT,
+    COMP_GE,
+
+    COMP_COUNT,
+} ComparisonType;
+
+extern char codegen_verbose;
 
 typedef int RegDescriptor;
 
 typedef struct Reg {
-    char *reg_name;
     int reg_in_use;
     RegDescriptor reg_desc;
 } Reg;
 
-typedef enum TargetType {
-    TARGET_DEFAULT = 0,
-    TARGET_x86_64_WIN,
-} TargetType;
-
 typedef struct RegPool {
     Reg *regs;
+    Reg **scratch_regs;
     int scratch_reg_cnt;
     int reg_cnt;
 } RegPool;
@@ -43,70 +74,28 @@ typedef struct RegPool {
 typedef struct CGContext {
     struct CGContext *parent_ctx;
     Env *local_env;
-    RegPool reg_pool;
     long local_offset;
+    RegPool reg_pool;
+    FILE *fptr_code;
+    void *arch_data;
+    TargetCallingConvention target_call_conv;
+    TargetFormat target_fmt;
+    TargetAssemblyDialect target_asm_dialect;
 } CGContext;
 
-enum ScratchRegs_X86_64_WIN {
-    // Scratch registers.
-    REG_X86_64_WIN_RAX,
-    REG_X86_64_WIN_RCX,
-    REG_X86_64_WIN_RDX,
-    REG_X86_64_WIN_R8,
-    REG_X86_64_WIN_R9,
-    REG_X86_64_WIN_R10,
-    REG_X86_64_WIN_R11,
-
-    // Non scratch registers.
-    REG_X86_64_WIN_R12,
-    REG_X86_64_WIN_R13,
-    REG_X86_64_WIN_R14,
-    REG_X86_64_WIN_R15,
-    REG_X86_64_WIN_RBX,
-    REG_X86_64_WIN_RSI,
-    REG_X86_64_WIN_RDI,
-    REG_X86_64_WIN_RBP,
-    REG_X86_64_WIN_RSP,
-    REG_X86_64_WIN_RIP,
-
-    // Total count
-    REG_X86_64_WIN_SCRATCH_COUNT = REG_X86_64_WIN_R11 + 1,
-    REG_X86_64_WIN_COUNT = REG_X86_64_WIN_RIP + 1,
-};
-
-CGContext *create_codegen_context(CGContext *parent_ctx);
-
-void free_codegen_context(CGContext *cg_ctx);
+extern const char *comp_suffixes_x86_84[COMP_COUNT];
 
 char is_valid_reg_desc(CGContext *cg_ctx, RegDescriptor reg_desc);
 
 RegDescriptor reg_alloc(CGContext *cg_ctx);
 
-// Get the name of the register based on the register descriptor.
-const char *get_reg_name(CGContext *cg_ctx, RegDescriptor reg_desc);
-
 // Free (Mark as not in use) the register that is in use.
 void reg_dealloc(CGContext *cg_ctx, RegDescriptor reg_desc);
 
-// Generate labels for lambda functions.
-char *gen_label();
-
-char *map_sym_to_addr_win(CGContext *cg_ctx, AstNode *sym_node);
-
-void print_regs(CGContext *cg_ctx);
-
-void target_x86_64_win_codegen_expr(ParsingContext *context, ParsingContext **ctx_next_child,
-                                    AstNode *curr_expr, CGContext *cg_ctx, FILE *fptr_code);
-
-void target_x86_64_win_codegen_func(CGContext *cg_ctx, ParsingContext *context,
-                                    ParsingContext **ctx_next_child, char *func_name, AstNode *func,
-                                    FILE *fptr_code);
-
-void target_x86_64_win_codegen_prog(ParsingContext *context, AstNode *program, CGContext *cg_ctx,
-                                    FILE *fptr_code);
-
-void target_codegen(ParsingContext *context, AstNode *program, char *output_file_path,
-                    TargetType type);
+void target_codegen(ParsingContext *context, AstNode *program,
+                    char *output_file_path, TargetFormat type,
+                    TargetAssemblyDialect dialect,
+                    TargetCallingConvention call_conv);
 
 #ifdef __cplusplus
 }

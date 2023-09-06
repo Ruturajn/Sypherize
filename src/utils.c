@@ -1,9 +1,9 @@
 #include "../inc/utils.h"
 
-const char *err_strings[ERR_COUNT] = {"GENERIC",     "ARGS",         "MEMORY ALLOCATION",
-                                      "FILE ACCESS", "FILE SIZE",    "FILE READ",
-                                      "SYNTAX",      "REDEFINITION", "EOF",
-                                      "TYPE",        "DEVELOPER"};
+const char *err_strings[ERR_COUNT] = {
+    "GENERIC",   "ARGS",   "MEMORY ALLOCATION", "FILE ACCESS", "FILE SIZE",
+    "FILE READ", "SYNTAX", "REDEFINITION",      "EOF",         "TYPE",
+    "DEVELOPER"};
 
 char *read_file_data(char *file_dest) {
     FILE *file_ptr = NULL;
@@ -21,18 +21,20 @@ char *read_file_data(char *file_dest) {
     size_t bytes_read = fread(file_data, 1, file_sz, file_ptr);
 
     if (bytes_read != file_sz)
-        print_error(ERR_FILE_READ, "Unable to read file contents : `%s`", file_dest, 0);
+        print_error(ERR_FILE_READ, "Unable to read file contents : `%s`",
+                    file_dest, 0);
 
     file_data[file_sz] = '\0';
     fclose(file_ptr);
     return file_data;
 }
 
+NORETURN
 void print_error(ErrType err, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     fprintf(stderr, "\033[1;31m[ERROR]\033[1;37m %s:: ", err_strings[err]);
-    fprintf(stderr, fmt, args);
+    vfprintf(stderr, fmt, args);
     va_end(args);
     fprintf(stderr, "!\n");
     exit(EXIT_FAILURE);
@@ -42,7 +44,7 @@ void print_warning(ErrType err, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     fprintf(stderr, "\033[1;33m[WARN]\033[1;37m %s:: ", err_strings[err]);
-    fprintf(stderr, fmt, args);
+    vfprintf(stderr, fmt, args);
     va_end(args);
     fprintf(stderr, "!\n");
 }

@@ -34,3 +34,14 @@ int: d := 10;
 d := 100;
 
 bar()
+
+int: foo(@int: ptr) := int: (@int: ptr) {
+    @ptr := 69
+    0
+}
+
+int: num := 0
+@int: num_ptr;
+num_ptr := &num;
+foo(num_ptr)
+num

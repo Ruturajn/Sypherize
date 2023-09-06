@@ -53,9 +53,11 @@ AstNode *get_env_from_val(Env *Env_to_get, AstNode *val, int *stat);
  * @param  stat       [`int`] Status of the function execution.
  * @return AstNode*   Pointer to the type node.
  */
-AstNode *parser_get_type(ParsingContext *context, AstNode *identifier, int *stat);
+AstNode *parser_get_type(ParsingContext *context, AstNode *identifier,
+                         int *stat);
 
-AstNode *parser_get_var(ParsingContext *context, AstNode *identifier, int *stat);
+AstNode *parser_get_var(ParsingContext *context, AstNode *identifier,
+                        int *stat);
 /**
  * @brief  Searches the parsing contexts, for a type func based
  *         on the identifier.
@@ -66,7 +68,8 @@ AstNode *parser_get_var(ParsingContext *context, AstNode *identifier, int *stat)
  * @param  stat       [`int`] Status of the function execution.
  * @return AstNode*   Pointer to the type node.
  */
-AstNode *parser_get_func(ParsingContext *context, AstNode *identifier, int *stat);
+AstNode *parser_get_func(ParsingContext *context, AstNode *identifier,
+                         int *stat);
 
 void print_env(Env *env, int indent);
 
