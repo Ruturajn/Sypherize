@@ -22,6 +22,7 @@ for file in ./examples/* ; do
     else
         file=$(echo "${file}" | sed 's|./examples/||')
         echo -e "\e[0;36m[ PASS ] : ${file}\e[0;37m"
+        rm $(echo "${file}" | sed 's|.sy|.s|')
     fi
 done
 
