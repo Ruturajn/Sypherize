@@ -320,7 +320,7 @@ static void file_emit_x86_64_reg_to_reg(CGContext *cg_ctx, const char *mnemonic,
         break;
     case TARGET_ASM_DIALECT_INTEL:
         fprintf(cg_ctx->fptr_code, "%s %s, %s\n", mnemonic,
-                get_reg_name(reg_src), get_reg_name(reg_src));
+                get_reg_name(reg_dest), get_reg_name(reg_src));
         break;
     default:
         print_error(ERR_COMMON,
@@ -338,12 +338,20 @@ static void file_emit_x86_64_reg_to_mem(CGContext *cg_ctx, const char *mnemonic,
     RegDescriptor reg_dest = va_arg(operands, RegDescriptor);
     switch (cg_ctx->target_asm_dialect) {
     case TARGET_ASM_DIALECT_ATT:
-        fprintf(cg_ctx->fptr_code, "%s %%%s, %" PRId64 "(%%%s)\n", mnemonic,
-                get_reg_name(reg_src), mem_offset, get_reg_name(reg_dest));
+        if (mem_offset)
+            fprintf(cg_ctx->fptr_code, "%s %%%s, %" PRId64 "(%%%s)\n", mnemonic,
+                    get_reg_name(reg_src), mem_offset, get_reg_name(reg_dest));
+        else
+            fprintf(cg_ctx->fptr_code, "%s %%%s, (%%%s)\n", mnemonic,
+                    get_reg_name(reg_src), get_reg_name(reg_dest));
         break;
     case TARGET_ASM_DIALECT_INTEL:
-        fprintf(cg_ctx->fptr_code, "%s [%s + %" PRId64 "], %s\n", mnemonic,
-                get_reg_name(reg_dest), mem_offset, get_reg_name(reg_src));
+        if (mem_offset)
+            fprintf(cg_ctx->fptr_code, "%s [%s + %" PRId64 "], %s\n", mnemonic,
+                    get_reg_name(reg_dest), mem_offset, get_reg_name(reg_src));
+        else
+            fprintf(cg_ctx->fptr_code, "%s [%s], %s\n", mnemonic,
+                    get_reg_name(reg_dest), get_reg_name(reg_src));
         break;
     default:
         print_error(ERR_COMMON,
@@ -366,7 +374,7 @@ static void file_emit_x86_64_reg_to_sym(CGContext *cg_ctx, const char *mnemonic,
         break;
     case TARGET_ASM_DIALECT_INTEL:
         fprintf(cg_ctx->fptr_code, "%s [%s + %s], %s\n", mnemonic,
-                get_reg_name(dest_reg), get_reg_name(src_reg), sym);
+                get_reg_name(dest_reg), sym, get_reg_name(src_reg));
         break;
     default:
         print_error(ERR_COMMON,
@@ -1042,9 +1050,6 @@ void code_gen_cleanup_arch_x86_64(CGContext *cg_ctx) {
     ArchData *arch_data = cg_ctx->arch_data;
     switch (arch_data->func_call) {
     case FUNC_CALL_EXTERNAL:
-        file_emit_x86_64(cg_ctx, INST_X86_64_ADD, OPERAND_TYPE_IMM_TO_REG,
-                         (int64_t)(arch_data->num_call_args * 8),
-                         REG_X86_64_RSP);
         break;
     case FUNC_CALL_INTERNAL:
         if (arch_data->num_call_args)
@@ -1060,9 +1065,6 @@ void code_gen_cleanup_arch_x86_64(CGContext *cg_ctx) {
     if (arch_data->is_rax_in_use)
         file_emit_x86_64(cg_ctx, INST_X86_64_POP, OPERAND_TYPE_REG,
                          REG_X86_64_RAX);
-    else
-        file_emit_x86_64(cg_ctx, INST_X86_64_ADD, OPERAND_TYPE_IMM_TO_REG,
-                         (int64_t)8, REG_X86_64_RSP);
 
     arch_data->is_rax_in_use = 0;
     arch_data->num_call_args = 0;
@@ -1113,7 +1115,7 @@ void code_gen_store_arch_x86_64(CGContext *cg_ctx, RegDescriptor from_reg,
                                 RegDescriptor mem_reg) {
 
     file_emit_x86_64(cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_MEM, from_reg,
-                     0, mem_reg);
+                     (int64_t)0, mem_reg);
 }
 
 void code_gen_add_imm_arch_x86_64(CGContext *cg_ctx, long data,
@@ -1250,7 +1252,7 @@ void code_gen_func_header_arch_x86_64(CGContext *cg_ctx) {
     file_emit_x86_64(cg_ctx, INST_X86_64_MOV, OPERAND_TYPE_REG_TO_REG,
                      REG_X86_64_RSP, REG_X86_64_RBP);
     file_emit_x86_64(cg_ctx, INST_X86_64_SUB, OPERAND_TYPE_IMM_TO_REG,
-                     (int64_t)-cg_ctx->local_offset, REG_X86_64_RSP);
+                     (int64_t)(-cg_ctx->local_offset), REG_X86_64_RSP);
 }
 
 void code_gen_func_footer_arch_x86_64(CGContext *cg_ctx) {
