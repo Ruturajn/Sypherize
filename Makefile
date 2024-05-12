@@ -10,6 +10,7 @@ INCS=-I ../inc
 
 BUILD_DIR=build
 BIN_DIR=bin
+FILE_PATH=./tests/test1.sy
 
 #==============================================================================
 
@@ -41,4 +42,4 @@ clean:
 
 run: clean all
 	@printf "\033[1;33m[+] Running the executable ...\033[1;37m\n"
-	./$(BIN_DIR)/$(TARGET) $(FILE_PATH) -V
+	./$(BIN_DIR)/$(TARGET) $(FILE_PATH)

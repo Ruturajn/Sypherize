@@ -78,7 +78,7 @@ public:
         tok_ty(_tok_ty), col_num(_col_num), line_num(_line_num),
             lexeme (std::move(_lexeme)) {}
 
-    void print_token() {
+    void print_token() const {
         switch (tok_ty) {
             case TOK_LBRACE:
                 std::cout << "TOK_LBRACE";
@@ -203,7 +203,6 @@ public:
             case TOK_LTE:
                 std::cout << "TOK_LTE";
                 break;
-
 
             case TOK_DEREF:
                 std::cout << "TOK_DEREF";

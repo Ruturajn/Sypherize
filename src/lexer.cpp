@@ -8,32 +8,85 @@ char Lexer::check_next() {
 }
 
 bool Lexer::skip_until_newline() {
-    while ((file_data[curr_pos] != '\n') && (curr_pos <= data_sz)) {
+    while ((file_data[curr_pos] != '\n') && (curr_pos < data_sz)) {
         curr_pos += 1;
     }
     if (curr_pos >= data_sz)
         return false;
 
-    return file_data[curr_pos] == '\n';
+    curr_pos += 1;
+    col_num = 0;
+    l_num += 1;
+    return file_data[curr_pos - 1] == '\n';
 }
 
 bool Lexer::skip_until_comment_close() {
-    while ((file_data[curr_pos] != '^') &&
-            (curr_pos <= data_sz) &&
-            ((curr_pos + 1) <= data_sz) &&
-            file_data[curr_pos + 1] != ')') {
+    // Skip the comment beginning
+    curr_pos += 2;
+    bool found_hat = false;
+
+    while (curr_pos < data_sz) {
+        if (file_data[curr_pos] == '^')
+            found_hat = true;
+
+        if (file_data[curr_pos] == ')') {
+            if (found_hat)
+                break;
+        }
+
+        if (file_data[curr_pos] == '\n') {
+            l_num += 1;
+            col_num = 0;
+        }
+
+        if (file_data[curr_pos] == '$')
+            skip_until_newline();
+
+        if (file_data[curr_pos] == '(' &&
+            ((curr_pos + 1) < data_sz) &&
+            file_data[curr_pos + 1] == '^')
+            skip_until_comment_close();
+
         curr_pos += 1;
+        col_num += 1;
     }
 
     if (curr_pos >= data_sz)
         return false;
 
-    return (file_data[curr_pos] == ')' && file_data[curr_pos - 1] == '^');
+    curr_pos += 1;
+    col_num += 1;
+    return (file_data[curr_pos - 1] == ')' && found_hat);
 }
 
 Token Lexer::create_token(ssize_t tok_sz, enum Token::TokType t_ty) {
     std::string lexeme = file_data.substr(curr_pos, tok_sz);
-    return Token(t_ty, col_num, l_num, lexeme);
+    if (lexeme == "if")
+        return Token(Token::TOK_IF, col_num, l_num, lexeme);
+
+    else if (lexeme == "else")
+        return Token(Token::TOK_ELSE, col_num, l_num, lexeme);
+
+    else if (lexeme == "int")
+        return Token(Token::TOK_TYPE_INT, col_num, l_num, lexeme);
+
+    else if (lexeme == "string")
+        return Token(Token::TOK_TYPE_STRING, col_num, l_num, lexeme);
+
+    else if (lexeme == "for")
+        return Token(Token::TOK_FOR, col_num, l_num, lexeme);
+
+    else if (lexeme == "while")
+        return Token(Token::TOK_WHILE, col_num, l_num, lexeme);
+
+    else if (lexeme == "return")
+        return Token(Token::TOK_RETURN, col_num, l_num, lexeme);
+
+    else if (lexeme == "fun")
+        return Token(Token::TOK_FUNCTION, col_num, l_num, lexeme);
+
+    else
+        return Token(t_ty, col_num, l_num, lexeme);
 }
 
 void Lexer::push_tok(ssize_t tok_sz, enum Token::TokType t_ty) {
@@ -43,10 +96,31 @@ void Lexer::push_tok(ssize_t tok_sz, enum Token::TokType t_ty) {
     col_num += tok_sz;
 }
 
+void Lexer::lex_number() {
+    ssize_t final_pos = curr_pos;
+    final_pos += 1;
+    while (final_pos < data_sz) {
+        if (!is_num(file_data[final_pos]))
+            break;
+        final_pos += 1;
+    }
+    push_tok((final_pos - curr_pos), Token::TOK_NUMBER);
+}
+
+void Lexer::lex_identifier() {
+    ssize_t final_pos = curr_pos;
+    while (final_pos < data_sz) {
+        if (!is_alpha(file_data[final_pos]) &&
+                !is_num(file_data[final_pos]))
+            break;
+        final_pos += 1;
+    }
+    push_tok((final_pos - curr_pos), Token::TOK_IDENT);
+}
+
 void Lexer::lex() {
-    size_t data_len = file_data.size();
     char curr_c = 0;
-    while (curr_pos <= data_len) {
+    while (curr_pos < data_sz) {
         curr_c = file_data[curr_pos];
         switch (curr_c) {
             case '{':
@@ -96,16 +170,27 @@ void Lexer::lex() {
                 push_tok(1, Token::TOK_BTICK);
                 break;
 
-            case '+':
-                push_tok(1, Token::TOK_PLUS);
+            case '+': {
+                char next_char = check_next();
+                if (is_num(next_char)) {
+                    curr_pos += 1;
+                    lex_number();
+                }
+                else
+                    push_tok(1, Token::TOK_PLUS);
                 break;
+            }
 
-            case '-':
-                if (check_next() == '>')
+            case '-': {
+                char next_char = check_next();
+                if (next_char == '>')
                     push_tok(2, Token::TOK_FUNC_RET);
+                else if (is_num(next_char))
+                    lex_number();
                 else
                     push_tok(1, Token::TOK_MINUS);
                 break;
+            }
 
             case '*':
                 push_tok(1, Token::TOK_MULT);
@@ -186,6 +271,7 @@ void Lexer::lex() {
             case '\n':
                 l_num += 1;
                 col_num = 0;
+                curr_pos += 1;
                 break;
 
             case ' ':
@@ -194,12 +280,18 @@ void Lexer::lex() {
                 break;
 
             default:
+                if (is_alpha(curr_c))
+                    lex_identifier();
+                else if (is_num(curr_c))
+                    lex_number();
+                else
+                    curr_pos += 1;
                 break;
         }
     }
 }
 
-void Lexer::print_tokens() {
+void Lexer::print_tokens() const {
     std::cout << "[\n";
     for (auto &t: tok_list) {
         t.print_token();

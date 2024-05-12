@@ -19,9 +19,9 @@ public:
         tok_list({}), file_data(std::move(_file_data)), curr_pos(0),
         l_num(0), col_num(0), data_sz(0) { data_sz = file_data.size(); }
 
-    bool is_space(char c) { return (c == ' ' || c == '\r'); }
-    bool is_num(char c) { return (c >= '0' && c <= '9'); }
-    bool is_alpha(char c) {
+    bool is_space(char c) const { return (c == ' ' || c == '\r'); }
+    bool is_num(char c) const { return (c >= '0' && c <= '9'); }
+    bool is_alpha(char c) const {
         return ((c >= 'a' && c <= 'z') ||
                 (c >= 'A' && c >= 'Z') || (c == '_'));
     }
@@ -31,8 +31,10 @@ public:
     bool skip_until_comment_close();
     Token create_token(ssize_t tok_sz, enum Token::TokType t_ty);
     void push_tok(ssize_t tok_sz, enum Token::TokType t_ty);
+    void lex_number();
+    void lex_identifier();
     void lex();
-    void print_tokens();
+    void print_tokens() const;
 };
 
 #endif // __LEXER_H__
