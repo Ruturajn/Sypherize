@@ -1,0 +1,72 @@
+t ::==
+    | int
+    | @ t
+
+vdecl ::==
+    | t : id := exp
+
+arg ::==
+    | t : id
+
+args ::==
+    | arg1, ..., argn
+
+fdecl ::==
+    | t : id ( args ) block
+
+block ::==
+    | { stmt1, ..., stmt2 }
+
+stmt ::==
+    | lhs := exp
+    | vdecl
+    | return exp
+    | return
+    | exp ( exp1, ..., expn )
+    | if_stmt
+    | for ( vdecls; exp_opt; stmt_opt) block
+    | while ( exp ) block
+
+if_stmt ::==
+    | if ( exp ) block else_stmt
+
+else_stmt ::==
+    | epsilon /* Empty */
+    | else block
+    | else if_stmt
+
+lhs ::==
+    | id
+    | exp1 [exp2]
+
+exp ::==
+    | integer
+    | id
+    | t [exp]
+    | exp ( exp1, ..., expn )
+    | ( exp )
+    | exp bop exp
+    | uop exp
+    | exp1 [exp2]
+
+/**
+ * Binary Operators
+ * Precedence decreases downwards 
+ */
+bop ::==
+    | *
+    | /
+    | +
+    | -
+    | <
+    | <=
+    | >
+    | >=
+    | ==
+    | !=
+
+/* Unary operators */
+uop ::==
+    | -
+    | @
+    | &
