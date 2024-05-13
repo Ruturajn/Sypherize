@@ -56,10 +56,12 @@ public:
         TOK_STRING, // Literal string
         TOK_IDENT,  // Identifier
 
-        TOK_IF, // Keyword: "if"
-        TOK_ELSE,   // Keyword: "else"
         TOK_TYPE_INT,   // Keyword: "int"
         TOK_TYPE_STRING,    // Keyword: "string"
+        TOK_TYPE_BOOL,  // Keyword: "bool"
+
+        TOK_IF, // Keyword: "if"
+        TOK_ELSE,   // Keyword: "else"
         TOK_FOR,    // Keyword: "for"
         TOK_WHILE,  // Keyword: "while"
         TOK_RETURN, // Keyword: "return"

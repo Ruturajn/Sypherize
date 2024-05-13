@@ -65,17 +65,20 @@ bool Lexer::skip_until_comment_close() {
 
 Token Lexer::create_token(ssize_t tok_sz, enum Token::TokType t_ty) {
     std::string lexeme = file_data.substr(curr_pos, tok_sz);
-    if (lexeme == "if")
-        return Token(Token::TOK_IF, col_num, l_num, lexeme);
-
-    else if (lexeme == "else")
-        return Token(Token::TOK_ELSE, col_num, l_num, lexeme);
-
-    else if (lexeme == "int")
+    if (lexeme == "int")
         return Token(Token::TOK_TYPE_INT, col_num, l_num, lexeme);
 
     else if (lexeme == "string")
         return Token(Token::TOK_TYPE_STRING, col_num, l_num, lexeme);
+
+    else if (lexeme == "bool")
+        return Token(Token::TOK_TYPE_BOOL, col_num, l_num, lexeme);
+
+    else if (lexeme == "if")
+        return Token(Token::TOK_IF, col_num, l_num, lexeme);
+
+    else if (lexeme == "else")
+        return Token(Token::TOK_ELSE, col_num, l_num, lexeme);
 
     else if (lexeme == "for")
         return Token(Token::TOK_FOR, col_num, l_num, lexeme);
@@ -289,8 +292,11 @@ void Lexer::lex() {
                     lex_identifier();
                 else if (is_num(curr_c))
                     lex_number();
-                else
+                else {
+                    std::cerr << "Invalid character found at: [" << l_num <<
+                        "," << col_num << "]\n";
                     curr_pos += 1;
+                }
                 break;
         }
     }
