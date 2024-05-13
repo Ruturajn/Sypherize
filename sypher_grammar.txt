@@ -1,9 +1,11 @@
 t ::==
     | int
+    | string
+    | bool
     | @ t
 
 vdecl ::==
-    | t : id := exp
+    | t : id = exp
 
 arg ::==
     | t : id
@@ -18,7 +20,7 @@ block ::==
     | { stmt1, ..., stmt2 }
 
 stmt ::==
-    | lhs := exp
+    | lhs = exp
     | vdecl
     | return exp
     | return
@@ -51,7 +53,7 @@ exp ::==
 
 /**
  * Binary Operators
- * Precedence decreases downwards 
+ * Precedence decreases downwards
  */
 bop ::==
     | *
@@ -64,9 +66,13 @@ bop ::==
     | >=
     | ==
     | !=
+    | &
+    | |
+    | ^
 
 /* Unary operators */
 uop ::==
-    | -
+    | ~
+    | !
     | @
-    | &
+    | #

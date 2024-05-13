@@ -2,6 +2,31 @@
 #include <vector>
 
 ///===-------------------------------------------------------------------===///
+/// Types
+///===-------------------------------------------------------------------===///
+class Type {
+public:
+    Type() = default;
+    virtual ~Type() = default;
+};
+
+class TInt : public Type {};
+
+class TBool : public Type {};
+
+class TString : public Type {};
+
+class TVoid : public Type {};
+
+class TRef : public Type {
+private:
+    std::unique_ptr<Type> type;
+
+public:
+    TRef(std::unique_ptr<Type> _type) : type(std::move(_type)) {}
+};
+
+///===-------------------------------------------------------------------===///
 /// Expressions
 ///===-------------------------------------------------------------------===///
 
@@ -30,7 +55,7 @@ private:
     std::string val;
 
 public:
-    StringExpNode(std::string _val);
+    StringExpNode(const std::string& _val);
     void print_node() const override;
     std::unique_ptr<ExpNode> clone() override;
     std::vector<std::unique_ptr<ExpNode>> get_children() override;
@@ -52,7 +77,46 @@ private:
     std::string val;
 
 public:
-    IdExpNode(std::string _val);
+    IdExpNode(const std::string& _val);
+    void print_node() const override;
+    std::unique_ptr<ExpNode> clone() override;
+    std::vector<std::unique_ptr<ExpNode>> get_children() override;
+};
+
+class CArrExpNode : public ExpNode {
+private:
+    std::unique_ptr<Type> ty;
+    std::vector<std::unique_ptr<ExpNode>> exp_list;
+
+public:
+    CArrExpNode(std::unique_ptr<Type> _ty,
+                std::vector<std::unique_ptr<ExpNode>>& _exp_list);
+    void print_node() const override;
+    std::unique_ptr<ExpNode> clone() override;
+    std::vector<std::unique_ptr<ExpNode>> get_children() override;
+};
+
+class NewArrExpNode : public ExpNode {
+private:
+    std::unique_ptr<Type> ty;
+    std::unique_ptr<ExpNode> exp;
+
+public:
+    NewArrExpNode(std::unique_ptr<Type> _ty,
+                  std::unique_ptr<ExpNode> _exp);
+    void print_node() const override;
+    std::unique_ptr<ExpNode> clone() override;
+    std::vector<std::unique_ptr<ExpNode>> get_children() override;
+};
+
+class IndexExpNode : public ExpNode {
+private:
+    std::unique_ptr<ExpNode> exp;
+    std::unique_ptr<ExpNode> idx;
+
+public:
+    IndexExpNode(std::unique_ptr<ExpNode> _exp,
+                  std::unique_ptr<ExpNode> _idx);
     void print_node() const override;
     std::unique_ptr<ExpNode> clone() override;
     std::vector<std::unique_ptr<ExpNode>> get_children() override;
@@ -109,7 +173,7 @@ private:
 
 public:
     FunCallExpNode(std::unique_ptr<ExpNode> _func_name,
-                    std::vector<std::unique_ptr<ExpNode>> _func_args);
+                    std::vector<std::unique_ptr<ExpNode>>& _func_args);
     void print_node() const override;
     std::unique_ptr<ExpNode> clone() override;
     std::vector<std::unique_ptr<ExpNode>> get_children() override;
@@ -145,7 +209,7 @@ private:
     std::unique_ptr<ExpNode> exp;
 
 public:
-    DeclStmtNode(std::string _id, std::unique_ptr<ExpNode> _exp);
+    DeclStmtNode(const std::string& _id, std::unique_ptr<ExpNode> _exp);
     void print_stmt() const override;
     std::unique_ptr<StmtNode> clone() override;
     std::vector<std::unique_ptr<ExpNode>> get_children() override;
@@ -183,8 +247,8 @@ private:
 
 public:
     IfStmtNode(std::unique_ptr<ExpNode> _cond,
-                std::vector<std::unique_ptr<StmtNode>> _then_body,
-                std::vector<std::unique_ptr<StmtNode>> _else_body);
+                std::vector<std::unique_ptr<StmtNode>>& _then_body,
+                std::vector<std::unique_ptr<StmtNode>>& _else_body);
     void print_stmt() const override;
     std::unique_ptr<StmtNode> clone() override;
     std::vector<std::unique_ptr<ExpNode>> get_children() override;
@@ -198,10 +262,10 @@ private:
     std::vector<std::unique_ptr<StmtNode>> body;
 
 public:
-    ForStmtNode(std::vector<std::unique_ptr<ExpNode>> _decl_list,
+    ForStmtNode(std::vector<std::unique_ptr<ExpNode>>& _decl_list,
                 std::unique_ptr<ExpNode> _cond,
                 std::unique_ptr<StmtNode> _iter,
-                std::vector<std::unique_ptr<StmtNode>> _body);
+                std::vector<std::unique_ptr<StmtNode>>& _body);
     void print_stmt() const override;
     std::unique_ptr<StmtNode> clone() override;
     std::vector<std::unique_ptr<ExpNode>> get_children() override;
@@ -214,8 +278,49 @@ private:
 
 public:
     WhileStmtNode(std::unique_ptr<ExpNode> _cond,
-                std::vector<std::unique_ptr<StmtNode>> _body);
+                std::vector<std::unique_ptr<StmtNode>>& _body);
     void print_stmt() const override;
     std::unique_ptr<StmtNode> clone() override;
     std::vector<std::unique_ptr<ExpNode>> get_children() override;
+};
+
+///===-------------------------------------------------------------------===///
+/// Top Level Declarations
+///===-------------------------------------------------------------------===///
+class Decls {
+public:
+    Decls() = default;
+    virtual ~Decls() = default;
+};
+
+class FunDecl : public Decls {
+public:
+    std::unique_ptr<Type> frtype;
+    std::string fname;
+    std::vector<std::pair<std::unique_ptr<Type>, std::string>> args;
+    std::vector<std::unique_ptr<StmtNode>> block;
+
+    FunDecl(std::unique_ptr<Type> _frtype,
+            const std::string& _fname,
+            std::vector<std::pair<std::unique_ptr<Type>, std::string>>& _args,
+            std::vector<std::unique_ptr<StmtNode>>& _block);
+};
+
+class GlobalDecl : public Decls {
+public:
+    std::string id;
+    std::unique_ptr<ExpNode> exp;
+
+    GlobalDecl(const std::string& _id,
+               std::unique_ptr<ExpNode> _exp);
+};
+
+///===-------------------------------------------------------------------===///
+/// Program
+///===-------------------------------------------------------------------===///
+class Program {
+public:
+    std::vector<std::unique_ptr<Decls>> decl_list;
+
+    Program(std::vector<std::unique_ptr<Decls>>& _decl_list);
 };
