@@ -238,6 +238,18 @@ public:
                 std::cout << "TOK_IDENT: " << lexeme;
                 break;
 
+            case TOK_TYPE_INT:
+                std::cout << "TOK_TYPE_INT";
+                break;
+
+            case TOK_TYPE_STRING:
+                std::cout << "TOK_TYPE_STRING";
+                break;
+
+            case TOK_TYPE_BOOL:
+                std::cout << "TOK_TYPE_BOOL";
+                break;
+
             case TOK_IF:
                 std::cout << "TOK_IF";
                 break;
@@ -246,13 +258,6 @@ public:
                 std::cout << "TOK_ELSE";
                 break;
 
-            case TOK_TYPE_INT:
-                std::cout << "TOK_TYPE_INT";
-                break;
-
-            case TOK_TYPE_STRING:
-                std::cout << "TOK_TYPE_STRING";
-                break;
 
             case TOK_FOR:
                 std::cout << "TOK_FOR";
