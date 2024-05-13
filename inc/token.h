@@ -272,6 +272,7 @@ public:
                 std::cout << "TOK_EOF";
                 break;
         }
+        std::cout << "<" << line_num << "," << col_num << ">";
     }
 };
 

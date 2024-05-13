@@ -15,7 +15,7 @@ bool Lexer::skip_until_newline() {
         return false;
 
     curr_pos += 1;
-    col_num = 0;
+    col_num = 1;
     l_num += 1;
     return file_data[curr_pos - 1] == '\n';
 }
@@ -36,16 +36,20 @@ bool Lexer::skip_until_comment_close() {
 
         if (file_data[curr_pos] == '\n') {
             l_num += 1;
-            col_num = 0;
+            col_num = 1;
         }
 
-        if (file_data[curr_pos] == '$')
+        if (file_data[curr_pos] == '$') {
             skip_until_newline();
+            continue;
+        }
 
         if (file_data[curr_pos] == '(' &&
             ((curr_pos + 1) < data_sz) &&
-            file_data[curr_pos + 1] == '^')
+            file_data[curr_pos + 1] == '^') {
             skip_until_comment_close();
+            continue;
+        }
 
         curr_pos += 1;
         col_num += 1;
@@ -270,13 +274,14 @@ void Lexer::lex() {
 
             case '\n':
                 l_num += 1;
-                col_num = 0;
+                col_num = 1;
                 curr_pos += 1;
                 break;
 
             case ' ':
             case '\r':
                 curr_pos += 1;
+                col_num += 1;
                 break;
 
             default:
