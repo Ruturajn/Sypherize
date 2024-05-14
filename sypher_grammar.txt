@@ -69,6 +69,8 @@ bop ::==
     | &
     | |
     | ^
+    | &&
+    | ||
 
 /* Unary operators */
 uop ::==

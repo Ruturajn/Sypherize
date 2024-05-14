@@ -234,11 +234,17 @@ void Lexer::lex() {
                 break;
 
             case '&':
-                push_tok(1, Token::TOK_BITAND);
+                if (check_next() == '&')
+                    push_tok(2, Token::TOK_LOGAND);
+                else
+                    push_tok(1, Token::TOK_BITAND);
                 break;
 
             case '|':
-                push_tok(1, Token::TOK_BITOR);
+                if (check_next() == '|')
+                    push_tok(2, Token::TOK_LOGOR);
+                else
+                    push_tok(1, Token::TOK_BITOR);
                 break;
 
             case '^':

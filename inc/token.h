@@ -44,6 +44,8 @@ public:
         TOK_LT,     // "<"
         TOK_GTE,    // ">="
         TOK_LTE,    // "<="
+        TOK_LOGAND, // "&&"
+        TOK_LOGOR,  // "||"
 
         TOK_DEREF, // "@"
         TOK_ADDROF, // "#"
@@ -204,6 +206,14 @@ public:
 
             case TOK_LTE:
                 std::cout << "TOK_LTE";
+                break;
+
+            case TOK_LOGAND:
+                std::cout << "TOK_LOGAND";
+                break;
+
+            case TOK_LOGOR:
+                std::cout << "TOK_LOGOR";
                 break;
 
             case TOK_DEREF:
