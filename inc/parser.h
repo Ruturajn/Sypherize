@@ -4,6 +4,7 @@
 #include "./ast.h"
 #include "./token.h"
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -13,7 +14,23 @@ public:
     ssize_t curr_pos;
     ssize_t tok_len;
     std::unordered_map<Token::TokType, int> precedence;
+
+    // This map binds function names to their local scope, which itself is a map
+    // that binds variables used in the local scope to their type.
+    // Global variables are available in all scopes, using the "__global__"
+    // key, in the map.
+    std::unordered_map<std::string,
+        std::unordered_map<std::string, Type*>> env;
+
+    static const std::string global_key;
+
     Program prog;
+
+    enum DeclType {
+        DECL_TYPE_INT,
+        DECL_TYPE_STRING,
+        DECL_TYPE_BOOL,
+    };
 
     Parser(std::vector<Token>& _tok_list)
         : tok_list(_tok_list), curr_pos(0), tok_len(_tok_list.size()),
@@ -71,12 +88,46 @@ public:
         return true;
     }
 
+    void var_bind_ctxt(const std::string& fun_ctxt,
+                       const std::string& var_name,
+                       Type* val) {
+
+        if (env.find(fun_ctxt) == env.end())
+            env[fun_ctxt] = {};
+
+        if (env[fun_ctxt].find(var_name) != env[fun_ctxt].end())
+            std::cout << "[ERR]: Redefinition of variable " << var_name <<
+                         " at: " <<
+                         "[" << tok_list[curr_pos].line_num << "," <<
+                         tok_list[curr_pos].line_num << "]\n";
+
+        env[fun_ctxt][var_name] = val;
+    }
+
+    Type* parse_type(int in_count, enum DeclType dt) {
+        if (in_count == 0) {
+            switch (dt) {
+                case DECL_TYPE_INT:
+                    return new TInt();
+                    break;
+                case DECL_TYPE_STRING:
+                    return new TString();
+                    break;
+                case DECL_TYPE_BOOL:
+                    return new TBool();
+                    break;
+            }
+        }
+
+        return new TRef(parse_type(in_count - 1,dt));
+    }
+
     std::unique_ptr<ExpNode> parse_expr();
     std::unique_ptr<StmtNode> parse_stmt();
     std::pair<std::unique_ptr<Type>, std::string> parse_arg();
-    std::unique_ptr<Decls> parse_gvdecl();
-    std::unique_ptr<Decls> parse_fdecl();
-    std::unique_ptr<Decls> parse_decl();
+    Decls* parse_gvdecl();
+    Decls* parse_fdecl();
+    Decls* parse_decl();
     void parse_prog();
 };
 

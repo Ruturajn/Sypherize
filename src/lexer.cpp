@@ -65,6 +65,7 @@ bool Lexer::skip_until_comment_close() {
 
 Token Lexer::create_token(ssize_t tok_sz, enum Token::TokType t_ty) {
     std::string lexeme = file_data.substr(curr_pos, tok_sz);
+
     if (lexeme == "int")
         return Token(Token::TOK_TYPE_INT, col_num, l_num, lexeme);
 
@@ -91,6 +92,13 @@ Token Lexer::create_token(ssize_t tok_sz, enum Token::TokType t_ty) {
 
     else if (lexeme == "fun")
         return Token(Token::TOK_FUNCTION, col_num, l_num, lexeme);
+
+    else if (lexeme == "__global__") {
+        std::cerr << "Disallowed/Reserved variable name/function name"
+            " `__global__` used at: [" << l_num <<
+            "," << col_num << "]\n";
+        return Token(t_ty, col_num, l_num, lexeme);
+    }
 
     else
         return Token(t_ty, col_num, l_num, lexeme);
@@ -123,6 +131,18 @@ void Lexer::lex_identifier() {
         final_pos += 1;
     }
     push_tok((final_pos - curr_pos), Token::TOK_IDENT);
+}
+
+void Lexer::lex_string() {
+    curr_pos += 1;
+    ssize_t final_pos = curr_pos;
+    while (final_pos < data_sz) {
+        if (file_data[final_pos] == '"')
+            break;
+        final_pos += 1;
+    }
+    push_tok((final_pos - curr_pos), Token::TOK_STRING);
+    curr_pos += 1;
 }
 
 void Lexer::lex() {
@@ -266,7 +286,7 @@ void Lexer::lex() {
                 if (check_next() == '=')
                     push_tok(2, Token::TOK_EQEQUAL);
                 else
-                    push_tok(2, Token::TOK_EQUAL);
+                    push_tok(1, Token::TOK_EQUAL);
                 break;
 
             case '@':
@@ -285,6 +305,10 @@ void Lexer::lex() {
                 l_num += 1;
                 col_num = 1;
                 curr_pos += 1;
+                break;
+
+            case '"':
+                lex_string();
                 break;
 
             case ' ':

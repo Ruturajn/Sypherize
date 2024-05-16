@@ -268,7 +268,6 @@ public:
                 std::cout << "TOK_ELSE";
                 break;
 
-
             case TOK_FOR:
                 std::cout << "TOK_FOR";
                 break;

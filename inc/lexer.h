@@ -33,6 +33,7 @@ public:
     void push_tok(ssize_t tok_sz, enum Token::TokType t_ty);
     void lex_number();
     void lex_identifier();
+    void lex_string();
     void lex();
     void print_tokens() const;
 };

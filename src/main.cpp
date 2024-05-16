@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include "../inc/lexer.h"
+#include "../inc/parser.h"
 
 int main(int argc, char* argv[]) {
 
@@ -34,6 +35,9 @@ int main(int argc, char* argv[]) {
     lexer.print_tokens();
 
     // Parse
+    Parser parser(lexer.tok_list);
+    parser.parse_prog();
+    parser.prog.print_prog();
 
     return 0;
 }
