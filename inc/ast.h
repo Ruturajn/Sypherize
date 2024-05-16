@@ -698,8 +698,7 @@ class Program {
 public:
     std::vector<std::unique_ptr<Decls>> decl_list;
 
-    Program(std::vector<std::unique_ptr<Decls>>& _decl_list)
-        : decl_list(_decl_list) {}
+    Program() : decl_list({}) {}
 
     void print_prog() const {
         std::cout << "PROG:\n";

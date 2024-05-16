@@ -1,7 +1,9 @@
 #ifndef __PARSER_H__
 #define __PARSER_H__
 
+#include "./ast.h"
 #include "./token.h"
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -11,9 +13,12 @@ public:
     ssize_t curr_pos;
     ssize_t tok_len;
     std::unordered_map<Token::TokType, int> precedence;
+    Program prog;
 
     Parser(std::vector<Token>& _tok_list)
-        : tok_list(_tok_list), curr_pos(0), tok_len(_tok_list.size()) {
+        : tok_list(_tok_list), curr_pos(0), tok_len(_tok_list.size()),
+            precedence({}), prog(Program()) {
+
         precedence[Token::TOK_MULT] = 100;
         precedence[Token::TOK_DIV] = 100;
         precedence[Token::TOK_MODULUS] = 100;
@@ -39,7 +44,8 @@ public:
         precedence[Token::TOK_BITOR] = 5;
 
         precedence[Token::TOK_LOGAND] = 5;
-        precedence[Token::TOK_LOGOR] = 5;
+
+        precedence[Token::TOK_LOGOR] = 3;
     }
 
     Token::TokType check_next() const {
@@ -54,6 +60,24 @@ public:
 
     void advance() { curr_pos += 1; }
 
+    bool expect(Token::TokType t_ty, const char* expected) {
+        if (tok_list[curr_pos].tok_ty != t_ty) {
+            std::cout << "[ERR]: Expected " << expected << " at: " <<
+                "[" << tok_list[curr_pos].line_num << "," <<
+                tok_list[curr_pos].line_num << "]\n";
+            return false;
+        }
+
+        return true;
+    }
+
+    std::unique_ptr<ExpNode> parse_expr();
+    std::unique_ptr<StmtNode> parse_stmt();
+    std::pair<std::unique_ptr<Type>, std::string> parse_arg();
+    std::unique_ptr<Decls> parse_gvdecl();
+    std::unique_ptr<Decls> parse_fdecl();
+    std::unique_ptr<Decls> parse_decl();
+    void parse_prog();
 };
 
 #endif // __PARSER_H__
