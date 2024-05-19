@@ -102,13 +102,88 @@ public:
         }
     }
 
+    int get_precedence(enum Token::TokType t_ty) {
+        if (precedence.find(t_ty) != precedence.end())
+            return precedence[t_ty];
+
+        /* std::cout << "[ERR]: Encountered invalid binary op at: " << */
+        /*     "[" << tok_list[curr_pos].line_num << "," << */
+        /*     tok_list[curr_pos].col_num << "]\n"; */
+
+        return -1;
+    }
+
+    enum BinopExpNode::BinopType conv_binop(const Token& t) const {
+        switch (t.tok_ty) {
+            case Token::TOK_PLUS:
+                return BinopExpNode::BINOP_PLUS;
+
+            case Token::TOK_MINUS:
+                return BinopExpNode::BINOP_MINUS;
+
+            case Token::TOK_MULT:
+                return BinopExpNode::BINOP_MULT;
+
+            case Token::TOK_DIV:
+                return BinopExpNode::BINOP_DIVIDE;
+
+            case Token::TOK_LSHIFT:
+                return BinopExpNode::BINOP_LSHIFT;
+
+            case Token::TOK_RSHIFT:
+                return BinopExpNode::BINOP_RSHIFT;
+
+            case Token::TOK_MODULUS:
+                return BinopExpNode::BINOP_MODULUS;
+
+            case Token::TOK_BITAND:
+                return BinopExpNode::BINOP_BITAND;
+
+            case Token::TOK_BITOR:
+                return BinopExpNode::BINOP_BITOR;
+
+            case Token::TOK_BITXOR:
+                return BinopExpNode::BINOP_BITXOR;
+
+            case Token::TOK_EQEQUAL:
+                return BinopExpNode::BINOP_EQEQUAL;
+
+            case Token::TOK_NEQUAL:
+                return BinopExpNode::BINOP_NEQUAL;
+
+            case Token::TOK_GT:
+                return BinopExpNode::BINOP_GT;
+
+            case Token::TOK_LT:
+                return BinopExpNode::BINOP_LT;
+
+            case Token::TOK_GTE:
+                return BinopExpNode::BINOP_GTE;
+
+            case Token::TOK_LTE:
+                return BinopExpNode::BINOP_LTE;
+
+            case Token::TOK_LOGAND:
+                return BinopExpNode::BINOP_LOGAND;
+
+            case Token::TOK_LOGOR:
+                return BinopExpNode::BINOP_LOGOR;
+
+            default:
+                std::cout << "[ERR]: Encountered invalid token for binop "
+                    "conversion at: " <<
+                    "[" << t.line_num << "," << t.col_num << "]\n";
+                return BinopExpNode::BINOP_PLUS;
+        }
+    }
+
     void advance() { curr_pos += 1; }
 
     bool expect(Token::TokType t_ty, const char* expected) {
         if (tok_list[curr_pos].tok_ty != t_ty) {
             std::cout << "[ERR]: Expected " << expected << " at: " <<
                 "[" << tok_list[curr_pos].line_num << "," <<
-                tok_list[curr_pos].line_num << "]\n";
+                tok_list[curr_pos].col_num << "]\n";
             return false;
         }
 
@@ -126,7 +201,7 @@ public:
             std::cout << "[ERR]: Redefinition of variable " << var_name <<
                          " at: " <<
                          "[" << tok_list[curr_pos].line_num << "," <<
-                         tok_list[curr_pos].line_num << "]\n";
+                         tok_list[curr_pos].col_num << "]\n";
 
         env[fun_ctxt][var_name] = val;
     }
@@ -149,8 +224,9 @@ public:
         return new TRef(parse_type(in_count - 1,dt));
     }
 
-    std::unique_ptr<ExpNode> parse_expr(int curr_prec,
-                                        std::unique_ptr<ExpNode> exp);
+    std::unique_ptr<ExpNode> parse_binop(int prev_prec,
+                                         std::unique_ptr<ExpNode> lhs);
+    std::unique_ptr<ExpNode> parse_expr(int prev_prec);
     std::unique_ptr<StmtNode> parse_stmt();
     std::pair<std::unique_ptr<Type>, std::string> parse_arg();
     Decls* parse_gvdecl();

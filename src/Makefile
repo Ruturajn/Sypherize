@@ -2,7 +2,7 @@
 # @author: Ruturaj A. Nanoti
 
 CC=g++
-CFLAGS=-g -Wall -Werror -Wextra -pedantic -Wno-unused-parameter
+CFLAGS=-g -Wall -Werror -Wextra -pedantic #-Wno-unused-parameter
 
 #==============================================================================
 

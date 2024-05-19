@@ -3,8 +3,30 @@
 
 const std::string Parser::global_key = "__global__";
 
-std::unique_ptr<ExpNode> Parser::parse_expr(int curr_prec,
-                                            std::unique_ptr<ExpNode> exp) {
+std::unique_ptr<ExpNode> Parser::parse_binop(int prev_prec,
+                                             std::unique_ptr<ExpNode> lhs) {
+    Token curr_tok = tok_list[curr_pos];
+
+    while (prev_prec < get_precedence(curr_tok.tok_ty)) {
+        advance();
+
+        if (curr_pos >= tok_len)
+            return lhs;
+
+        auto rhs = parse_expr(get_precedence(curr_tok.tok_ty));
+
+        auto binop = std::make_unique<BinopExpNode>(conv_binop(curr_tok),
+                        std::move(lhs), std::move(rhs));
+
+        lhs = std::move(binop);
+
+        curr_tok = tok_list[curr_pos];
+    }
+
+    return lhs;
+}
+
+std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
     switch (tok_list[curr_pos].tok_ty) {
         case Token::TOK_NUMBER:
             if (is_next_binop()) {
@@ -13,7 +35,7 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int curr_prec,
 
                 advance();
 
-                return parse_expr(curr_prec, std::move(lhs));
+                return parse_binop(prev_prec, std::move(lhs));
             }
             else
                 return std::make_unique<NumberExpNode>(stol(tok_list[curr_pos].lexeme));
@@ -53,13 +75,17 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int curr_prec,
         case Token::TOK_LTE:
         case Token::TOK_LOGAND:
         case Token::TOK_LOGOR:
+            std::cout << "[ERR]: Invalid syntax at parse_expr, found binary"
+                " op without preceding compatible type expr: " <<
+                "[" << tok_list[curr_pos].line_num << "," <<
+                tok_list[curr_pos].col_num << "]\n";
             return nullptr;
             break;
 
         default:
             std::cout << "[ERR]: Invalid syntax at parse_expr: " <<
                 "[" << tok_list[curr_pos].line_num << "," <<
-                tok_list[curr_pos].line_num << "]\n";
+                tok_list[curr_pos].col_num << "]\n";
             return nullptr;
     }
 }
@@ -95,7 +121,7 @@ Decls* Parser::parse_fdecl() {
             default:
                 std::cout << "[ERR]: Invalid syntax at: " <<
                     "[" << tok_list[curr_pos].line_num << "," <<
-                    tok_list[curr_pos].line_num << "]\n";
+                    tok_list[curr_pos].col_num << "]\n";
                 return nullptr;
         }
 
@@ -122,7 +148,7 @@ Decls* Parser::parse_gvdecl() {
         default:
             std::cout << "[ERR]: Invalid syntax at: " <<
                 "[" << tok_list[curr_pos].line_num << "," <<
-                tok_list[curr_pos].line_num << "]\n";
+                tok_list[curr_pos].col_num << "]\n";
             return nullptr;
     }
 
@@ -150,7 +176,7 @@ Decls* Parser::parse_gvdecl() {
     expect(Token::TOK_EQUAL, "`=` operator");
     advance();
 
-    std::unique_ptr<ExpNode> init_exp = parse_expr(0, nullptr);
+    std::unique_ptr<ExpNode> init_exp = parse_expr(0);
     advance();
 
     expect(Token::TOK_SEMIC, "terminating `;` operator");
@@ -174,7 +200,7 @@ Decls* Parser::parse_decl() {
         default:
             std::cout << "[ERR]: Invalid syntax at: " <<
                 "[" << tok_list[curr_pos].line_num << "," <<
-                tok_list[curr_pos].line_num << "]\n";
+                tok_list[curr_pos].col_num << "]\n";
             return nullptr;
             break;
     }

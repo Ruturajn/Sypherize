@@ -52,8 +52,6 @@ public:
     ExpNode() = default;
     virtual ~ExpNode() = default;
     virtual void print_node(int indent) const = 0;
-    virtual std::unique_ptr<ExpNode> clone() = 0;
-    virtual std::vector<ExpNode*> get_children() = 0;
 };
 
 class NumberExpNode : public ExpNode {
@@ -67,14 +65,6 @@ public:
         for (int i = 0; i < indent; i++)
             std::cout << " ";
         std::cout << "NUM: " << val << "\n";
-    }
-
-    std::unique_ptr<ExpNode> clone() override {
-        return std::make_unique<NumberExpNode>(*this);
-    }
-
-    std::vector<ExpNode*> get_children() override {
-        return {};
     }
 };
 
@@ -90,14 +80,6 @@ public:
             std::cout << " ";
         std::cout << "STRING: " << val << "\n";
     }
-
-    std::unique_ptr<ExpNode> clone() override {
-        return std::make_unique<StringExpNode>(*this);
-    }
-
-    std::vector<ExpNode*> get_children() override {
-        return {};
-    }
 };
 
 class BoolExpNode : public ExpNode {
@@ -112,14 +94,6 @@ public:
             std::cout << " ";
         std::cout << "BOOL: " << val << "\n";
     }
-
-    std::unique_ptr<ExpNode> clone() override {
-        return std::make_unique<BoolExpNode>(*this);
-    }
-
-    std::vector<ExpNode*> get_children() override {
-        return {};
-    }
 };
 
 class IdExpNode : public ExpNode {
@@ -133,14 +107,6 @@ public:
         for (int i = 0; i < indent; i++)
             std::cout << " ";
         std::cout << "ID: " << val << "\n";
-    }
-
-    std::unique_ptr<ExpNode> clone() override {
-        return std::make_unique<IdExpNode>(*this);
-    }
-
-    std::vector<ExpNode*> get_children() override {
-        return {};
     }
 };
 
@@ -171,9 +137,6 @@ public:
             e->print_node(indent + 8);
         }
     }
-
-    std::unique_ptr<ExpNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 class NewArrExpNode : public ExpNode {
@@ -199,9 +162,6 @@ public:
 
         exp->print_node(indent + 8);
     }
-
-    std::unique_ptr<ExpNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 class IndexExpNode : public ExpNode {
@@ -226,9 +186,6 @@ public:
         exp->print_node(indent + 8);
         idx->print_node(indent + 8);
     }
-
-    std::unique_ptr<ExpNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 class BinopExpNode : public ExpNode {
@@ -267,10 +224,7 @@ public:
         for (int i = 0; i < indent; i++)
             std::cout << " ";
 
-        std::cout << "BINOP:\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
+        std::cout << "BINOP: ";
 
         switch (binop) {
             case BINOP_PLUS:
@@ -330,18 +284,18 @@ public:
         }
         std::cout << "\n";
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < indent + 4; i++)
             std::cout << " ";
 
         std::cout << "LHS:\n";
         left->print_node(indent + 8);
 
-        std::cout << "LHS:\n";
+        for (int i = 0; i < indent + 4; i++)
+            std::cout << " ";
+
+        std::cout << "RHS:\n";
         right->print_node(indent + 8);
     }
-
-    std::unique_ptr<ExpNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 class UnopExpNode : public ExpNode {
@@ -388,9 +342,6 @@ public:
         std::cout << "EXP:\n";
         exp->print_node(indent + 8);
     }
-
-    std::unique_ptr<ExpNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 class FunCallExpNode : public ExpNode {
@@ -424,9 +375,6 @@ public:
         for (auto &arg: func_args)
             arg->print_node(indent + 8);
     }
-
-    std::unique_ptr<ExpNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -438,8 +386,6 @@ public:
     StmtNode() = default;
     virtual ~StmtNode() = default;
     virtual void print_stmt(int indent) const = 0;
-    virtual std::unique_ptr<StmtNode> clone() = 0;
-    virtual std::vector<ExpNode*> get_children() = 0;
 };
 
 class AssnStmtNode : public StmtNode {
@@ -465,9 +411,6 @@ public:
         std::cout << "RHS:\n";
         rhs->print_node(indent + 8);
     }
-
-    std::unique_ptr<StmtNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 class DeclStmtNode : public StmtNode {
@@ -496,9 +439,6 @@ public:
         std::cout << "EXP:\n";
         exp->print_node(indent + 8);
     }
-
-    std::unique_ptr<StmtNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 class SCallStmtNode : public StmtNode {
@@ -532,9 +472,6 @@ public:
         for (auto &arg: fargs)
             arg->print_node(indent + 8);
     }
-
-    std::unique_ptr<StmtNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 class RetStmtNode : public StmtNode {
@@ -557,9 +494,6 @@ public:
 
         exp->print_node(indent + 8);
     }
-
-    std::unique_ptr<StmtNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 class IfStmtNode : public StmtNode {
@@ -600,9 +534,6 @@ public:
         for (auto &s: else_body)
             s->print_stmt(indent + 8);
     }
-
-    std::unique_ptr<StmtNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 class ForStmtNode : public StmtNode {
@@ -643,9 +574,6 @@ public:
         for (auto &b: body)
             b->print_stmt(indent + 8);
     }
-
-    std::unique_ptr<StmtNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 class WhileStmtNode : public StmtNode {
@@ -674,9 +602,6 @@ public:
         for (auto &b: body)
             b->print_stmt(indent + 8);
     }
-
-    std::unique_ptr<StmtNode> clone() override;
-    std::vector<ExpNode*> get_children() override;
 };
 
 ///===-------------------------------------------------------------------===///
