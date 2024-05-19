@@ -106,10 +106,6 @@ public:
         if (precedence.find(t_ty) != precedence.end())
             return precedence[t_ty];
 
-        /* std::cout << "[ERR]: Encountered invalid binary op at: " << */
-        /*     "[" << tok_list[curr_pos].line_num << "," << */
-        /*     tok_list[curr_pos].col_num << "]\n"; */
-
         return -1;
     }
 

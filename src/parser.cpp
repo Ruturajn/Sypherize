@@ -28,6 +28,20 @@ std::unique_ptr<ExpNode> Parser::parse_binop(int prev_prec,
 
 std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
     switch (tok_list[curr_pos].tok_ty) {
+        case Token::TOK_LPAREN: {
+            advance();
+
+            // Ignore previous precedence
+            auto ret = parse_expr(0);
+
+            advance();
+
+            expect(Token::TOK_RPAREN, "`)` closing paren");
+
+            return ret;
+            break;
+        }
+
         case Token::TOK_NUMBER:
             if (is_next_binop()) {
                 std::unique_ptr<ExpNode> lhs =
@@ -46,6 +60,7 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
             break;
 
         case Token::TOK_IDENT:
+            // TODO: Parse function calls
             return std::make_unique<IdExpNode>(tok_list[curr_pos].lexeme);
             break;
 
