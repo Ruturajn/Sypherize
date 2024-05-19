@@ -75,6 +75,33 @@ public:
         return tok_list[curr_pos + 1].tok_ty;
     }
 
+    bool is_next_binop() const {
+        Token::TokType next_tok = check_next();
+        switch (next_tok) {
+            case Token::TOK_PLUS:
+            case Token::TOK_MINUS:
+            case Token::TOK_MULT:
+            case Token::TOK_DIV:
+            case Token::TOK_LSHIFT:
+            case Token::TOK_RSHIFT:
+            case Token::TOK_MODULUS:
+            case Token::TOK_BITAND:
+            case Token::TOK_BITOR:
+            case Token::TOK_BITXOR:
+            case Token::TOK_EQEQUAL:
+            case Token::TOK_NEQUAL:
+            case Token::TOK_GT:
+            case Token::TOK_LT:
+            case Token::TOK_GTE:
+            case Token::TOK_LTE:
+            case Token::TOK_LOGAND:
+            case Token::TOK_LOGOR:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     void advance() { curr_pos += 1; }
 
     bool expect(Token::TokType t_ty, const char* expected) {
@@ -122,7 +149,8 @@ public:
         return new TRef(parse_type(in_count - 1,dt));
     }
 
-    std::unique_ptr<ExpNode> parse_expr();
+    std::unique_ptr<ExpNode> parse_expr(int curr_prec,
+                                        std::unique_ptr<ExpNode> exp);
     std::unique_ptr<StmtNode> parse_stmt();
     std::pair<std::unique_ptr<Type>, std::string> parse_arg();
     Decls* parse_gvdecl();

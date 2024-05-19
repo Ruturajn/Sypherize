@@ -56,6 +56,8 @@ public:
 
         TOK_NUMBER, // Literal number (Positive or negative int)
         TOK_STRING, // Literal string
+        TOK_BOOL_TRUE,  // Literal true
+        TOK_BOOL_FALSE, // Literal false
         TOK_IDENT,  // Identifier
 
         TOK_TYPE_INT,   // Keyword: "int"
@@ -242,6 +244,14 @@ public:
 
             case TOK_STRING:
                 std::cout << "TOK_STRING: " << lexeme;
+                break;
+
+            case TOK_BOOL_TRUE:
+                std::cout << "TOK_BOOL_TRUE: " << lexeme;
+                break;
+
+            case TOK_BOOL_FALSE:
+                std::cout << "TOK_BOOL_FALSE: " << lexeme;
                 break;
 
             case TOK_IDENT:

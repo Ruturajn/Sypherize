@@ -3,14 +3,59 @@
 
 const std::string Parser::global_key = "__global__";
 
-std::unique_ptr<ExpNode> Parser::parse_expr() {
+std::unique_ptr<ExpNode> Parser::parse_expr(int curr_prec,
+                                            std::unique_ptr<ExpNode> exp) {
     switch (tok_list[curr_pos].tok_ty) {
         case Token::TOK_NUMBER:
-            return std::make_unique<NumberExpNode>(stol(tok_list[curr_pos].lexeme));
+            if (is_next_binop()) {
+                std::unique_ptr<ExpNode> lhs =
+                    std::make_unique<NumberExpNode>(stol(tok_list[curr_pos].lexeme));
+
+                advance();
+
+                return parse_expr(curr_prec, std::move(lhs));
+            }
+            else
+                return std::make_unique<NumberExpNode>(stol(tok_list[curr_pos].lexeme));
             break;
+
         case Token::TOK_STRING:
             return std::make_unique<StringExpNode>(tok_list[curr_pos].lexeme);
             break;
+
+        case Token::TOK_IDENT:
+            return std::make_unique<IdExpNode>(tok_list[curr_pos].lexeme);
+            break;
+
+        case Token::TOK_BOOL_TRUE:
+            return std::make_unique<BoolExpNode>(true);
+            break;
+
+        case Token::TOK_BOOL_FALSE:
+            return std::make_unique<BoolExpNode>(false);
+            break;
+
+        case Token::TOK_PLUS:
+        case Token::TOK_MINUS:
+        case Token::TOK_MULT:
+        case Token::TOK_DIV:
+        case Token::TOK_LSHIFT:
+        case Token::TOK_RSHIFT:
+        case Token::TOK_MODULUS:
+        case Token::TOK_BITAND:
+        case Token::TOK_BITOR:
+        case Token::TOK_BITXOR:
+        case Token::TOK_EQEQUAL:
+        case Token::TOK_NEQUAL:
+        case Token::TOK_GT:
+        case Token::TOK_LT:
+        case Token::TOK_GTE:
+        case Token::TOK_LTE:
+        case Token::TOK_LOGAND:
+        case Token::TOK_LOGOR:
+            return nullptr;
+            break;
+
         default:
             std::cout << "[ERR]: Invalid syntax at parse_expr: " <<
                 "[" << tok_list[curr_pos].line_num << "," <<
@@ -105,7 +150,7 @@ Decls* Parser::parse_gvdecl() {
     expect(Token::TOK_EQUAL, "`=` operator");
     advance();
 
-    std::unique_ptr<ExpNode> init_exp = parse_expr();
+    std::unique_ptr<ExpNode> init_exp = parse_expr(0, nullptr);
     advance();
 
     expect(Token::TOK_SEMIC, "terminating `;` operator");

@@ -75,6 +75,12 @@ Token Lexer::create_token(ssize_t tok_sz, enum Token::TokType t_ty) {
     else if (lexeme == "bool")
         return Token(Token::TOK_TYPE_BOOL, col_num, l_num, lexeme);
 
+    else if (lexeme == "true")
+        return Token(Token::TOK_BOOL_TRUE, col_num, l_num, lexeme);
+
+    else if (lexeme == "false")
+        return Token(Token::TOK_BOOL_FALSE, col_num, l_num, lexeme);
+
     else if (lexeme == "if")
         return Token(Token::TOK_IF, col_num, l_num, lexeme);
 
