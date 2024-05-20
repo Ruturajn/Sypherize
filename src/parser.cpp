@@ -216,7 +216,6 @@ Decls* Parser::parse_fdecl() {
 
     std::vector<std::pair<Type*, std::string>> params {};
 
-    // TODO: parse commas, as argument separators.
     while (tok_list[curr_pos].tok_ty != Token::TOK_RPAREN) {
         switch (tok_list[curr_pos].tok_ty) {
             case Token::TOK_TYPE_INT:
