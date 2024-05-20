@@ -43,6 +43,18 @@ public:
     }
 };
 
+class TArray : public Type {
+private:
+    Type *type;
+
+public:
+    TArray(Type* _type) : type(_type) {}
+    void print_type() const override {
+        std::cout << "[TArray]";
+        type->print_type();
+    }
+};
+
 ///===-------------------------------------------------------------------===///
 /// Expressions
 ///===-------------------------------------------------------------------===///
@@ -476,12 +488,11 @@ public:
 
 class RetStmtNode : public StmtNode {
 private:
-    std::unique_ptr<Type> ty;
     std::unique_ptr<ExpNode> exp;
 
 public:
-    RetStmtNode(std::unique_ptr<Type> _ty, std::unique_ptr<ExpNode> _exp)
-        : ty(std::move(_ty)), exp(std::move(_exp)) {}
+    RetStmtNode(std::unique_ptr<ExpNode> _exp = nullptr)
+        : exp(std::move(_exp)) {}
 
     void print_stmt(int indent) const override {
         for (int i = 0; i < indent; i++)
@@ -489,10 +500,14 @@ public:
 
         std::cout << "RETURN:\n";
 
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
+        if (exp != nullptr)
+            exp->print_node(indent + 4);
+        else {
+            for (int i = 0; i < indent + 4; i++)
+                std::cout << " ";
 
-        exp->print_node(indent + 8);
+            std::cout << "void\n";
+        }
     }
 };
 
@@ -639,13 +654,23 @@ public:
 
         std::cout << "FUNNAME: " << fname << "\n";
 
-        std::cout << "FUNARGS: ";
+        for (int i = 0; i < indent + 4; i++)
+            std::cout << " ";
+
+        std::cout << "FUNARGS:\n";
 
         for (auto &arg: args) {
+
+            for (int i = 0; i < indent + 8; i++)
+                std::cout << " ";
+
             std::cout << "ARG:";
             arg.first->print_type();
             std::cout << arg.second << "\n";
         }
+
+        for (int i = 0; i < indent + 4; i++)
+            std::cout << " ";
 
         std::cout << "FUNBODY:\n";
 

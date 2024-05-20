@@ -32,6 +32,25 @@ public:
         DECL_TYPE_BOOL,
     };
 
+    enum DeclType conv_type(enum Token::TokType t_ty) {
+        switch (t_ty) {
+            case Token::TOK_TYPE_INT:
+                return DECL_TYPE_INT;
+
+            case Token::TOK_TYPE_STRING:
+                return DECL_TYPE_STRING;
+
+            case Token::TOK_TYPE_BOOL:
+                return DECL_TYPE_BOOL;
+
+            default:
+                std::cout << "[ERR]: Invalid syntax at decl type at: " <<
+                    "[" << tok_list[curr_pos].line_num << "," <<
+                    tok_list[curr_pos].col_num << "]\n";
+                return DECL_TYPE_INT;
+        }
+    }
+
     Parser(std::vector<Token>& _tok_list)
         : tok_list(_tok_list), curr_pos(0), tok_len(_tok_list.size()),
             precedence({}), prog(Program()) {
@@ -202,7 +221,7 @@ public:
         env[fun_ctxt][var_name] = val;
     }
 
-    Type* parse_type(int in_count, enum DeclType dt) {
+    Type* build_type(int in_count, enum DeclType dt) {
         if (in_count == 0) {
             switch (dt) {
                 case DECL_TYPE_INT:
@@ -217,16 +236,40 @@ public:
             }
         }
 
-        return new TRef(parse_type(in_count - 1,dt));
+        return new TRef(build_type(in_count - 1,dt));
+    }
+
+    Type* parse_type() {
+        enum DeclType type_set = conv_type(tok_list[curr_pos].tok_ty);
+
+        int indirection_count = 0;
+        while (check_next() == Token::TOK_DEREF) {
+            advance();
+            indirection_count += 1;
+        }
+
+        if (check_next() == Token::TOK_LBRACKET) {
+            advance();
+
+            advance();
+            expect(Token::TOK_RBRACKET, "`]` for ending array decl");
+
+            return new TArray(build_type(indirection_count, type_set));
+        }
+
+        auto p_type = build_type(indirection_count, type_set);
+        return p_type;
     }
 
     std::unique_ptr<ExpNode> parse_binop(int prev_prec,
                                          std::unique_ptr<ExpNode> lhs);
     std::unique_ptr<ExpNode> parse_expr(int prev_prec);
-    std::unique_ptr<StmtNode> parse_stmt();
-    std::pair<std::unique_ptr<Type>, std::string> parse_arg();
-    Decls* parse_gvdecl();
+    StmtNode* parse_vdecl(const std::string& fname);
+    StmtNode* parse_stmt(const std::string& fname);
+    std::pair<Type*, std::string> parse_arg(const std::string& fn_name);
+    std::vector<StmtNode*> parse_block(const std::string& fname);
     Decls* parse_fdecl();
+    Decls* parse_gvdecl();
     Decls* parse_decl();
     void parse_prog();
 };

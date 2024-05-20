@@ -19,11 +19,11 @@ public:
         tok_list({}), file_data(std::move(_file_data)), curr_pos(0),
         l_num(1), col_num(1), data_sz(0) { data_sz = file_data.size(); }
 
-    bool is_space(char c) const { return (c == ' ' || c == '\r'); }
-    bool is_num(char c) const { return (c >= '0' && c <= '9'); }
+    bool is_space(char c) const { return ((c == ' ') || (c == '\r')); }
+    bool is_num(char c) const { return (c >= '0') && (c <= '9'); }
     bool is_alpha(char c) const {
-        return ((c >= 'a' && c <= 'z') ||
-                (c >= 'A' && c >= 'Z') || (c == '_'));
+        return (((c >= 'a') && (c <= 'z')) ||
+                ((c >= 'A') && (c <= 'Z')) || (c == '_'));
     }
 
     char check_next();

@@ -107,7 +107,7 @@ public:
                 break;
 
             case TOK_RBRACKET:
-                std::cout << "TOK_LBRACKET";
+                std::cout << "TOK_RBRACKET";
                 break;
 
             case TOK_COMMA:

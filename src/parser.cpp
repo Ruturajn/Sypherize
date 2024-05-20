@@ -105,8 +105,99 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
     }
 }
 
-std::pair<std::unique_ptr<Type>, std::string> Parser::parse_arg() {
-    return {};
+std::pair<Type*, std::string> Parser::parse_arg(const std::string& fn_name) {
+
+    auto p_type = parse_type();
+
+    advance();
+
+    expect(Token::TOK_COLON, "`:` operator");
+    advance();
+
+    expect(Token::TOK_IDENT, "identifier");
+
+    std::string& p_name = tok_list[curr_pos].lexeme;
+
+    advance();
+
+    // Bind variable name in global context to it's type.
+    var_bind_ctxt(fn_name, p_name, p_type);
+
+    if (tok_list[curr_pos].tok_ty != Token::TOK_RPAREN) {
+        expect(Token::TOK_COMMA, "`,` to delimit function paramaters");
+        advance();
+    }
+
+    return {p_type, p_name};
+}
+
+StmtNode* Parser::parse_vdecl(const std::string& fname) {
+    auto vtype = parse_type();
+
+    advance();
+
+    expect(Token::TOK_COLON, "`:` operator");
+    advance();
+
+    expect(Token::TOK_IDENT, "identifier");
+
+    std::string& vname = tok_list[curr_pos].lexeme;
+
+    advance();
+
+    // Bind variable name in local function context to it's type.
+    if (env.find(fname) != env.end()) {
+        if (env[fname].find(vname) != env[fname].end())
+                std::cout << "[ERR]: Redefinition of variable at: "
+                    << "[" << tok_list[curr_pos].line_num << "," <<
+                    tok_list[curr_pos].col_num << "]\n";
+    }
+    var_bind_ctxt(fname, vname, vtype);
+
+    expect(Token::TOK_EQUAL, "`=` operator");
+    advance();
+
+    std::unique_ptr<ExpNode> init_exp = parse_expr(0);
+    advance();
+
+    return new DeclStmtNode(vname, std::move(init_exp));
+}
+
+StmtNode* Parser::parse_stmt(const std::string& fname) {
+    switch (tok_list[curr_pos].tok_ty) {
+        case Token::TOK_TYPE_INT:
+        case Token::TOK_TYPE_STRING:
+        case Token::TOK_TYPE_BOOL:
+            return parse_vdecl(fname);
+
+        case Token::TOK_RETURN:
+            advance();
+
+            if (tok_list[curr_pos].tok_ty == Token::TOK_SEMIC) {
+                advance();
+                return new RetStmtNode();
+            }
+            else{
+                auto ret_node = new RetStmtNode(parse_expr(0));
+                advance();
+                return ret_node;
+            }
+            break;
+
+        default:
+            return nullptr;
+    }
+
+}
+
+std::vector<StmtNode*> Parser::parse_block(const std::string& fname) {
+    std::vector<StmtNode*> stmts {};
+    while (curr_pos < tok_len && tok_list[curr_pos].tok_ty != Token::TOK_RBRACE) {
+        stmts.push_back(parse_stmt(fname));
+        expect(Token::TOK_SEMIC, "terminating `;` operator");
+        advance();
+    }
+    return stmts;
 }
 
 // fdecl ::== fun <ident> (arg1,...,argn) { <stmt1>; <stmt2>; ... }
@@ -116,62 +207,56 @@ Decls* Parser::parse_fdecl() {
     advance();
 
     expect(Token::TOK_IDENT, "identifier for function name");
+    std::string& f_name = tok_list[curr_pos].lexeme;
 
     advance();
 
     expect(Token::TOK_LPAREN, "`(`");
-
     advance();
 
+    std::vector<std::pair<Type*, std::string>> params {};
+
     // TODO: parse commas, as argument separators.
-    while (expect(Token::TOK_RPAREN, "`)` for ending function arg list")) {
+    while (tok_list[curr_pos].tok_ty != Token::TOK_RPAREN) {
         switch (tok_list[curr_pos].tok_ty) {
             case Token::TOK_TYPE_INT:
             case Token::TOK_TYPE_STRING:
             case Token::TOK_TYPE_BOOL:
-                parse_arg();
-                return nullptr;
+                params.push_back(parse_arg(f_name));
                 break;
 
             default:
-                std::cout << "[ERR]: Invalid syntax at: " <<
-                    "[" << tok_list[curr_pos].line_num << "," <<
+                std::cout << "[ERR]: Invalid syntax for function parameters: "
+                    << "[" << tok_list[curr_pos].line_num << "," <<
                     tok_list[curr_pos].col_num << "]\n";
                 return nullptr;
         }
-
-        advance();
     }
 
-    return nullptr;
+    advance();
+
+    expect(Token::TOK_FUNC_RET, "`->` for function return type");
+    advance();
+
+    auto fret_type = parse_type();
+
+    advance();
+
+    expect(Token::TOK_LBRACE, "`{` for function definition");
+    advance();
+
+    std::vector<StmtNode*> fn_body = parse_block(f_name);
+
+    expect(Token::TOK_RBRACE, "`}` for ending function definition");
+    advance();
+
+    std::unique_ptr<Type> fret_type_uptr(fret_type);
+    return new FunDecl(std::move(fret_type_uptr), f_name, params, fn_body);
 }
 
 // vdecl ::== <type> : <ident> = <exp>
 Decls* Parser::parse_gvdecl() {
-    enum DeclType type_set;
-
-    switch (tok_list[curr_pos].tok_ty) {
-        case Token::TOK_TYPE_INT:
-            type_set = DECL_TYPE_INT;
-            break;
-        case Token::TOK_TYPE_STRING:
-            type_set = DECL_TYPE_STRING;
-            break;
-        case Token::TOK_TYPE_BOOL:
-            type_set = DECL_TYPE_BOOL;
-            break;
-        default:
-            std::cout << "[ERR]: Invalid syntax at: " <<
-                "[" << tok_list[curr_pos].line_num << "," <<
-                tok_list[curr_pos].col_num << "]\n";
-            return nullptr;
-    }
-
-    int indirection_count = 0;
-    while (check_next() == Token::TOK_DEREF) {
-        advance();
-        indirection_count += 1;
-    }
+    auto gvtype = parse_type();
 
     advance();
 
@@ -185,8 +270,7 @@ Decls* Parser::parse_gvdecl() {
     advance();
 
     // Bind variable name in global context to it's type.
-    var_bind_ctxt(global_key, gvname,
-                  parse_type(indirection_count, type_set));
+    var_bind_ctxt(global_key, gvname, gvtype);
 
     expect(Token::TOK_EQUAL, "`=` operator");
     advance();

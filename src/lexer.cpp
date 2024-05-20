@@ -131,8 +131,8 @@ void Lexer::lex_number() {
 void Lexer::lex_identifier() {
     ssize_t final_pos = curr_pos;
     while (final_pos < data_sz) {
-        if (!is_alpha(file_data[final_pos]) &&
-                !is_num(file_data[final_pos]))
+        if ((!is_alpha(file_data[final_pos])) &&
+                (!is_num(file_data[final_pos])))
             break;
         final_pos += 1;
     }
