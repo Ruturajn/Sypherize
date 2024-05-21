@@ -1,10 +1,21 @@
+fun foo(int: a, int: b, int: c) -> int {
+    return (a + b + c);
+}
+
 fun main(int: argc, string[]: argv) -> int {
     int: a = 10;
     int: b = 10;
-    int: c = a[3];
+
     int: d = foo(1, 2, 3);
-    (^int[]: c = new int[5];
-    int[]: d {0, 1, 2, 3, 4};
+
+    int@@[]: e = new int@@[5];
+
+    int: f = new int;
+
+    int: c = a[3];
+
+    (^int[]: d {0, 1, 2, 3, 4};
     foo(1, 2, 3);^)
+
     return 0;
 }

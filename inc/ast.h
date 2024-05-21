@@ -151,13 +151,13 @@ public:
     }
 };
 
-class NewArrExpNode : public ExpNode {
+class NewExpNode : public ExpNode {
 private:
     std::unique_ptr<Type> ty;
     std::unique_ptr<ExpNode> exp;
 
 public:
-    NewArrExpNode(std::unique_ptr<Type> _ty,
+    NewExpNode(std::unique_ptr<Type> _ty,
                   std::unique_ptr<ExpNode> _exp)
         : ty (std::move(_ty)), exp(std::move(_exp)) {}
 
@@ -165,14 +165,21 @@ public:
         for (int i = 0; i < indent; i++)
             std::cout << " ";
 
-        std::cout << "NEWARR:\n";
+        std::cout << "NEWEXP:\n";
         for (int i = 0; i < indent + 4; i++)
             std::cout << " ";
 
+        std::cout << "TYPE:";
         ty->print_type();
-        std::cout << " ";
+        std::cout << "\n";
 
-        exp->print_node(indent + 8);
+        if (exp != nullptr)
+            exp->print_node(indent + 4);
+        else {
+            for (int i = 0; i < indent + 4; i++)
+                std::cout << " ";
+            std::cout << "SIZE: 1\n";
+        }
     }
 };
 

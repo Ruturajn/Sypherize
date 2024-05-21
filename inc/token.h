@@ -70,6 +70,7 @@ public:
         TOK_WHILE,  // Keyword: "while"
         TOK_RETURN, // Keyword: "return"
         TOK_FUNCTION,   // Keyword: "fun"
+        TOK_NEW,   // Keyword: "new"
 
         TOK_EOF
     };
@@ -292,6 +293,10 @@ public:
 
             case TOK_FUNCTION:
                 std::cout << "TOK_FUNCTION";
+                break;
+
+            case TOK_NEW:
+                std::cout << "TOK_NEW";
                 break;
 
             case TOK_EOF:

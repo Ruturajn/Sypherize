@@ -283,6 +283,8 @@ public:
         return p_type;
     }
 
+    std::unique_ptr<ExpNode> parse_new_type();
+
     std::unique_ptr<ExpNode> parse_binop(int prev_prec,
                                          std::unique_ptr<ExpNode> lhs);
     std::unique_ptr<ExpNode> parse_expr(int prev_prec);

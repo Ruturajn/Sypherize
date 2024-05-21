@@ -99,6 +99,9 @@ Token Lexer::create_token(ssize_t tok_sz, enum Token::TokType t_ty) {
     else if (lexeme == "fun")
         return Token(Token::TOK_FUNCTION, col_num, l_num, lexeme);
 
+    else if (lexeme == "new")
+        return Token(Token::TOK_NEW, col_num, l_num, lexeme);
+
     else if (lexeme == "__global__") {
         std::cerr << "Disallowed/Reserved variable name/function name"
             " `__global__` used at: [" << l_num <<

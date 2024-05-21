@@ -120,6 +120,12 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
                         std::move(index));
             }
 
+            if (is_next_binop()) {
+                advance();
+
+                return parse_binop(prev_prec, std::move(id));
+            }
+
             return id;
             break;
         }
@@ -200,6 +206,37 @@ std::pair<Type*, std::string> Parser::parse_arg(const std::string& fn_name) {
     return {p_type, p_name};
 }
 
+
+std::unique_ptr<ExpNode> Parser::parse_new_type() {
+    enum DeclType type_set = conv_type(tok_list[curr_pos].tok_ty);
+
+    int indirection_count = 0;
+    while (check_next() == Token::TOK_DEREF) {
+        advance();
+        indirection_count += 1;
+    }
+
+    auto p_type = build_type(indirection_count, type_set);
+    std::unique_ptr<Type> p_type_uptr(p_type);
+
+    if (check_next() == Token::TOK_LBRACKET) {
+
+        // Consume TOK_LBRACKET
+        advance();
+
+        advance();
+
+        auto size = parse_expr(0);
+        advance();
+
+        expect(Token::TOK_RBRACKET, "`]` for ending array decl");
+
+        return std::make_unique<NewExpNode>(std::move(p_type_uptr), std::move(size));
+    }
+
+    return std::make_unique<NewExpNode>(std::move(p_type_uptr), nullptr);
+}
+
 StmtNode* Parser::parse_vdecl(const std::string& fname) {
     auto vtype = parse_type();
 
@@ -225,6 +262,14 @@ StmtNode* Parser::parse_vdecl(const std::string& fname) {
 
     expect(Token::TOK_EQUAL, "`=` operator");
     advance();
+
+    if (tok_list[curr_pos].tok_ty == Token::TOK_NEW) {
+        advance();
+
+        auto new_exp = parse_new_type();
+        advance();
+        return new DeclStmtNode(vname, std::move(new_exp));
+    }
 
     std::unique_ptr<ExpNode> init_exp = parse_expr(0);
     advance();
