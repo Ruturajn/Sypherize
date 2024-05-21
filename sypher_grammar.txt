@@ -24,18 +24,18 @@ stmt ::==
     | vdecl
     | return exp
     | return
-    | exp ( exp1, ..., expn )
+    | id ( exp1, ..., expn )
     | if_stmt
-    | for ( vdecls; exp_opt; stmt_opt) block
-    | while ( exp ) block
+    | for ( vdecls; exp_opt; stmt_opt) { block }
+    | while ( exp ) { block }
 
 if_stmt ::==
-    | if ( exp ) block else_stmt
+    | if ( exp ) { block } else_stmt
 
 else_stmt ::==
     | epsilon /* Empty */
-    | else block
-    | else if_stmt
+    | else { block }
+    | else { if_stmt }
 
 lhs ::==
     | id
@@ -45,7 +45,7 @@ exp ::==
     | integer
     | id
     | t [exp]
-    | exp ( exp1, ..., expn )
+    | id ( exp1, ..., expn )
     | ( exp )
     | exp bop exp
     | uop exp

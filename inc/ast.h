@@ -192,11 +192,8 @@ public:
 
         std::cout << "INDEX:\n";
 
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        exp->print_node(indent + 8);
-        idx->print_node(indent + 8);
+        exp->print_node(indent + 4);
+        idx->print_node(indent + 4);
     }
 };
 
@@ -358,13 +355,13 @@ public:
 
 class FunCallExpNode : public ExpNode {
 private:
-    std::unique_ptr<ExpNode> func_name;
+    std::string func_name;
     std::vector<ExpNode*> func_args;
 
 public:
-    FunCallExpNode(std::unique_ptr<ExpNode> _func_name,
+    FunCallExpNode(const std::string& _func_name,
                     std::vector<ExpNode*>& _func_args)
-        : func_name(std::move(_func_name)), func_args(_func_args) {}
+        : func_name(_func_name), func_args(_func_args) {}
 
     void print_node(int indent) const override {
         for (int i = 0; i < indent; i++)
@@ -375,14 +372,12 @@ public:
         for (int i = 0; i < indent + 4; i++)
             std::cout << " ";
 
-        std::cout << "FUNNAME: ";
-
-        func_name->print_node(indent + 8);
+        std::cout << "FUNNAME: " << func_name << "\n";
 
         for (int i = 0; i < indent + 4; i++)
             std::cout << " ";
 
-        std::cout << "FUNARGS: ";
+        std::cout << "FUNARGS:\n";
 
         for (auto &arg: func_args)
             arg->print_node(indent + 8);

@@ -59,10 +59,70 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
             return std::make_unique<StringExpNode>(tok_list[curr_pos].lexeme);
             break;
 
-        case Token::TOK_IDENT:
-            // TODO: Parse function calls
-            return std::make_unique<IdExpNode>(tok_list[curr_pos].lexeme);
+        case Token::TOK_IDENT: {
+            auto id = std::make_unique<IdExpNode>(tok_list[curr_pos].lexeme);
+
+            Token::TokType next_tok = check_next();
+
+            // Parse function calls
+            if (next_tok == Token::TOK_LPAREN) {
+                std::string& fun_name = tok_list[curr_pos].lexeme;
+
+                // Consume TOK_LPAREN
+                advance();
+
+                advance();
+
+                std::vector<ExpNode*> f_args {};
+
+                while ((curr_pos < tok_len) &&
+                        (tok_list[curr_pos].tok_ty != Token::TOK_RPAREN)) {
+                    f_args.push_back(parse_expr(prev_prec).release());
+                    advance();
+
+                    if (tok_list[curr_pos].tok_ty == Token::TOK_RPAREN)
+                        break;
+
+                    expect(Token::TOK_COMMA, "`,` operator to separate function"
+                            " arguments");
+                    advance();
+                }
+
+                auto funcall = std::make_unique<FunCallExpNode>(fun_name, f_args);
+
+                if (tok_list[curr_pos].tok_ty == Token::TOK_LBRACKET) {
+                    auto index = parse_expr(prev_prec);
+
+                    advance();
+                    expect(Token::TOK_RBRACKET, "`]` for index operation");
+
+                    return std::make_unique<IndexExpNode>(std::move(funcall),
+                            std::move(index));
+                }
+
+                return funcall;
+            }
+
+            // Index expression
+            if (next_tok == Token::TOK_LBRACKET) {
+
+                // Consume the TOK_LBRACKET
+                advance();
+
+                advance();
+
+                auto index = parse_expr(prev_prec);
+
+                advance();
+                expect(Token::TOK_RBRACKET, "`]` for index operation");
+
+                return std::make_unique<IndexExpNode>(std::move(id),
+                        std::move(index));
+            }
+
+            return id;
             break;
+        }
 
         case Token::TOK_BOOL_TRUE:
             return std::make_unique<BoolExpNode>(true);
@@ -96,6 +156,15 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
                 tok_list[curr_pos].col_num << "]\n";
             return nullptr;
             break;
+
+        case Token::TOK_NEG:
+        case Token::TOK_NOT:
+        case Token::TOK_DEREF:
+        case Token::TOK_ADDROF: {
+            auto unop = conv_unop(tok_list[curr_pos]);
+            advance();
+            return std::make_unique<UnopExpNode>(unop, parse_expr(prev_prec));
+        }
 
         default:
             std::cout << "[ERR]: Invalid syntax at parse_expr: " <<
@@ -187,7 +256,6 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
         default:
             return nullptr;
     }
-
 }
 
 std::vector<StmtNode*> Parser::parse_block(const std::string& fname) {
@@ -216,7 +284,8 @@ Decls* Parser::parse_fdecl() {
 
     std::vector<std::pair<Type*, std::string>> params {};
 
-    while (tok_list[curr_pos].tok_ty != Token::TOK_RPAREN) {
+    while ((curr_pos < tok_len) && 
+            (tok_list[curr_pos].tok_ty != Token::TOK_RPAREN)) {
         switch (tok_list[curr_pos].tok_ty) {
             case Token::TOK_TYPE_INT:
             case Token::TOK_TYPE_STRING:

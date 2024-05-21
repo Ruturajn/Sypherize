@@ -192,6 +192,28 @@ public:
         }
     }
 
+    enum UnopExpNode::UnopType conv_unop(const Token& t) const {
+        switch (t.tok_ty) {
+            case Token::TOK_NEG:
+                return UnopExpNode::UNOP_NEG;
+
+            case Token::TOK_NOT:
+                return UnopExpNode::UNOP_NOT;
+
+            case Token::TOK_DEREF:
+                return UnopExpNode::UNOP_DEREF;
+
+            case Token::TOK_ADDROF:
+                return UnopExpNode::UNOP_ADDROF;
+
+            default:
+                std::cout << "[ERR]: Encountered invalid token for binop "
+                    "conversion at: " <<
+                    "[" << t.line_num << "," << t.col_num << "]\n";
+                return UnopExpNode::UNOP_NEG;
+        }
+    }
+
     void advance() { curr_pos += 1; }
 
     bool expect(Token::TokType t_ty, const char* expected) {
