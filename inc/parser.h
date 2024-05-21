@@ -288,7 +288,9 @@ public:
     std::unique_ptr<ExpNode> parse_binop(int prev_prec,
                                          std::unique_ptr<ExpNode> lhs);
     std::unique_ptr<ExpNode> parse_expr(int prev_prec);
+    std::unique_ptr<ExpNode> parse_lhs(int prev_prec);
     StmtNode* parse_vdecl(const std::string& fname);
+    StmtNode* parse_sfun_call();
     StmtNode* parse_stmt(const std::string& fname);
     std::pair<Type*, std::string> parse_arg(const std::string& fn_name);
     std::vector<StmtNode*> parse_block(const std::string& fname);

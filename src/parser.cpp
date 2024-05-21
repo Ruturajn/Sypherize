@@ -26,6 +26,42 @@ std::unique_ptr<ExpNode> Parser::parse_binop(int prev_prec,
     return lhs;
 }
 
+std::unique_ptr<ExpNode> Parser::parse_lhs(int prev_prec) {
+    switch (tok_list[curr_pos].tok_ty) {
+        case Token::TOK_IDENT: {
+            auto id = std::make_unique<IdExpNode>(tok_list[curr_pos].lexeme);
+
+            Token::TokType next_tok = check_next();
+
+            // Index expression
+            if (next_tok == Token::TOK_LBRACKET) {
+
+                // Consume the TOK_LBRACKET
+                advance();
+
+                advance();
+
+                auto index = parse_expr(prev_prec);
+
+                advance();
+                expect(Token::TOK_RBRACKET, "`]` for index operation");
+
+                return std::make_unique<IndexExpNode>(std::move(id),
+                        std::move(index));
+            }
+
+            return id;
+            break;
+        }
+
+        default:
+            std::cout << "[ERR]: Invalid syntax at parse_expr: " <<
+                "[" << tok_list[curr_pos].line_num << "," <<
+                tok_list[curr_pos].col_num << "]\n";
+            return nullptr;
+    }
+}
+
 std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
     switch (tok_list[curr_pos].tok_ty) {
         case Token::TOK_LPAREN: {
@@ -304,6 +340,45 @@ StmtNode* Parser::parse_vdecl(const std::string& fname) {
     return new DeclStmtNode(vname, std::move(init_exp));
 }
 
+StmtNode* Parser::parse_sfun_call() {
+    switch (tok_list[curr_pos].tok_ty) {
+        case Token::TOK_IDENT: {
+            std::string& fun_name = tok_list[curr_pos].lexeme;
+
+            advance();
+
+            expect(Token::TOK_LPAREN, "'(' for sfunction call");
+
+            advance();
+
+            std::vector<ExpNode*> f_args {};
+
+            while ((curr_pos < tok_len) &&
+                    (tok_list[curr_pos].tok_ty != Token::TOK_RPAREN)) {
+                f_args.push_back(parse_expr(0).release());
+                advance();
+
+                if (tok_list[curr_pos].tok_ty == Token::TOK_RPAREN)
+                    break;
+
+                expect(Token::TOK_COMMA, "`,` operator to separate function"
+                        " arguments");
+                advance();
+            }
+
+            advance();
+
+            return new SCallStmtNode(fun_name, f_args);
+        }
+
+        default:
+            std::cout << "[ERR]: Invalid syntax at: " <<
+                "[" << tok_list[curr_pos].line_num << "," <<
+                tok_list[curr_pos].col_num << "]\n";
+            return nullptr;
+    }
+}
+
 StmtNode* Parser::parse_stmt(const std::string& fname) {
     switch (tok_list[curr_pos].tok_ty) {
         case Token::TOK_TYPE_INT:
@@ -325,7 +400,33 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
             }
             break;
 
+        case Token::TOK_IDENT: {
+            ssize_t orig = curr_pos;
+
+            auto left = parse_lhs(0);
+            advance();
+
+            if (tok_list[curr_pos].tok_ty != Token::TOK_EQUAL) {
+                curr_pos = orig;
+
+                return parse_sfun_call();
+            }
+
+            expect(Token::TOK_EQUAL, "`=` operator for assign statement");
+
+            advance();
+
+            auto right = parse_expr(0);
+
+            advance();
+            return new AssnStmtNode(std::move(left), std::move(right));
+            break;
+        }
+
         default:
+            std::cout << "[ERR]: Invalid syntax at: " <<
+                "[" << tok_list[curr_pos].line_num << "," <<
+                tok_list[curr_pos].col_num << "]\n";
             return nullptr;
     }
 }

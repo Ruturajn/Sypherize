@@ -1,0 +1,13 @@
+fun foo(int: a, int: b, int: c) -> int {
+    return 0;
+}
+
+fun main(int: argc, string[]: argv) -> int {
+    foo(1, 2, 3);
+
+    int[]: g {0, 1, 2, 3, 4};
+
+    g[4] = 33;
+
+    return 0;
+}

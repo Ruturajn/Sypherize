@@ -421,6 +421,9 @@ public:
         std::cout << "LHS:\n";
         lhs->print_node(indent + 8);
 
+        for (int i = 0; i < indent + 4; i++)
+            std::cout << " ";
+
         std::cout << "RHS:\n";
         rhs->print_node(indent + 8);
     }
@@ -456,13 +459,13 @@ public:
 
 class SCallStmtNode : public StmtNode {
 private:
-    std::unique_ptr<ExpNode> fname;
+    std::string fname;
     std::vector<ExpNode*> fargs;
 
 public:
-    SCallStmtNode(std::unique_ptr<ExpNode> _fname,
+    SCallStmtNode(const std::string& _fname,
                     std::vector<ExpNode*>& _fargs)
-        : fname(std::move(_fname)), fargs(_fargs) {}
+        : fname(_fname), fargs(_fargs) {}
 
     void print_stmt(int indent) const override {
         for (int i = 0; i < indent; i++)
@@ -473,14 +476,12 @@ public:
         for (int i = 0; i < indent + 4; i++)
             std::cout << " ";
 
-        std::cout << "FUNNAME: ";
-
-        fname->print_node(indent + 8);
+        std::cout << "FUNNAME: " << fname << "\n";
 
         for (int i = 0; i < indent + 4; i++)
             std::cout << " ";
 
-        std::cout << "FUNARGS: ";
+        std::cout << "FUNARGS:\n";
 
         for (auto &arg: fargs)
             arg->print_node(indent + 8);
