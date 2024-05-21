@@ -320,6 +320,8 @@ StmtNode* Parser::parse_vdecl(const std::string& fname) {
         std::unique_ptr<Type> vtype_ptr(vtype);
         auto carr_exp = std::make_unique<CArrExpNode>(std::move(vtype_ptr), init_exps);
 
+        expect(Token::TOK_SEMIC, "terminating `;` operator");
+
         return new DeclStmtNode(vname, std::move(carr_exp));
     }
 
@@ -336,6 +338,8 @@ StmtNode* Parser::parse_vdecl(const std::string& fname) {
 
     std::unique_ptr<ExpNode> init_exp = parse_expr(0);
     advance();
+
+    expect(Token::TOK_SEMIC, "terminating `;` operator");
 
     return new DeclStmtNode(vname, std::move(init_exp));
 }
@@ -367,6 +371,7 @@ StmtNode* Parser::parse_sfun_call() {
             }
 
             advance();
+            expect(Token::TOK_SEMIC, "terminating `;` operator");
 
             return new SCallStmtNode(fun_name, f_args);
         }
@@ -391,11 +396,13 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
 
             if (tok_list[curr_pos].tok_ty == Token::TOK_SEMIC) {
                 advance();
+                expect(Token::TOK_SEMIC, "terminating `;` operator");
                 return new RetStmtNode();
             }
             else{
                 auto ret_node = new RetStmtNode(parse_expr(0));
                 advance();
+                expect(Token::TOK_SEMIC, "terminating `;` operator");
                 return ret_node;
             }
             break;
@@ -419,8 +426,44 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
             auto right = parse_expr(0);
 
             advance();
+            expect(Token::TOK_SEMIC, "terminating `;` operator");
             return new AssnStmtNode(std::move(left), std::move(right));
-            break;
+        }
+
+        case Token::TOK_IF: {
+            advance();
+
+            expect(Token::TOK_LPAREN, "`(` for condition expression");
+            advance();
+
+            auto cond = parse_expr(0);
+            advance();
+
+            expect(Token::TOK_RPAREN, "`)` for condition expression");
+
+            advance();
+            expect(Token::TOK_LBRACE, "`{` for if-then body");
+
+            advance();
+
+            auto then_body = parse_block(fname);
+
+            if (check_next() == Token::TOK_ELSE) {
+                // Consume TOK_ELSE
+                advance();
+
+                advance();
+                expect(Token::TOK_LBRACE, "`{` for if-then body");
+
+                advance();
+
+                auto else_body = parse_block(fname);
+
+                return new IfStmtNode(std::move(cond), then_body, else_body);
+            }
+
+            std::vector<StmtNode*> else_body {};
+            return new IfStmtNode(std::move(cond), then_body, else_body);
         }
 
         default:
@@ -435,7 +478,6 @@ std::vector<StmtNode*> Parser::parse_block(const std::string& fname) {
     std::vector<StmtNode*> stmts {};
     while (curr_pos < tok_len && tok_list[curr_pos].tok_ty != Token::TOK_RBRACE) {
         stmts.push_back(parse_stmt(fname));
-        expect(Token::TOK_SEMIC, "terminating `;` operator");
         advance();
     }
     return stmts;

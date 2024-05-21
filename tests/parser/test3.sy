@@ -1,8 +1,9 @@
 fun foo(int: a, int: b, int: c) -> int {
-    return 0;
+    return (a * b + c);
 }
 
 fun main(int: argc, string[]: argv) -> int {
+
     foo(1, 2, 3);
 
     int[]: g {0, 1, 2, 3, 4};

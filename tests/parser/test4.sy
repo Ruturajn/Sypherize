@@ -1,0 +1,15 @@
+fun main(int: argc, string[]: argv) -> int {
+
+    int: a = 10;
+
+    int[]: g {0, 1, 2, 3, 4};
+
+    if (a == 10) {
+        a = 30;
+    } else {
+        g[0] = 22;
+        a = 200;
+    }
+
+    return 0;
+}
