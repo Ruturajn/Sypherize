@@ -260,6 +260,33 @@ StmtNode* Parser::parse_vdecl(const std::string& fname) {
     }
     var_bind_ctxt(fname, vname, vtype);
 
+    if (tok_list[curr_pos].tok_ty == Token::TOK_LBRACE) {
+
+        advance();
+
+        std::vector<ExpNode*> init_exps {};
+
+        while ((curr_pos < tok_len) &&
+                (tok_list[curr_pos].tok_ty != Token::TOK_RBRACE)) {
+            init_exps.push_back(parse_expr(0).release());
+            advance();
+
+            if (tok_list[curr_pos].tok_ty == Token::TOK_RBRACE)
+                break;
+
+            expect(Token::TOK_COMMA, "`,` operator to separate function"
+                    " arguments");
+            advance();
+        }
+
+        advance();
+
+        std::unique_ptr<Type> vtype_ptr(vtype);
+        auto carr_exp = std::make_unique<CArrExpNode>(std::move(vtype_ptr), init_exps);
+
+        return new DeclStmtNode(vname, std::move(carr_exp));
+    }
+
     expect(Token::TOK_EQUAL, "`=` operator");
     advance();
 
@@ -329,7 +356,7 @@ Decls* Parser::parse_fdecl() {
 
     std::vector<std::pair<Type*, std::string>> params {};
 
-    while ((curr_pos < tok_len) && 
+    while ((curr_pos < tok_len) &&
             (tok_list[curr_pos].tok_ty != Token::TOK_RPAREN)) {
         switch (tok_list[curr_pos].tok_ty) {
             case Token::TOK_TYPE_INT:

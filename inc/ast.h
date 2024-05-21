@@ -125,12 +125,12 @@ public:
 class CArrExpNode : public ExpNode {
 private:
     std::unique_ptr<Type> ty;
-    std::vector<std::unique_ptr<ExpNode>> exp_list;
+    std::vector<ExpNode*> exp_list;
 
 public:
     CArrExpNode(std::unique_ptr<Type> _ty,
-                std::vector<std::unique_ptr<ExpNode>>& _exp_list)
-        : ty(std::move(_ty)), exp_list(std::move(_exp_list)) {}
+                std::vector<ExpNode*>& _exp_list)
+        : ty(std::move(_ty)), exp_list(_exp_list) {}
 
     void print_node(int indent) const override {
         for (int i = 0; i < indent; i++)
@@ -141,13 +141,12 @@ public:
         for (int i = 0; i < indent + 4; i++)
             std::cout << " ";
 
+        std::cout << "TYPE:";
         ty->print_type();
+        std::cout << "\n";
 
-        std::cout << " ";
-
-        for (auto &e: exp_list) {
-            e->print_node(indent + 8);
-        }
+        for (auto &e: exp_list)
+            e->print_node(indent + 4);
     }
 };
 

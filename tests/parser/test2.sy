@@ -14,8 +14,8 @@ fun main(int: argc, string[]: argv) -> int {
 
     int: c = a[3];
 
-    (^int[]: d {0, 1, 2, 3, 4};
-    foo(1, 2, 3);^)
+    int[]: g {0, 1, 2, 3, 4};
+    $foo(1, 2, 3);^)
 
     return 0;
 }
