@@ -320,8 +320,6 @@ StmtNode* Parser::parse_vdecl(const std::string& fname) {
         std::unique_ptr<Type> vtype_ptr(vtype);
         auto carr_exp = std::make_unique<CArrExpNode>(std::move(vtype_ptr), init_exps);
 
-        expect(Token::TOK_SEMIC, "terminating `;` operator");
-
         return new DeclStmtNode(vname, std::move(carr_exp));
     }
 
@@ -338,8 +336,6 @@ StmtNode* Parser::parse_vdecl(const std::string& fname) {
 
     std::unique_ptr<ExpNode> init_exp = parse_expr(0);
     advance();
-
-    expect(Token::TOK_SEMIC, "terminating `;` operator");
 
     return new DeclStmtNode(vname, std::move(init_exp));
 }
@@ -388,8 +384,11 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
     switch (tok_list[curr_pos].tok_ty) {
         case Token::TOK_TYPE_INT:
         case Token::TOK_TYPE_STRING:
-        case Token::TOK_TYPE_BOOL:
-            return parse_vdecl(fname);
+        case Token::TOK_TYPE_BOOL: {
+            auto decl = parse_vdecl(fname);
+            expect(Token::TOK_SEMIC, "terminating `;` operator");
+            return decl;
+        }
 
         case Token::TOK_RETURN:
             advance();
@@ -465,6 +464,44 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
             std::vector<StmtNode*> else_body {};
             return new IfStmtNode(std::move(cond), then_body, else_body);
         }
+
+        case Token::TOK_FOR: {
+            advance();
+
+            expect(Token::TOK_LPAREN, "`(` for `for` stmt");
+            advance();
+
+            std::vector<StmtNode*> decls;
+            while ((curr_pos < tok_len) &&
+                    tok_list[curr_pos].tok_ty != Token::TOK_SEMIC) {
+                decls.push_back(parse_vdecl(fname));
+            }
+
+            advance();
+
+            auto cond = parse_expr(0);
+            advance();
+
+            expect(Token::TOK_SEMIC, "`;` for delimiting condition and iter in"
+                                     " `for` loop");
+            advance();
+
+            auto iter = parse_stmt(fname);
+            advance();
+
+            expect(Token::TOK_RPAREN, "`)` for ending `for` prelude");
+            advance();
+
+            expect(Token::TOK_LBRACE, "`{` for `for` body");
+            advance();
+
+            auto for_body = parse_block(fname);
+
+            std::unique_ptr<StmtNode> iter_uptr(iter);
+            return new ForStmtNode(decls, std::move(cond), std::move(iter_uptr),
+                                    for_body);
+        }
+
 
         default:
             std::cout << "[ERR]: Invalid syntax at: " <<

@@ -555,13 +555,13 @@ public:
 
 class ForStmtNode : public StmtNode {
 private:
-    std::vector<ExpNode*> decl_list;
+    std::vector<StmtNode*> decl_list;
     std::unique_ptr<ExpNode> cond;
     std::unique_ptr<StmtNode> iter;
     std::vector<StmtNode*> body;
 
 public:
-    ForStmtNode(std::vector<ExpNode*>& _decl_list,
+    ForStmtNode(std::vector<StmtNode*>& _decl_list,
                 std::unique_ptr<ExpNode> _cond,
                 std::unique_ptr<StmtNode> _iter,
                 std::vector<StmtNode*>& _body)
@@ -579,13 +579,22 @@ public:
 
         std::cout << "DECL_LIST:\n";
         for (auto &d: decl_list)
-            d->print_node(indent + 8);
+            d->print_stmt(indent + 8);
+
+        for (int i = 0; i < indent + 4; i++)
+            std::cout << " ";
 
         std::cout << "COND:\n";
         cond->print_node(indent + 8);
 
+        for (int i = 0; i < indent + 4; i++)
+            std::cout << " ";
+
         std::cout << "ITER:\n";
         iter->print_stmt(indent + 8);
+
+        for (int i = 0; i < indent + 4; i++)
+            std::cout << " ";
 
         std::cout << "BODY:\n";
         for (auto &b: body)
