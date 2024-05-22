@@ -37,6 +37,7 @@ private:
 
 public:
     TRef(Type* _type) : type(_type) {}
+    ~TRef() { delete type; }
     void print_type() const override {
         std::cout << "[TRef]";
         type->print_type();
@@ -49,6 +50,7 @@ private:
 
 public:
     TArray(Type* _type) : type(_type) {}
+    ~TArray() { delete type; }
     void print_type() const override {
         std::cout << "[TArray]";
         type->print_type();
@@ -131,6 +133,11 @@ public:
     CArrExpNode(std::unique_ptr<Type> _ty,
                 std::vector<ExpNode*>& _exp_list)
         : ty(std::move(_ty)), exp_list(_exp_list) {}
+
+    ~CArrExpNode() {
+        for (auto& elem: exp_list)
+            delete elem;
+    }
 
     void print_node(int indent) const override {
         for (int i = 0; i < indent; i++)
@@ -369,6 +376,11 @@ public:
                     std::vector<ExpNode*>& _func_args)
         : func_name(_func_name), func_args(_func_args) {}
 
+    ~FunCallExpNode() {
+        for (auto& elem: func_args)
+            delete elem;
+    }
+
     void print_node(int indent) const override {
         for (int i = 0; i < indent; i++)
             std::cout << " ";
@@ -467,6 +479,11 @@ public:
                     std::vector<ExpNode*>& _fargs)
         : fname(_fname), fargs(_fargs) {}
 
+    ~SCallStmtNode() {
+        for (auto& elem: fargs)
+            delete elem;
+    }
+
     void print_stmt(int indent) const override {
         for (int i = 0; i < indent; i++)
             std::cout << " ";
@@ -526,6 +543,14 @@ public:
         : cond(std::move(_cond)), then_body(_then_body),
             else_body(_else_body) {}
 
+    ~IfStmtNode() {
+        for (auto& elem: then_body)
+            delete elem;
+
+        for (auto& elem: else_body)
+            delete elem;
+    }
+
     void print_stmt(int indent) const override {
         for (int i = 0; i < indent; i++)
             std::cout << " ";
@@ -567,6 +592,14 @@ public:
                 std::vector<StmtNode*>& _body)
         : decl_list(_decl_list), cond(std::move(_cond)),
             iter(std::move(_iter)), body(_body) {}
+
+    ~ForStmtNode() {
+        for (auto& elem: decl_list)
+            delete elem;
+
+        for (auto& elem: body)
+            delete elem;
+    }
 
     void print_stmt(int indent) const override {
         for (int i = 0; i < indent; i++)
@@ -612,6 +645,11 @@ public:
                 std::vector<StmtNode*>& _body)
         : cond(std::move(_cond)), body(_body) {}
 
+    ~WhileStmtNode() {
+        for (auto& elem: body)
+            delete elem;
+    }
+
     void print_stmt(int indent) const override {
         for (int i = 0; i < indent; i++)
             std::cout << " ";
@@ -653,6 +691,14 @@ public:
             std::vector<StmtNode*>& _block)
         : frtype(std::move(_frtype)), fname(_fname),
             args(_args), block(_block) {}
+
+    ~FunDecl() {
+        for (auto& elem: block)
+            delete elem;
+
+        for (auto& arg: args)
+            delete arg.first;
+    }
 
     void print_decl(int indent) const override {
         for (int i = 0; i < indent; i++)
@@ -724,6 +770,11 @@ public:
     std::vector<Decls*> decl_list;
 
     Program() : decl_list({}) {}
+
+    ~Program() {
+        for (auto& elem: decl_list)
+            delete elem;
+    }
 
     void print_prog() const {
         std::cout << "PROG:\n";
