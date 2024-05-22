@@ -1,6 +1,6 @@
 " Syntax highlighting for Sypher
 " Language: sypher
-" Latest Revision: 2023-08-13
+" Latest Revision: 2024-05-22
 
 if exists("b:current_syntax")
     finish
