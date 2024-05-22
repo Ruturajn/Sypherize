@@ -14,7 +14,18 @@ let s:sypher_syntax_keywords = {
     \,                         "else"
     \,                        ]
     \,  'sypherType' : ["int"
+    \,                  "string"
+    \,                  "bool"
     \,                 ]
+    \,  'sypherLoop' : ["for"
+    \,                  "while"
+    \,                 ]
+    \,  'sypherBoolean' : ["true"
+    \,                     "false"
+    \,                    ]
+    \,  'sypherKeyword' : ["fun"
+    \,                     "new"
+    \,                    ]
     \, }
 
 function! s:syntax_keyword(dict)
