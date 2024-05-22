@@ -74,12 +74,7 @@ private:
 
 public:
     NumberExpNode(long _val) : val(_val) {}
-
-    void print_node(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-        std::cout << "NUM: " << val << "\n";
-    }
+    void print_node(int indent) const override;
 };
 
 class StringExpNode : public ExpNode {
@@ -88,12 +83,7 @@ private:
 
 public:
     StringExpNode(const std::string& _val) : val(_val) {}
-
-    void print_node(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-        std::cout << "STRING: " << val << "\n";
-    }
+    void print_node(int indent) const override;
 };
 
 class BoolExpNode : public ExpNode {
@@ -102,12 +92,7 @@ private:
 
 public:
     BoolExpNode(bool _val) : val(_val) {}
-
-    void print_node(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-        std::cout << "BOOL: " << val << "\n";
-    }
+    void print_node(int indent) const override;
 };
 
 class IdExpNode : public ExpNode {
@@ -116,12 +101,7 @@ private:
 
 public:
     IdExpNode(const std::string& _val) : val(_val) {}
-
-    void print_node(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-        std::cout << "ID: " << val << "\n";
-    }
+    void print_node(int indent) const override;
 };
 
 class CArrExpNode : public ExpNode {
@@ -139,22 +119,7 @@ public:
             delete elem;
     }
 
-    void print_node(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "CARR:\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "TYPE:";
-        ty->print_type();
-        std::cout << "\n";
-
-        for (auto &e: exp_list)
-            e->print_node(indent + 4);
-    }
+    void print_node(int indent) const override;
 };
 
 class NewExpNode : public ExpNode {
@@ -168,26 +133,7 @@ public:
                   std::unique_ptr<ExpNode> _exp)
         : ty (std::move(_ty)), exp(std::move(_exp)) {}
 
-    void print_node(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "NEWEXP:\n";
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "TYPE:";
-        ty->print_type();
-        std::cout << "\n";
-
-        if (exp != nullptr)
-            exp->print_node(indent + 4);
-        else {
-            for (int i = 0; i < indent + 4; i++)
-                std::cout << " ";
-            std::cout << "SIZE: 1\n";
-        }
-    }
+    void print_node(int indent) const override;
 };
 
 class IndexExpNode : public ExpNode {
@@ -200,15 +146,7 @@ public:
                   std::unique_ptr<ExpNode> _idx)
         : exp(std::move(_exp)), idx(std::move(_idx)) {}
 
-    void print_node(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "INDEX:\n";
-
-        exp->print_node(indent + 4);
-        idx->print_node(indent + 4);
-    }
+    void print_node(int indent) const override;
 };
 
 class BinopExpNode : public ExpNode {
@@ -243,82 +181,7 @@ public:
                  std::unique_ptr<ExpNode> _right):
         binop(_binop), left(std::move(_left)), right(std::move(_right)) {}
 
-    void print_node(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "BINOP: ";
-
-        switch (binop) {
-            case BINOP_PLUS:
-                std::cout << "+";
-                break;
-            case BINOP_MINUS:
-                std::cout << "-";
-                break;
-            case BINOP_MULT:
-                std::cout << "*";
-                break;
-            case BINOP_DIVIDE:
-                std::cout << "/";
-                break;
-            case BINOP_MODULUS:
-                std::cout << "%";
-                break;
-            case BINOP_LSHIFT:
-                std::cout << "<<";
-                break;
-            case BINOP_RSHIFT:
-                std::cout << ">>";
-                break;
-            case BINOP_BITAND:
-                std::cout << "&";
-                break;
-            case BINOP_BITOR:
-                std::cout << "|";
-                break;
-            case BINOP_BITXOR:
-                std::cout << "^";
-                break;
-            case BINOP_LT:
-                std::cout << "<";
-                break;
-            case BINOP_LTE:
-                std::cout << "<=";
-                break;
-            case BINOP_GT:
-                std::cout << ">";
-                break;
-            case BINOP_GTE:
-                std::cout << ">=";
-                break;
-            case BINOP_EQEQUAL:
-                std::cout << "==";
-                break;
-            case BINOP_NEQUAL:
-                std::cout << "!=";
-                break;
-            case BINOP_LOGAND:
-                std::cout << "&&";
-                break;
-            case BINOP_LOGOR:
-                std::cout << "||";
-                break;
-        }
-        std::cout << "\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "LHS:\n";
-        left->print_node(indent + 8);
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "RHS:\n";
-        right->print_node(indent + 8);
-    }
+    void print_node(int indent) const override;
 };
 
 class UnopExpNode : public ExpNode {
@@ -338,33 +201,7 @@ public:
     UnopExpNode(enum UnopType _uop, std::unique_ptr<ExpNode> _exp)
         : uop(_uop), exp(std::move(_exp)) {}
 
-    void print_node(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "UNOP:\n";
-        switch (uop) {
-            case UNOP_NEG:
-                std::cout << "~";
-                break;
-            case UNOP_NOT:
-                std::cout << "!";
-                break;
-            case UNOP_DEREF:
-                std::cout << "@";
-                break;
-            case UNOP_ADDROF:
-                std::cout << "#";
-                break;
-        }
-        std::cout << "\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "EXP:\n";
-        exp->print_node(indent + 8);
-    }
+    void print_node(int indent) const override;
 };
 
 class FunCallExpNode : public ExpNode {
@@ -382,25 +219,7 @@ public:
             delete elem;
     }
 
-    void print_node(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "FUNCALL:\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "FUNNAME: " << func_name << "\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "FUNARGS:\n";
-
-        for (auto &arg: func_args)
-            arg->print_node(indent + 8);
-    }
+    void print_node(int indent) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -422,24 +241,7 @@ public:
     AssnStmtNode(std::unique_ptr<ExpNode> _lhs, std::unique_ptr<ExpNode> _rhs)
         : lhs(std::move(_lhs)), rhs(std::move(_rhs)) {}
 
-    void print_stmt(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "ASSN:\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "LHS:\n";
-        lhs->print_node(indent + 8);
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "RHS:\n";
-        rhs->print_node(indent + 8);
-    }
+    void print_stmt(int indent) const override;
 };
 
 class DeclStmtNode : public StmtNode {
@@ -454,33 +256,7 @@ public:
                  std::unique_ptr<ExpNode> _exp)
         : ty(std::move(_ty)), id(_id), exp(std::move(_exp)) {}
 
-    void print_stmt(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "DECL:\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "TYPE: ";
-        if (ty != nullptr)
-            ty->print_type();
-        else
-            std::cout << "Array";
-        std::cout << "\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "ID: " << id << "\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "EXP:\n";
-        exp->print_node(indent + 8);
-    }
+    void print_stmt(int indent) const override;
 };
 
 class SCallStmtNode : public StmtNode {
@@ -498,25 +274,7 @@ public:
             delete elem;
     }
 
-    void print_stmt(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "SFUNCALL:\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "FUNNAME: " << fname << "\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "FUNARGS:\n";
-
-        for (auto &arg: fargs)
-            arg->print_node(indent + 8);
-    }
+    void print_stmt(int indent) const override;
 };
 
 class RetStmtNode : public StmtNode {
@@ -527,21 +285,7 @@ public:
     RetStmtNode(std::unique_ptr<ExpNode> _exp = nullptr)
         : exp(std::move(_exp)) {}
 
-    void print_stmt(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "RETURN:\n";
-
-        if (exp != nullptr)
-            exp->print_node(indent + 4);
-        else {
-            for (int i = 0; i < indent + 4; i++)
-                std::cout << " ";
-
-            std::cout << "void\n";
-        }
-    }
+    void print_stmt(int indent) const override;
 };
 
 class IfStmtNode : public StmtNode {
@@ -565,31 +309,7 @@ public:
             delete elem;
     }
 
-    void print_stmt(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-        std::cout << "IF:\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "COND:\n";
-        cond->print_node(indent + 8);
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "THEN_BODY:\n";
-        for (auto &s: then_body)
-            s->print_stmt(indent + 8);
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "ELSE_BODY:\n";
-        for (auto &s: else_body)
-            s->print_stmt(indent + 8);
-    }
+    void print_stmt(int indent) const override;
 };
 
 class ForStmtNode : public StmtNode {
@@ -615,38 +335,7 @@ public:
             delete elem;
     }
 
-    void print_stmt(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "FOR:\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "DECL_LIST:\n";
-        for (auto &d: decl_list)
-            d->print_stmt(indent + 8);
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "COND:\n";
-        cond->print_node(indent + 8);
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "ITER:\n";
-        iter->print_stmt(indent + 8);
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "BODY:\n";
-        for (auto &b: body)
-            b->print_stmt(indent + 8);
-    }
+    void print_stmt(int indent) const override;
 };
 
 class WhileStmtNode : public StmtNode {
@@ -664,25 +353,7 @@ public:
             delete elem;
     }
 
-    void print_stmt(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "WHILE:\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "COND:\n";
-        cond->print_node(indent + 8);
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "BODY:\n";
-        for (auto &b: body)
-            b->print_stmt(indent + 8);
-    }
+    void print_stmt(int indent) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -717,40 +388,7 @@ public:
             delete arg.first;
     }
 
-    void print_decl(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "FUN_DECL:\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "FUNNAME: " << fname << "\n";
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "FUNARGS:\n";
-
-        for (auto &arg: args) {
-
-            for (int i = 0; i < indent + 8; i++)
-                std::cout << " ";
-
-            std::cout << "ARG:";
-            arg.first->print_type();
-            std::cout << arg.second << "\n";
-        }
-
-        for (int i = 0; i < indent + 4; i++)
-            std::cout << " ";
-
-        std::cout << "FUNBODY:\n";
-
-        for (auto &s: block)
-            s->print_stmt(indent + 8);
-    }
+    void print_decl(int indent) const override;
 };
 
 class GlobalDecl : public Decls {
@@ -764,32 +402,7 @@ public:
                std::unique_ptr<ExpNode> _exp)
         : ty (std::move(_ty)), id (_id), exp(std::move(_exp)) {}
 
-    void print_decl(int indent) const override {
-        for (int i = 0; i < indent; i++)
-            std::cout << " ";
-
-        std::cout << "GLOBAL_DECL:\n";
-
-        for (int i = 0; i < indent + 8; i++)
-            std::cout << " ";
-
-        std::cout << "TYPE: ";
-        if (ty != nullptr)
-            ty->print_type();
-        else
-            std::cout << "Array";
-        std::cout << "\n";
-
-        for (int i = 0; i < indent + 8; i++)
-            std::cout << " ";
-
-        std::cout << "ID: " << id << "\n";
-        for (int i = 0; i < indent + 8; i++)
-            std::cout << " ";
-
-        std::cout << "EXP:\n";
-        exp->print_node(indent + 12);
-    }
+    void print_decl(int indent) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -806,12 +419,7 @@ public:
             delete elem;
     }
 
-    void print_prog() const {
-        std::cout << "PROG:\n";
-
-        for (auto &d: decl_list)
-            d->print_decl(4);
-    }
+    void print_prog() const;
 };
 
 #endif // __AST_H__

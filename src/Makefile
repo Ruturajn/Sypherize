@@ -28,4 +28,4 @@ BIN_DIR=../bin
 all: $(SRCS) $(BUILD_DIR) $(BIN_DIR) $(OBJS)
 
 compile_msg:
-	@printf "\033[1;34m[+] Compiling into object files ...\033[1;37m\n"
+	@printf "\033[1;34m[+] Compiling source code into object files ...\033[1;37m\n"

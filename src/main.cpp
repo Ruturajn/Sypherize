@@ -39,5 +39,7 @@ int main(int argc, char* argv[]) {
     parser.parse_prog();
     parser.prog.print_prog();
 
+    // Typecheck
+
     return 0;
 }
