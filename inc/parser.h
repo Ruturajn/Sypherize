@@ -283,13 +283,26 @@ public:
         return p_type;
     }
 
-    std::unique_ptr<ExpNode> parse_new_type();
+    Type* parse_type_wo_arr() {
+        enum DeclType type_set = conv_type(tok_list[curr_pos].tok_ty);
+
+        int indirection_count = 0;
+        while (check_next() == Token::TOK_DEREF) {
+            advance();
+            indirection_count += 1;
+        }
+
+        auto p_type = build_type(indirection_count, type_set);
+        return p_type;
+    }
+
+    std::unique_ptr<ExpNode> parse_new_type_exp();
 
     std::unique_ptr<ExpNode> parse_binop(int prev_prec,
                                          std::unique_ptr<ExpNode> lhs);
     std::unique_ptr<ExpNode> parse_expr(int prev_prec);
     std::unique_ptr<ExpNode> parse_lhs(int prev_prec);
-    StmtNode* parse_vdecl(const std::string& fname);
+    StmtNode* parse_vdecl();
     StmtNode* parse_sfun_call();
     StmtNode* parse_stmt(const std::string& fname);
     std::pair<Type*, std::string> parse_arg(const std::string& fn_name);

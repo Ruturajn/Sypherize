@@ -243,7 +243,7 @@ std::pair<Type*, std::string> Parser::parse_arg(const std::string& fn_name) {
 }
 
 
-std::unique_ptr<ExpNode> Parser::parse_new_type() {
+std::unique_ptr<ExpNode> Parser::parse_new_type_exp() {
     enum DeclType type_set = conv_type(tok_list[curr_pos].tok_ty);
 
     int indirection_count = 0;
@@ -273,8 +273,9 @@ std::unique_ptr<ExpNode> Parser::parse_new_type() {
     return std::make_unique<NewExpNode>(std::move(p_type_uptr), nullptr);
 }
 
-StmtNode* Parser::parse_vdecl(const std::string& fname) {
-    auto vtype = parse_type();
+StmtNode* Parser::parse_vdecl() {
+    ssize_t type_pos = curr_pos;
+    std::unique_ptr<Type> vtype_ptr(parse_type());
 
     advance();
 
@@ -286,15 +287,6 @@ StmtNode* Parser::parse_vdecl(const std::string& fname) {
     std::string& vname = tok_list[curr_pos].lexeme;
 
     advance();
-
-    // Bind variable name in local function context to it's type.
-    if (env.find(fname) != env.end()) {
-        if (env[fname].find(vname) != env[fname].end())
-                std::cout << "[ERR]: Redefinition of variable at: "
-                    << "[" << tok_list[curr_pos].line_num << "," <<
-                    tok_list[curr_pos].col_num << "]\n";
-    }
-    var_bind_ctxt(fname, vname, vtype);
 
     if (tok_list[curr_pos].tok_ty == Token::TOK_LBRACE) {
 
@@ -317,10 +309,14 @@ StmtNode* Parser::parse_vdecl(const std::string& fname) {
 
         advance();
 
-        std::unique_ptr<Type> vtype_ptr(vtype);
-        auto carr_exp = std::make_unique<CArrExpNode>(std::move(vtype_ptr), init_exps);
+        ssize_t orig = curr_pos;
+        curr_pos = type_pos;
+        std::unique_ptr<Type> elem_type(parse_type_wo_arr());
+        curr_pos = orig;
 
-        return new DeclStmtNode(vname, std::move(carr_exp));
+        auto carr_exp = std::make_unique<CArrExpNode>(std::move(elem_type), init_exps);
+
+        return new DeclStmtNode(std::move(vtype_ptr), vname, std::move(carr_exp));
     }
 
     expect(Token::TOK_EQUAL, "`=` operator");
@@ -329,15 +325,15 @@ StmtNode* Parser::parse_vdecl(const std::string& fname) {
     if (tok_list[curr_pos].tok_ty == Token::TOK_NEW) {
         advance();
 
-        auto new_exp = parse_new_type();
+        auto new_exp = parse_new_type_exp();
         advance();
-        return new DeclStmtNode(vname, std::move(new_exp));
+        return new DeclStmtNode(std::move(vtype_ptr), vname, std::move(new_exp));
     }
 
     std::unique_ptr<ExpNode> init_exp = parse_expr(0);
     advance();
 
-    return new DeclStmtNode(vname, std::move(init_exp));
+    return new DeclStmtNode(std::move(vtype_ptr), vname, std::move(init_exp));
 }
 
 StmtNode* Parser::parse_sfun_call() {
@@ -385,7 +381,7 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
         case Token::TOK_TYPE_INT:
         case Token::TOK_TYPE_STRING:
         case Token::TOK_TYPE_BOOL: {
-            auto decl = parse_vdecl(fname);
+            auto decl = parse_vdecl();
             expect(Token::TOK_SEMIC, "terminating `;` operator");
             return decl;
         }
@@ -474,7 +470,7 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
             std::vector<StmtNode*> decls;
             while ((curr_pos < tok_len) &&
                     tok_list[curr_pos].tok_ty != Token::TOK_SEMIC) {
-                decls.push_back(parse_vdecl(fname));
+                decls.push_back(parse_vdecl());
             }
 
             advance();
@@ -576,7 +572,7 @@ Decls* Parser::parse_fdecl() {
 
 // vdecl ::== <type> : <ident> = <exp>
 Decls* Parser::parse_gvdecl() {
-    auto gvtype = parse_type();
+    std::unique_ptr<Type> gvtype_ptr(parse_type());
 
     advance();
 
@@ -589,9 +585,6 @@ Decls* Parser::parse_gvdecl() {
 
     advance();
 
-    // Bind variable name in global context to it's type.
-    var_bind_ctxt(global_key, gvname, gvtype);
-
     expect(Token::TOK_EQUAL, "`=` operator");
     advance();
 
@@ -601,7 +594,7 @@ Decls* Parser::parse_gvdecl() {
     expect(Token::TOK_SEMIC, "terminating `;` operator");
     advance();
 
-    return new GlobalDecl(gvname, std::move(init_exp));
+    return new GlobalDecl(std::move(gvtype_ptr), gvname, std::move(init_exp));
 }
 
 Decls* Parser::parse_decl() {

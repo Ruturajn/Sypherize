@@ -126,7 +126,7 @@ public:
 
 class CArrExpNode : public ExpNode {
 private:
-    std::unique_ptr<Type> ty;
+    std::unique_ptr<Type> ty; // Type of elements.
     std::vector<ExpNode*> exp_list;
 
 public:
@@ -160,7 +160,8 @@ public:
 class NewExpNode : public ExpNode {
 private:
     std::unique_ptr<Type> ty;
-    std::unique_ptr<ExpNode> exp;
+    std::unique_ptr<ExpNode> exp; // If nullptr then just one elem of primitive
+                                  // type.
 
 public:
     NewExpNode(std::unique_ptr<Type> _ty,
@@ -443,18 +444,31 @@ public:
 
 class DeclStmtNode : public StmtNode {
 private:
+    std::unique_ptr<Type> ty;
     std::string id;
     std::unique_ptr<ExpNode> exp;
 
 public:
-    DeclStmtNode(const std::string& _id, std::unique_ptr<ExpNode> _exp)
-        : id(_id), exp(std::move(_exp)) {}
+    DeclStmtNode(std::unique_ptr<Type> _ty,
+                 const std::string& _id,
+                 std::unique_ptr<ExpNode> _exp)
+        : ty(std::move(_ty)), id(_id), exp(std::move(_exp)) {}
 
     void print_stmt(int indent) const override {
         for (int i = 0; i < indent; i++)
             std::cout << " ";
 
         std::cout << "DECL:\n";
+
+        for (int i = 0; i < indent + 4; i++)
+            std::cout << " ";
+
+        std::cout << "TYPE: ";
+        if (ty != nullptr)
+            ty->print_type();
+        else
+            std::cout << "Array";
+        std::cout << "\n";
 
         for (int i = 0; i < indent + 4; i++)
             std::cout << " ";
@@ -738,12 +752,14 @@ public:
 
 class GlobalDecl : public Decls {
 public:
+    std::unique_ptr<Type> ty;
     std::string id;
     std::unique_ptr<ExpNode> exp;
 
-    GlobalDecl(const std::string& _id,
+    GlobalDecl(std::unique_ptr<Type> _ty,
+               const std::string& _id,
                std::unique_ptr<ExpNode> _exp)
-        : id (_id), exp(std::move(_exp)) {}
+        : ty (std::move(_ty)), id (_id), exp(std::move(_exp)) {}
 
     void print_decl(int indent) const override {
         for (int i = 0; i < indent; i++)
@@ -754,9 +770,20 @@ public:
         for (int i = 0; i < indent + 8; i++)
             std::cout << " ";
 
+        std::cout << "TYPE: ";
+        if (ty != nullptr)
+            ty->print_type();
+        else
+            std::cout << "Array";
+        std::cout << "\n";
+
+        for (int i = 0; i < indent + 8; i++)
+            std::cout << " ";
+
         std::cout << "ID: " << id << "\n";
         for (int i = 0; i < indent + 8; i++)
             std::cout << " ";
+
         std::cout << "EXP:\n";
         exp->print_node(indent + 12);
     }
