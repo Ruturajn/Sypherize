@@ -498,6 +498,25 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
                                     for_body);
         }
 
+        case Token::TOK_WHILE: {
+            advance();
+
+            expect(Token::TOK_LPAREN, "`(` for `while` stmt");
+            advance();
+
+            auto cond = parse_expr(0);
+            advance();
+
+            expect(Token::TOK_RPAREN, "`)` for ending `while` prelude");
+            advance();
+
+            expect(Token::TOK_LBRACE, "`{` for `for` body");
+            advance();
+
+            auto while_body = parse_block(fname);
+
+            return new WhileStmtNode(std::move(cond), while_body);
+        }
 
         default:
             std::cout << "[ERR]: Invalid syntax at: " <<

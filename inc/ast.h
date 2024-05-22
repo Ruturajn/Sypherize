@@ -676,6 +676,9 @@ public:
         std::cout << "COND:\n";
         cond->print_node(indent + 8);
 
+        for (int i = 0; i < indent + 4; i++)
+            std::cout << " ";
+
         std::cout << "BODY:\n";
         for (auto &b: body)
             b->print_stmt(indent + 8);
