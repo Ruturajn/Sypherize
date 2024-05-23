@@ -229,7 +229,7 @@ public:
 
     void advance() { curr_pos += 1; }
 
-    bool expect(Token::TokType t_ty, const char* expected) {
+    bool expect(Token::TokType t_ty, const char* error_str) {
         if (curr_pos >= tok_len)
             return false;
 
@@ -244,7 +244,7 @@ public:
                 tok_str = tok_list[curr_pos - 1].lexeme;
             }
 
-            std::cout << "\033[1;31m[ERR]:\033[1;37m " << expected << "\n";
+            std::cout << "\033[1;31m[ERR]:\033[1;37m " << error_str << "\n";
             std::cout << ">> " << file_name << "[" << l_n << "," << c_n << "]\n";
 
             std::cout << std::setw(8) << tok_list[curr_pos].line_num << " | ";
@@ -265,9 +265,9 @@ public:
 
             std::cout << "\033[1;31m";
             for (int i = 0; i < (int)tok_str.size(); i++)
-                std::cout << '~';
+                std::cout << '^';
 
-            std::cout << "^\033[1;37m\n\n";
+            std::cout << "\033[1;37m\n\n";
 
             return false;
         }

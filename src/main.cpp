@@ -32,12 +32,12 @@ int main(int argc, char* argv[]) {
     // Lex
     Lexer lexer(file_data);
     lexer.lex();
-    /* lexer.print_tokens(); */
+    lexer.print_tokens();
 
     // Parse
     Parser parser(lexer.tok_list, file_data, file_name);
     parser.parse_prog();
-    /* parser.prog.print_prog(); */
+    parser.prog.print_prog();
 
     // Typecheck
 

@@ -55,9 +55,7 @@ std::unique_ptr<ExpNode> Parser::parse_lhs(int prev_prec) {
         }
 
         default:
-            std::cout << "[ERR]: Invalid syntax at parse_expr: " <<
-                "[" << tok_list[curr_pos].line_num << "," <<
-                tok_list[curr_pos].col_num << "]\n";
+            expect(Token::TOK_EOF, "Encountered invalid syntax");
             advance();
             return nullptr;
     }
@@ -193,10 +191,8 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
         case Token::TOK_LTE:
         case Token::TOK_LOGAND:
         case Token::TOK_LOGOR:
-            std::cout << "[ERR]: Invalid syntax at parse_expr, found binary"
-                " op without preceding compatible type expr: " <<
-                "[" << tok_list[curr_pos].line_num << "," <<
-                tok_list[curr_pos].col_num << "]\n";
+            expect(Token::TOK_EOF, "Encountered invalid syntax, found binary"
+                    " op without preceding compatible type expression");
             advance();
             return nullptr;
             break;
@@ -211,9 +207,7 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
         }
 
         default:
-            std::cout << "[ERR]: Invalid syntax at parse_expr: " <<
-                "[" << tok_list[curr_pos].line_num << "," <<
-                tok_list[curr_pos].col_num << "]\n";
+            expect(Token::TOK_EOF, "Encountered invalid syntax");
             advance();
             return nullptr;
     }
@@ -372,9 +366,7 @@ StmtNode* Parser::parse_sfun_call() {
         }
 
         default:
-            std::cout << "[ERR]: Invalid syntax at: " <<
-                "[" << tok_list[curr_pos].line_num << "," <<
-                tok_list[curr_pos].col_num << "]\n";
+            expect(Token::TOK_EOF, "Encountered invalid syntax");
             advance();
             return nullptr;
     }
@@ -407,14 +399,14 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
             break;
 
         case Token::TOK_IDENT: {
-            ssize_t orig = curr_pos;
+            /* ssize_t orig = curr_pos; */
 
             auto left = parse_lhs(0);
             advance();
 
             if (tok_list[curr_pos].tok_ty != Token::TOK_EQUAL) {
 
-                curr_pos = orig;
+                /* curr_pos = orig; */
 
                 return parse_sfun_call();
             }
@@ -524,9 +516,7 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
         }
 
         default:
-            std::cout << "[ERR]: Invalid syntax at: " <<
-                "[" << tok_list[curr_pos].line_num << "," <<
-                tok_list[curr_pos].col_num << "]\n";
+            expect(Token::TOK_EOF, "Encountered invalid syntax");
             advance();
             return nullptr;
     }
@@ -567,9 +557,7 @@ Decls* Parser::parse_fdecl() {
                 break;
 
             default:
-                std::cout << "[ERR]: Invalid syntax for function parameters: "
-                    << "[" << tok_list[curr_pos].line_num << "," <<
-                    tok_list[curr_pos].col_num << "]\n";
+                expect(Token::TOK_EOF, "Encountered invalid syntax for function parameters");
                 advance();
                 return nullptr;
         }
@@ -636,9 +624,8 @@ Decls* Parser::parse_decl() {
             break;
 
         default:
-            std::cout << "[ERR]: Invalid syntax at: " <<
-                "[" << tok_list[curr_pos].line_num << "," <<
-                tok_list[curr_pos].col_num << "]\n";
+            expect(Token::TOK_EOF, "Encountered invalid syntax top level" 
+                    "declaration");
             advance();
             return nullptr;
             break;
