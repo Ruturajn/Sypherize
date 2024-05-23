@@ -2,10 +2,19 @@ t ::==
     | int
     | string
     | bool
-    | @ t
+    | t e
+
+arr ::==
+    | [] arr
+    | epsilon
+
+ind ::==
+    | @ ind
+    | @ arr
+    | epsilon
 
 vdecl ::==
-    | t : id = exp
+    | t : id = exp ;
 
 arg ::==
     | t : id
@@ -14,10 +23,10 @@ args ::==
     | arg1, ..., argn
 
 fdecl ::==
-    | t : id ( args ) block
+    | fun id ( args ) -> t { block }
 
 block ::==
-    | { stmt1, ..., stmt2 }
+    | { stmt1;, ..., stmt2; }
 
 stmt ::==
     | lhs = exp
@@ -26,7 +35,7 @@ stmt ::==
     | return
     | id ( exp1, ..., expn )
     | if_stmt
-    | for ( vdecls; exp_opt; stmt_opt) { block }
+    | for ( vdecls; exp_opt; stmt_opt;) { block }
     | while ( exp ) { block }
 
 if_stmt ::==

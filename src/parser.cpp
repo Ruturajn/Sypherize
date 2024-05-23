@@ -58,6 +58,7 @@ std::unique_ptr<ExpNode> Parser::parse_lhs(int prev_prec) {
             std::cout << "[ERR]: Invalid syntax at parse_expr: " <<
                 "[" << tok_list[curr_pos].line_num << "," <<
                 tok_list[curr_pos].col_num << "]\n";
+            advance();
             return nullptr;
     }
 }
@@ -196,6 +197,7 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
                 " op without preceding compatible type expr: " <<
                 "[" << tok_list[curr_pos].line_num << "," <<
                 tok_list[curr_pos].col_num << "]\n";
+            advance();
             return nullptr;
             break;
 
@@ -212,6 +214,7 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
             std::cout << "[ERR]: Invalid syntax at parse_expr: " <<
                 "[" << tok_list[curr_pos].line_num << "," <<
                 tok_list[curr_pos].col_num << "]\n";
+            advance();
             return nullptr;
     }
 }
@@ -343,7 +346,7 @@ StmtNode* Parser::parse_sfun_call() {
 
             advance();
 
-            expect(Token::TOK_LPAREN, "'(' for sfunction call");
+            expect(Token::TOK_LPAREN, "`(` for a function call");
 
             advance();
 
@@ -372,6 +375,7 @@ StmtNode* Parser::parse_sfun_call() {
             std::cout << "[ERR]: Invalid syntax at: " <<
                 "[" << tok_list[curr_pos].line_num << "," <<
                 tok_list[curr_pos].col_num << "]\n";
+            advance();
             return nullptr;
     }
 }
@@ -409,6 +413,7 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
             advance();
 
             if (tok_list[curr_pos].tok_ty != Token::TOK_EQUAL) {
+
                 curr_pos = orig;
 
                 return parse_sfun_call();
@@ -522,6 +527,7 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
             std::cout << "[ERR]: Invalid syntax at: " <<
                 "[" << tok_list[curr_pos].line_num << "," <<
                 tok_list[curr_pos].col_num << "]\n";
+            advance();
             return nullptr;
     }
 }
@@ -564,6 +570,7 @@ Decls* Parser::parse_fdecl() {
                 std::cout << "[ERR]: Invalid syntax for function parameters: "
                     << "[" << tok_list[curr_pos].line_num << "," <<
                     tok_list[curr_pos].col_num << "]\n";
+                advance();
                 return nullptr;
         }
     }
@@ -632,6 +639,7 @@ Decls* Parser::parse_decl() {
             std::cout << "[ERR]: Invalid syntax at: " <<
                 "[" << tok_list[curr_pos].line_num << "," <<
                 tok_list[curr_pos].col_num << "]\n";
+            advance();
             return nullptr;
             break;
     }

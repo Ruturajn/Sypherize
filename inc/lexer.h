@@ -13,7 +13,6 @@ public:
     ssize_t l_num;
     ssize_t col_num;
     ssize_t data_sz;
-    static const std::vector<int> tok_length;
 
     Lexer(std::string _file_data):
         tok_list({}), file_data(std::move(_file_data)), curr_pos(0),

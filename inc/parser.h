@@ -3,13 +3,17 @@
 
 #include "./ast.h"
 #include "./token.h"
+#include <iomanip>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <sstream>
 
 class Parser {
 public:
+    std::string file_name;
+    std::vector<std::string> file_lines;
     std::vector<Token> tok_list;
     ssize_t curr_pos;
     ssize_t tok_len;
@@ -51,9 +55,10 @@ public:
         }
     }
 
-    Parser(std::vector<Token>& _tok_list)
-        : tok_list(_tok_list), curr_pos(0), tok_len(_tok_list.size()),
-            precedence({}), prog(Program()) {
+    Parser(std::vector<Token>& _tok_list, const std::string& _file_data,
+            const std::string& _file_name)
+        : file_name(_file_name), file_lines({}), tok_list(_tok_list), curr_pos(0),
+            tok_len(_tok_list.size()), precedence({}), prog(Program()) {
 
         precedence[Token::TOK_MULT] = 100;
         precedence[Token::TOK_DIV] = 100;
@@ -82,6 +87,14 @@ public:
         precedence[Token::TOK_LOGAND] = 5;
 
         precedence[Token::TOK_LOGOR] = 3;
+
+        std::istringstream stream(_file_data);
+        std::string line;
+
+        // Traverse each line using std::getline
+        while (std::getline(stream, line)) {
+            file_lines.push_back(line);
+        }
     }
 
     Token::TokType check_next() const {
@@ -217,10 +230,45 @@ public:
     void advance() { curr_pos += 1; }
 
     bool expect(Token::TokType t_ty, const char* expected) {
+        if (curr_pos >= tok_len)
+            return false;
+
         if (tok_list[curr_pos].tok_ty != t_ty) {
-            std::cout << "[ERR]: Expected " << expected << " at: " <<
-                "[" << tok_list[curr_pos].line_num << "," <<
-                tok_list[curr_pos].col_num << "]\n";
+            ssize_t l_n = tok_list[curr_pos].line_num;
+            ssize_t c_n = tok_list[curr_pos].col_num;
+            std::string tok_str = tok_list[curr_pos].lexeme;
+
+            if (curr_pos > 0) {
+                l_n = tok_list[curr_pos - 1].line_num;
+                c_n = tok_list[curr_pos - 1].col_num;
+                tok_str = tok_list[curr_pos - 1].lexeme;
+            }
+
+            std::cout << "\033[1;31m[ERR]:\033[1;37m " << expected << "\n";
+            std::cout << ">> " << file_name << "[" << l_n << "," << c_n << "]\n";
+
+            std::cout << std::setw(8) << tok_list[curr_pos].line_num << " | ";
+
+            for (int i = 0; i < c_n - 1; i++)
+                std::cout << file_lines[l_n - 1][i];
+
+            std::cout << "\033[1;31m" << tok_str << "\033[1;37m";
+
+            for (int i = (c_n + tok_str.size()) - 1; i < (int)(file_lines[l_n - 1].size()); i++)
+                std::cout << file_lines[l_n - 1][i];
+            std::cout << "\n";
+
+            std::cout << std::setw(8) << " " << " |";
+
+            for (int i = 0; i < c_n; i++)
+                std::cout << ' ';
+
+            std::cout << "\033[1;31m";
+            for (int i = 0; i < (int)tok_str.size(); i++)
+                std::cout << '~';
+
+            std::cout << "^\033[1;37m\n\n";
+
             return false;
         }
 
