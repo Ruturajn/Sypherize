@@ -20,6 +20,7 @@ public:
     std::unordered_map<Token::TokType, int> precedence;
     static const std::string global_key;
     Program prog;
+    bool failed;
     enum DeclType {
         DECL_TYPE_INT,
         DECL_TYPE_STRING,
@@ -34,16 +35,16 @@ public:
         std::unordered_map<std::string, Type*>> env;
 
     void advance() { curr_pos += 1; }
-    enum DeclType conv_type(enum Token::TokType t_ty) const;
+    enum DeclType conv_type(enum Token::TokType t_ty);
     Parser(std::vector<Token>& _tok_list, const std::string& _file_data,
             const std::string& _file_name);
-    bool expect(Token::TokType t_ty, const char* error_str, const Token& tok) const;
-    bool expect(Token::TokType t_ty, const char* error_str) const;
+    bool expect(Token::TokType t_ty, const char* error_str, const Token& tok);
+    bool expect(Token::TokType t_ty, const char* error_str);
     Token::TokType check_next() const;
     bool is_next_binop() const;
     int get_precedence(enum Token::TokType t_ty);
-    enum BinopExpNode::BinopType conv_binop(const Token& t) const;
-    enum UnopExpNode::UnopType conv_unop(const Token& t) const;
+    enum BinopExpNode::BinopType conv_binop(const Token& t);
+    enum UnopExpNode::UnopType conv_unop(const Token& t);
     void var_bind_ctxt(const std::string& fun_ctxt,
                        const std::string& var_name,
                        Type* val);
@@ -57,9 +58,9 @@ public:
     std::unique_ptr<ExpNode> parse_lhs(int prev_prec);
     StmtNode* parse_vdecl();
     StmtNode* parse_sfun_call();
-    StmtNode* parse_stmt(const std::string& fname);
-    std::pair<Type*, std::string> parse_arg(const std::string& fn_name);
-    std::vector<StmtNode*> parse_block(const std::string& fname);
+    StmtNode* parse_stmt();
+    std::pair<Type*, std::string> parse_arg();
+    std::vector<StmtNode*> parse_block();
     Decls* parse_fdecl();
     Decls* parse_gvdecl();
     Decls* parse_decl();

@@ -7,7 +7,7 @@ const std::string Parser::global_key = "__global__";
 /// Helper Functions
 ///===-------------------------------------------------------------------===///
 
-enum Parser::DeclType Parser::conv_type(enum Token::TokType t_ty) const {
+enum Parser::DeclType Parser::conv_type(enum Token::TokType t_ty) {
     switch (t_ty) {
         case Token::TOK_TYPE_INT:
             return DECL_TYPE_INT;
@@ -27,7 +27,7 @@ enum Parser::DeclType Parser::conv_type(enum Token::TokType t_ty) const {
 Parser::Parser(std::vector<Token>& _tok_list, const std::string& _file_data,
         const std::string& _file_name)
     : file_name(_file_name), file_lines({}), tok_list(_tok_list), curr_pos(0),
-        tok_len(_tok_list.size()), precedence({}), prog(Program()) {
+        tok_len(_tok_list.size()), precedence({}), prog(Program()), failed(false) {
 
     precedence[Token::TOK_MULT] = 100;
     precedence[Token::TOK_DIV] = 100;
@@ -110,7 +110,7 @@ int Parser::get_precedence(enum Token::TokType t_ty) {
     return -1;
 }
 
-enum BinopExpNode::BinopType Parser::conv_binop(const Token& t) const {
+enum BinopExpNode::BinopType Parser::conv_binop(const Token& t) {
     switch (t.tok_ty) {
         case Token::TOK_PLUS:
             return BinopExpNode::BINOP_PLUS;
@@ -172,7 +172,7 @@ enum BinopExpNode::BinopType Parser::conv_binop(const Token& t) const {
     }
 }
 
-enum UnopExpNode::UnopType Parser::conv_unop(const Token& t) const {
+enum UnopExpNode::UnopType Parser::conv_unop(const Token& t) {
     switch (t.tok_ty) {
         case Token::TOK_NEG:
             return UnopExpNode::UNOP_NEG;
@@ -192,15 +192,19 @@ enum UnopExpNode::UnopType Parser::conv_unop(const Token& t) const {
     }
 }
 
-bool Parser::expect(Token::TokType t_ty, const char* error_str) const {
+bool Parser::expect(Token::TokType t_ty, const char* error_str) {
     return expect(t_ty, error_str, tok_list[curr_pos]);
 }
 
-bool Parser::expect(Token::TokType t_ty, const char* error_str, const Token& tok) const {
+bool Parser::expect(Token::TokType t_ty, const char* error_str, const Token& tok) {
     if (curr_pos >= tok_len)
         return false;
 
     if (tok.tok_ty != t_ty) {
+
+        if (failed == false)
+            failed = true;
+
         ssize_t l_n = tok.line_num;
         ssize_t c_n = tok.col_num;
         std::string tok_str = tok.lexeme;
@@ -518,7 +522,7 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
     }
 }
 
-std::pair<Type*, std::string> Parser::parse_arg(const std::string& fn_name) {
+std::pair<Type*, std::string> Parser::parse_arg() {
 
     auto p_type = parse_type();
 
@@ -534,7 +538,7 @@ std::pair<Type*, std::string> Parser::parse_arg(const std::string& fn_name) {
     advance();
 
     // Bind variable name in global context to it's type.
-    var_bind_ctxt(fn_name, p_name, p_type);
+    /* var_bind_ctxt(fn_name, p_name, p_type); */
 
     if (tok_list[curr_pos].tok_ty != Token::TOK_RPAREN) {
         expect(Token::TOK_COMMA, "`,` to delimit function paramaters");
@@ -677,7 +681,7 @@ StmtNode* Parser::parse_sfun_call() {
     }
 }
 
-StmtNode* Parser::parse_stmt(const std::string& fname) {
+StmtNode* Parser::parse_stmt() {
     switch (tok_list[curr_pos].tok_ty) {
         case Token::TOK_TYPE_INT:
         case Token::TOK_TYPE_STRING:
@@ -705,11 +709,15 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
 
         case Token::TOK_IDENT: {
 
+            ssize_t orig = curr_pos;
+
             auto left = parse_lhs(0);
             advance();
 
-            if (tok_list[curr_pos].tok_ty != Token::TOK_EQUAL)
+            if (tok_list[curr_pos].tok_ty != Token::TOK_EQUAL) {
+                curr_pos = orig;
                 return parse_sfun_call();
+            }
 
             expect(Token::TOK_EQUAL, "`=` operator for assign statement");
 
@@ -738,7 +746,7 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
 
             advance();
 
-            auto then_body = parse_block(fname);
+            auto then_body = parse_block();
 
             if (check_next() == Token::TOK_ELSE) {
                 // Consume TOK_ELSE
@@ -749,7 +757,7 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
 
                 advance();
 
-                auto else_body = parse_block(fname);
+                auto else_body = parse_block();
 
                 return new IfStmtNode(std::move(cond), then_body, else_body);
             }
@@ -779,7 +787,7 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
                                      " `for` loop");
             advance();
 
-            auto iter = parse_stmt(fname);
+            auto iter = parse_stmt();
             advance();
 
             expect(Token::TOK_RPAREN, "`)` for ending `for` prelude");
@@ -788,7 +796,7 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
             expect(Token::TOK_LBRACE, "`{` for `for` body");
             advance();
 
-            auto for_body = parse_block(fname);
+            auto for_body = parse_block();
 
             std::unique_ptr<StmtNode> iter_uptr(iter);
             return new ForStmtNode(decls, std::move(cond), std::move(iter_uptr),
@@ -810,7 +818,7 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
             expect(Token::TOK_LBRACE, "`{` for `for` body");
             advance();
 
-            auto while_body = parse_block(fname);
+            auto while_body = parse_block();
 
             return new WhileStmtNode(std::move(cond), while_body);
         }
@@ -822,10 +830,10 @@ StmtNode* Parser::parse_stmt(const std::string& fname) {
     }
 }
 
-std::vector<StmtNode*> Parser::parse_block(const std::string& fname) {
+std::vector<StmtNode*> Parser::parse_block() {
     std::vector<StmtNode*> stmts {};
     while (curr_pos < tok_len && tok_list[curr_pos].tok_ty != Token::TOK_RBRACE) {
-        stmts.push_back(parse_stmt(fname));
+        stmts.push_back(parse_stmt());
         advance();
     }
     return stmts;
@@ -853,7 +861,7 @@ Decls* Parser::parse_fdecl() {
             case Token::TOK_TYPE_INT:
             case Token::TOK_TYPE_STRING:
             case Token::TOK_TYPE_BOOL:
-                params.push_back(parse_arg(f_name));
+                params.push_back(parse_arg());
                 break;
 
             default:
@@ -875,7 +883,7 @@ Decls* Parser::parse_fdecl() {
     expect(Token::TOK_LBRACE, "`{` for function definition");
     advance();
 
-    std::vector<StmtNode*> fn_body = parse_block(f_name);
+    std::vector<StmtNode*> fn_body = parse_block();
 
     expect(Token::TOK_RBRACE, "`}` for ending function definition");
     advance();

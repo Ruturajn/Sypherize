@@ -37,6 +37,9 @@ int main(int argc, char* argv[]) {
     // Parse
     Parser parser(lexer.tok_list, file_data, file_name);
     parser.parse_prog();
+    if (parser.failed)
+        return -1;
+
     parser.prog.print_prog();
 
     // Typecheck
