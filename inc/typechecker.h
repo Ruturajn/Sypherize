@@ -3,20 +3,20 @@
 
 #include "../inc/parser.h"
 
+using Environment =
+    std::unordered_map<std::string, std::unordered_map<std::string, Type*>>;
+
+// The first element in the vector is the function return type
+using FuncEnvironment =
+    std::unordered_map<std::string, std::vector<Type*>>;
+
 class TypeChecker {
-    static const std::string global_key;
-    const Program* prog;
+public:
+    Environment env;
+    FuncEnvironment fenv;
+    Program* prog;
 
-    // This map binds function names to their local scope, which itself is a map
-    // that binds variables used in the local scope to their type.
-    // Global variables are available in all scopes, using the "__global__"
-    // key, in the map.
-    std::unordered_map<std::string,
-        std::unordered_map<std::string, Type*>> env;
-
-    TypeChecker(const Program* _prog) : prog(_prog), env({}) {}
-
-    bool typecheck_prog();
+    TypeChecker(Program* _prog): env({}), fenv({}), prog(_prog) {};
 };
 
 #endif // __TYPECHECKER_H__

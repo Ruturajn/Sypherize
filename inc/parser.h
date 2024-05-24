@@ -35,8 +35,8 @@ public:
     Token::TokType check_next() const;
     bool is_next_binop() const;
     int get_precedence(enum Token::TokType t_ty);
-    enum BinopExpNode::BinopType conv_binop(const Token& t);
-    enum UnopExpNode::UnopType conv_unop(const Token& t);
+    BinopType conv_binop(const Token& t);
+    UnopType conv_unop(const Token& t);
     void var_bind_ctxt(const std::string& fun_ctxt,
                        const std::string& var_name,
                        Type* val);

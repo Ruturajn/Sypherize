@@ -108,85 +108,85 @@ int Parser::get_precedence(enum Token::TokType t_ty) {
     return -1;
 }
 
-enum BinopExpNode::BinopType Parser::conv_binop(const Token& t) {
+BinopType Parser::conv_binop(const Token& t) {
     switch (t.tok_ty) {
         case Token::TOK_PLUS:
-            return BinopExpNode::BINOP_PLUS;
+            return BinopType::BINOP_PLUS;
 
         case Token::TOK_MINUS:
-            return BinopExpNode::BINOP_MINUS;
+            return BinopType::BINOP_MINUS;
 
         case Token::TOK_MULT:
-            return BinopExpNode::BINOP_MULT;
+            return BinopType::BINOP_MULT;
 
         case Token::TOK_DIV:
-            return BinopExpNode::BINOP_DIVIDE;
+            return BinopType::BINOP_DIVIDE;
 
         case Token::TOK_LSHIFT:
-            return BinopExpNode::BINOP_LSHIFT;
+            return BinopType::BINOP_LSHIFT;
 
         case Token::TOK_RSHIFT:
-            return BinopExpNode::BINOP_RSHIFT;
+            return BinopType::BINOP_RSHIFT;
 
         case Token::TOK_MODULUS:
-            return BinopExpNode::BINOP_MODULUS;
+            return BinopType::BINOP_MODULUS;
 
         case Token::TOK_BITAND:
-            return BinopExpNode::BINOP_BITAND;
+            return BinopType::BINOP_BITAND;
 
         case Token::TOK_BITOR:
-            return BinopExpNode::BINOP_BITOR;
+            return BinopType::BINOP_BITOR;
 
         case Token::TOK_BITXOR:
-            return BinopExpNode::BINOP_BITXOR;
+            return BinopType::BINOP_BITXOR;
 
         case Token::TOK_EQEQUAL:
-            return BinopExpNode::BINOP_EQEQUAL;
+            return BinopType::BINOP_EQEQUAL;
 
         case Token::TOK_NEQUAL:
-            return BinopExpNode::BINOP_NEQUAL;
+            return BinopType::BINOP_NEQUAL;
 
         case Token::TOK_GT:
-            return BinopExpNode::BINOP_GT;
+            return BinopType::BINOP_GT;
 
         case Token::TOK_LT:
-            return BinopExpNode::BINOP_LT;
+            return BinopType::BINOP_LT;
 
         case Token::TOK_GTE:
-            return BinopExpNode::BINOP_GTE;
+            return BinopType::BINOP_GTE;
 
         case Token::TOK_LTE:
-            return BinopExpNode::BINOP_LTE;
+            return BinopType::BINOP_LTE;
 
         case Token::TOK_LOGAND:
-            return BinopExpNode::BINOP_LOGAND;
+            return BinopType::BINOP_LOGAND;
 
         case Token::TOK_LOGOR:
-            return BinopExpNode::BINOP_LOGOR;
+            return BinopType::BINOP_LOGOR;
 
         default:
             expect(Token::TOK_EOF, "Invalid token for binop conversion", t);
-            return BinopExpNode::BINOP_PLUS;
+            return BinopType::BINOP_PLUS;
     }
 }
 
-enum UnopExpNode::UnopType Parser::conv_unop(const Token& t) {
+UnopType Parser::conv_unop(const Token& t) {
     switch (t.tok_ty) {
         case Token::TOK_NEG:
-            return UnopExpNode::UNOP_NEG;
+            return UnopType::UNOP_NEG;
 
         case Token::TOK_NOT:
-            return UnopExpNode::UNOP_NOT;
+            return UnopType::UNOP_NOT;
 
         case Token::TOK_DEREF:
-            return UnopExpNode::UNOP_DEREF;
+            return UnopType::UNOP_DEREF;
 
         case Token::TOK_ADDROF:
-            return UnopExpNode::UNOP_ADDROF;
+            return UnopType::UNOP_ADDROF;
 
         default:
             expect(Token::TOK_EOF, "Invalid token for unop conversion", t);
-            return UnopExpNode::UNOP_NEG;
+            return UnopType::UNOP_NEG;
     }
 }
 

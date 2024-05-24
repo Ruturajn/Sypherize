@@ -10,6 +10,15 @@ void NumberExpNode::print_node(int indent) const {
     std::cout << "NUM: " << val << "\n";
 }
 
+Type* NumberExpNode::typecheck(Environment& env,
+                               const std::string& fname,
+                               FuncEnvironment& fenv) const {
+    (void)env;
+    (void)fname;
+    (void)fenv;
+    return new TInt;
+}
+
 ///===-------------------------------------------------------------------===///
 /// StringExpNode
 ///===-------------------------------------------------------------------===///
@@ -18,6 +27,15 @@ void StringExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
     std::cout << "STRING: " << val << "\n";
+}
+
+Type* StringExpNode::typecheck(Environment& env,
+                               const std::string& fname,
+                               FuncEnvironment& fenv) const {
+    (void)env;
+    (void)fname;
+    (void)fenv;
+    return new TString;
 }
 
 ///===-------------------------------------------------------------------===///
@@ -30,6 +48,15 @@ void BoolExpNode::print_node(int indent) const {
     std::cout << "BOOL: " << val << "\n";
 }
 
+Type* BoolExpNode::typecheck(Environment& env,
+                             const std::string& fname,
+                             FuncEnvironment& fenv) const {
+    (void)env;
+    (void)fname;
+    (void)fenv;
+    return new TString;
+}
+
 ///===-------------------------------------------------------------------===///
 /// IdExpNode
 ///===-------------------------------------------------------------------===///
@@ -38,6 +65,19 @@ void IdExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
     std::cout << "ID: " << val << "\n";
+}
+
+Type* IdExpNode::typecheck(Environment& env,
+                           const std::string& fname,
+                           FuncEnvironment& fenv) const {
+    (void)fenv;
+    if (env.find(fname) == env.end())
+        return nullptr;
+
+    if (env[fname].find(val) == env[fname].end())
+        return nullptr;
+
+    return env[fname][val];
 }
 
 ///===-------------------------------------------------------------------===///
@@ -59,6 +99,17 @@ void CArrExpNode::print_node(int indent) const {
 
     for (auto &e: exp_list)
         e->print_node(indent + 4);
+}
+
+Type* CArrExpNode::typecheck(Environment& env,
+                             const std::string& fname,
+                             FuncEnvironment& fenv) const {
+    for (auto& exp: exp_list) {
+        if (!((*(ty.get())) == (*(exp->typecheck(env, fname, fenv)))))
+            return nullptr;
+    }
+
+    return ty.get();
 }
 
 ///===-------------------------------------------------------------------===///
@@ -86,6 +137,15 @@ void NewExpNode::print_node(int indent) const {
     }
 }
 
+Type* NewExpNode::typecheck(Environment& env,
+                            const std::string& fname,
+                            FuncEnvironment& fenv) const {
+    (void)env;
+    (void)fname;
+    (void)fenv;
+    return ty.get();
+}
+
 ///===-------------------------------------------------------------------===///
 /// IndexExpNode
 ///===-------------------------------------------------------------------===///
@@ -100,6 +160,23 @@ void IndexExpNode::print_node(int indent) const {
     idx->print_node(indent + 4);
 }
 
+Type* IndexExpNode::typecheck(Environment& env,
+                              const std::string& fname,
+                              FuncEnvironment& fenv) const {
+
+    // If exp is of type TArray or TRef, it is indexable.
+    auto exp_type = exp->typecheck(env, fname, fenv);
+    if (!(*exp_type).is_indexable)
+        return nullptr;
+
+    // If idx is of type TInt, this node is typechecked.
+    auto idx_type = idx->typecheck(env, fname, fenv);
+    if (!(*idx_type).is_index)
+        return nullptr;
+
+    return exp_type->get_underlying_type();
+}
+
 ///===-------------------------------------------------------------------===///
 /// BinopExpNode
 ///===-------------------------------------------------------------------===///
@@ -111,58 +188,58 @@ void BinopExpNode::print_node(int indent) const {
     std::cout << "BINOP: ";
 
     switch (binop) {
-        case BINOP_PLUS:
+        case BinopType::BINOP_PLUS:
             std::cout << "+";
             break;
-        case BINOP_MINUS:
+        case BinopType::BINOP_MINUS:
             std::cout << "-";
             break;
-        case BINOP_MULT:
+        case BinopType::BINOP_MULT:
             std::cout << "*";
             break;
-        case BINOP_DIVIDE:
+        case BinopType::BINOP_DIVIDE:
             std::cout << "/";
             break;
-        case BINOP_MODULUS:
+        case BinopType::BINOP_MODULUS:
             std::cout << "%";
             break;
-        case BINOP_LSHIFT:
+        case BinopType::BINOP_LSHIFT:
             std::cout << "<<";
             break;
-        case BINOP_RSHIFT:
+        case BinopType::BINOP_RSHIFT:
             std::cout << ">>";
             break;
-        case BINOP_BITAND:
+        case BinopType::BINOP_BITAND:
             std::cout << "&";
             break;
-        case BINOP_BITOR:
+        case BinopType::BINOP_BITOR:
             std::cout << "|";
             break;
-        case BINOP_BITXOR:
+        case BinopType::BINOP_BITXOR:
             std::cout << "^";
             break;
-        case BINOP_LT:
+        case BinopType::BINOP_LT:
             std::cout << "<";
             break;
-        case BINOP_LTE:
+        case BinopType::BINOP_LTE:
             std::cout << "<=";
             break;
-        case BINOP_GT:
+        case BinopType::BINOP_GT:
             std::cout << ">";
             break;
-        case BINOP_GTE:
+        case BinopType::BINOP_GTE:
             std::cout << ">=";
             break;
-        case BINOP_EQEQUAL:
+        case BinopType::BINOP_EQEQUAL:
             std::cout << "==";
             break;
-        case BINOP_NEQUAL:
+        case BinopType::BINOP_NEQUAL:
             std::cout << "!=";
             break;
-        case BINOP_LOGAND:
+        case BinopType::BINOP_LOGAND:
             std::cout << "&&";
             break;
-        case BINOP_LOGOR:
+        case BinopType::BINOP_LOGOR:
             std::cout << "||";
             break;
     }
@@ -181,6 +258,23 @@ void BinopExpNode::print_node(int indent) const {
     right->print_node(indent + 8);
 }
 
+Type* BinopExpNode::typecheck(Environment& env,
+                              const std::string& fname,
+                              FuncEnvironment& fenv) const {
+
+    auto left_type = left->typecheck(env, fname, fenv);
+    auto right_type = right->typecheck(env, fname, fenv);
+
+    if (!((*left_type) == (*right_type)))
+        return nullptr;
+
+    if (!(left_type->is_valid_binop(binop) &&
+                right_type->is_valid_binop(binop)))
+        return nullptr;
+
+    return left_type;
+}
+
 ///===-------------------------------------------------------------------===///
 /// UnopExpNode
 ///===-------------------------------------------------------------------===///
@@ -191,16 +285,16 @@ void UnopExpNode::print_node(int indent) const {
 
     std::cout << "UNOP:\n";
     switch (uop) {
-        case UNOP_NEG:
+        case UnopType::UNOP_NEG:
             std::cout << "~";
             break;
-        case UNOP_NOT:
+        case UnopType::UNOP_NOT:
             std::cout << "!";
             break;
-        case UNOP_DEREF:
+        case UnopType::UNOP_DEREF:
             std::cout << "@";
             break;
-        case UNOP_ADDROF:
+        case UnopType::UNOP_ADDROF:
             std::cout << "#";
             break;
     }
@@ -211,6 +305,31 @@ void UnopExpNode::print_node(int indent) const {
 
     std::cout << "EXP:\n";
     exp->print_node(indent + 8);
+}
+
+Type* UnopExpNode::typecheck(Environment& env,
+                             const std::string& fname,
+                             FuncEnvironment& fenv) const {
+
+    auto exp_type = exp->typecheck(env, fname, fenv);
+
+    if (!exp_type->is_valid_unop(uop))
+        return nullptr;
+
+    switch (uop) {
+        case UnopType::UNOP_NEG:
+        case UnopType::UNOP_NOT:
+            return exp_type;
+
+        case UnopType::UNOP_DEREF:
+            return exp_type->get_underlying_type();
+
+        case UnopType::UNOP_ADDROF:
+            return new TRef(exp_type);
+
+        default:
+            return nullptr;
+    }
 }
 
 ///===-------------------------------------------------------------------===///
@@ -235,4 +354,24 @@ void FunCallExpNode::print_node(int indent) const {
 
     for (auto &arg: func_args)
         arg->print_node(indent + 8);
+}
+
+Type* FunCallExpNode::typecheck(Environment& env,
+                                const std::string& fname,
+                                FuncEnvironment& fenv) const {
+    if (fenv.find(func_name) == fenv.end())
+        return nullptr;
+
+    if ((fenv[func_name].size() - 1) != func_args.size())
+        return nullptr;
+
+    Type* ret_type = fenv[func_name][0];
+
+    for (int i = 0; i < (int)func_args.size(); i++) {
+        auto arg_ty = func_args[i]->typecheck(env, fname, fenv);
+        if (!((*arg_ty) == (*fenv[func_name][i + 1])))
+            return nullptr;
+    }
+
+    return ret_type;
 }
