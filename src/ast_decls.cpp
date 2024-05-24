@@ -39,6 +39,24 @@ void FunDecl::print_decl(int indent) const {
         s->print_stmt(indent + 8);
 }
 
+bool FunDecl::typecheck(Environment& env, FuncEnvironment& fenv) const {
+
+    if (fenv.find(fname) != fenv.end())
+        return false;
+
+    fenv[fname] = {frtype.get()};
+
+    for (auto& arg: args)
+        fenv[fname].push_back(arg.first);
+
+    for (auto& s: block) {
+        if (s->typecheck(env, this->fname, fenv) == false)
+            return false;
+    }
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// GlobalDecl
 ///===-------------------------------------------------------------------===///
@@ -68,4 +86,27 @@ void GlobalDecl::print_decl(int indent) const {
 
     std::cout << "EXP:\n";
     exp->print_node(indent + 12);
+}
+
+bool GlobalDecl::typecheck(Environment& env, FuncEnvironment& fenv) const {
+
+    const char* global_env = "__global__";
+
+    if (env.find(global_env) == env.end())
+        env[global_env] = {};
+
+    if (env[global_env].find(id) != env[global_env].end())
+        return false;
+
+    auto exp_ty = exp->typecheck(env, global_env, fenv);
+
+    if (exp_ty == nullptr)
+        return false;
+
+    if (!((*exp_ty) == (*(ty.get()))))
+        return false;
+
+    env[global_env][id] = ty.get();
+
+    return true;
 }

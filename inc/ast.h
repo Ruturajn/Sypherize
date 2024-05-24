@@ -49,7 +49,8 @@ class Type {
 public:
     bool is_indexable;
     bool is_index;
-    Type() : is_indexable(false), is_index(false) {};
+    bool is_void;
+    Type() : is_indexable(false), is_index(false), is_void(false) {};
     virtual ~Type() = default;
     virtual void print_type() const = 0;
     virtual bool operator==(const Type& other) const = 0;
@@ -138,6 +139,7 @@ public:
 
 class TVoid : public Type {
 public:
+    TVoid() { is_void = true; }
     void print_type() const override { std::cout << "[TVoid]"; }
     bool operator==(const Type& other) const override {
         return typeid(*this) == typeid(other);
@@ -399,6 +401,8 @@ public:
     StmtNode() = default;
     virtual ~StmtNode() = default;
     virtual void print_stmt(int indent) const = 0;
+    virtual bool typecheck(Environment& env, const std::string& fname,
+                            FuncEnvironment& fenv) const = 0;
 };
 
 class AssnStmtNode : public StmtNode {
@@ -410,6 +414,8 @@ public:
         : lhs(std::move(_lhs)), rhs(std::move(_rhs)) {}
 
     void print_stmt(int indent) const override;
+    bool typecheck(Environment& env, const std::string& fname,
+                            FuncEnvironment& fenv) const override;
 };
 
 class DeclStmtNode : public StmtNode {
@@ -425,6 +431,8 @@ public:
         : ty(std::move(_ty)), id(_id), exp(std::move(_exp)) {}
 
     void print_stmt(int indent) const override;
+    bool typecheck(Environment& env, const std::string& fname,
+                            FuncEnvironment& fenv) const override;
 };
 
 class SCallStmtNode : public StmtNode {
@@ -443,6 +451,8 @@ public:
     }
 
     void print_stmt(int indent) const override;
+    bool typecheck(Environment& env, const std::string& fname,
+                            FuncEnvironment& fenv) const override;
 };
 
 class RetStmtNode : public StmtNode {
@@ -454,6 +464,8 @@ public:
         : exp(std::move(_exp)) {}
 
     void print_stmt(int indent) const override;
+    bool typecheck(Environment& env, const std::string& fname,
+                            FuncEnvironment& fenv) const override;
 };
 
 class IfStmtNode : public StmtNode {
@@ -478,6 +490,8 @@ public:
     }
 
     void print_stmt(int indent) const override;
+    bool typecheck(Environment& env, const std::string& fname,
+                            FuncEnvironment& fenv) const override;
 };
 
 class ForStmtNode : public StmtNode {
@@ -504,6 +518,8 @@ public:
     }
 
     void print_stmt(int indent) const override;
+    bool typecheck(Environment& env, const std::string& fname,
+                            FuncEnvironment& fenv) const override;
 };
 
 class WhileStmtNode : public StmtNode {
@@ -522,6 +538,8 @@ public:
     }
 
     void print_stmt(int indent) const override;
+    bool typecheck(Environment& env, const std::string& fname,
+                            FuncEnvironment& fenv) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -532,6 +550,7 @@ public:
     Decls() = default;
     virtual ~Decls() = default;
     virtual void print_decl(int indent) const = 0;
+    virtual bool typecheck(Environment& env, FuncEnvironment& fenv) const;
 };
 
 class FunDecl : public Decls {
@@ -557,6 +576,7 @@ public:
     }
 
     void print_decl(int indent) const override;
+    bool typecheck(Environment& env, FuncEnvironment& fenv) const override;
 };
 
 class GlobalDecl : public Decls {
@@ -571,6 +591,7 @@ public:
         : ty (std::move(_ty)), id (_id), exp(std::move(_exp)) {}
 
     void print_decl(int indent) const override;
+    bool typecheck(Environment& env, FuncEnvironment& fenv) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -588,6 +609,7 @@ public:
     }
 
     void print_prog() const;
+    bool typecheck(Environment& env, FuncEnvironment& fenv) const;
 };
 
 #endif // __AST_H__

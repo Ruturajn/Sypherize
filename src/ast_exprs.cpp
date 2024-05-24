@@ -104,8 +104,14 @@ void CArrExpNode::print_node(int indent) const {
 Type* CArrExpNode::typecheck(Environment& env,
                              const std::string& fname,
                              FuncEnvironment& fenv) const {
+    Type* exp_ty = nullptr;
+
     for (auto& exp: exp_list) {
-        if (!((*(ty.get())) == (*(exp->typecheck(env, fname, fenv)))))
+        exp_ty = exp->typecheck(env, fname, fenv);
+        if (exp_ty == nullptr)
+            return nullptr;
+
+        if (!((*(ty.get())) == (*(exp_ty))))
             return nullptr;
     }
 
@@ -166,11 +172,17 @@ Type* IndexExpNode::typecheck(Environment& env,
 
     // If exp is of type TArray or TRef, it is indexable.
     auto exp_type = exp->typecheck(env, fname, fenv);
+    if (exp_type == nullptr)
+        return nullptr;
+
     if (!(*exp_type).is_indexable)
         return nullptr;
 
     // If idx is of type TInt, this node is typechecked.
     auto idx_type = idx->typecheck(env, fname, fenv);
+    if (idx_type == nullptr)
+        return nullptr;
+
     if (!(*idx_type).is_index)
         return nullptr;
 
@@ -265,6 +277,9 @@ Type* BinopExpNode::typecheck(Environment& env,
     auto left_type = left->typecheck(env, fname, fenv);
     auto right_type = right->typecheck(env, fname, fenv);
 
+    if (left_type == nullptr || right_type == nullptr)
+        return nullptr;
+
     if (!((*left_type) == (*right_type)))
         return nullptr;
 
@@ -313,7 +328,8 @@ Type* UnopExpNode::typecheck(Environment& env,
 
     auto exp_type = exp->typecheck(env, fname, fenv);
 
-    if (!exp_type->is_valid_unop(uop))
+    if (exp_type == nullptr ||
+            (!exp_type->is_valid_unop(uop)))
         return nullptr;
 
     switch (uop) {
@@ -367,8 +383,13 @@ Type* FunCallExpNode::typecheck(Environment& env,
 
     Type* ret_type = fenv[func_name][0];
 
+    Type* arg_ty = nullptr;
     for (int i = 0; i < (int)func_args.size(); i++) {
-        auto arg_ty = func_args[i]->typecheck(env, fname, fenv);
+        arg_ty = func_args[i]->typecheck(env, fname, fenv);
+
+        if (arg_ty == nullptr)
+            return nullptr;
+
         if (!((*arg_ty) == (*fenv[func_name][i + 1])))
             return nullptr;
     }
