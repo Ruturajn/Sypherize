@@ -4,6 +4,9 @@
 #include <memory>
 #include <vector>
 #include <iostream>
+#include <unordered_map>
+
+class TypeChecker;
 
 ///===-------------------------------------------------------------------===///
 /// Types
@@ -56,6 +59,8 @@ public:
         type->print_type();
     }
 };
+
+using Environment = std::unordered_map<std::string, std::unordered_map<std::string, Type*>>;
 
 ///===-------------------------------------------------------------------===///
 /// Expressions
@@ -364,6 +369,7 @@ public:
     Decls() = default;
     virtual ~Decls() = default;
     virtual void print_decl(int indent) const = 0;
+    virtual bool typecheck_decl() const = 0;
 };
 
 class FunDecl : public Decls {
@@ -420,6 +426,7 @@ public:
     }
 
     void print_prog() const;
+    bool typecheck() const;
 };
 
 #endif // __AST_H__

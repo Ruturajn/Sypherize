@@ -18,7 +18,6 @@ public:
     ssize_t curr_pos;
     ssize_t tok_len;
     std::unordered_map<Token::TokType, int> precedence;
-    static const std::string global_key;
     Program prog;
     bool failed;
     enum DeclType {
@@ -26,13 +25,6 @@ public:
         DECL_TYPE_STRING,
         DECL_TYPE_BOOL,
     };
-
-    // This map binds function names to their local scope, which itself is a map
-    // that binds variables used in the local scope to their type.
-    // Global variables are available in all scopes, using the "__global__"
-    // key, in the map.
-    std::unordered_map<std::string,
-        std::unordered_map<std::string, Type*>> env;
 
     void advance() { curr_pos += 1; }
     enum DeclType conv_type(enum Token::TokType t_ty);
