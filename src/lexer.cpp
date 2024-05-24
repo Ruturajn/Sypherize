@@ -103,6 +103,8 @@ Token Lexer::create_token(ssize_t tok_sz, enum Token::TokType t_ty) {
         return Token(Token::TOK_NEW, col_num, l_num, lexeme);
 
     else if (lexeme == "__global__") {
+        if (failed == false)
+            failed = true;
         std::cerr << "Disallowed/Reserved variable name/function name"
             " `__global__` used at: [" << l_num <<
             "," << col_num << "]\n";
@@ -332,6 +334,8 @@ void Lexer::lex() {
                 else if (is_num(curr_c))
                     lex_number();
                 else {
+                    if (failed == false)
+                        failed = true;
                     std::cerr << "Invalid character found at: [" << l_num <<
                         "," << col_num << "]\n";
                     curr_pos += 1;

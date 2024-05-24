@@ -192,52 +192,48 @@ enum UnopExpNode::UnopType Parser::conv_unop(const Token& t) {
     }
 }
 
-bool Parser::expect(Token::TokType t_ty, const char* error_str) {
+void Parser::expect(Token::TokType t_ty, const char* error_str) {
     return expect(t_ty, error_str, tok_list[curr_pos]);
 }
 
-bool Parser::expect(Token::TokType t_ty, const char* error_str, const Token& tok) {
+void Parser::expect(Token::TokType t_ty, const char* error_str, const Token& tok) {
     if (curr_pos >= tok_len)
-        return false;
+        return;
 
-    if (tok.tok_ty != t_ty) {
+    if (tok.tok_ty == t_ty)
+        return;
 
-        if (failed == false)
-            failed = true;
+    if (failed == false)
+        failed = true;
 
-        ssize_t l_n = tok.line_num;
-        ssize_t c_n = tok.col_num;
-        std::string tok_str = tok.lexeme;
+    ssize_t l_n = tok.line_num;
+    ssize_t c_n = tok.col_num;
+    std::string tok_str = tok.lexeme;
 
-        std::cout << "\033[1;31m[ERR]:\033[1;37m " << error_str << "\n";
-        std::cout << ">> " << file_name << "[" << l_n << "," << c_n << "]\n";
+    std::cerr << "\033[1;31m[ERR]:\033[1;37m " << error_str << "\n";
+    std::cerr << ">> " << file_name << "[" << l_n << "," << c_n << "]\n";
 
-        std::cout << std::setw(8) << tok_list[curr_pos].line_num << " | ";
+    std::cerr << std::setw(8) << tok_list[curr_pos].line_num << " | ";
 
-        for (int i = 0; i < c_n - 1; i++)
-            std::cout << file_lines[l_n - 1][i];
+    for (int i = 0; i < c_n - 1; i++)
+        std::cerr << file_lines[l_n - 1][i];
 
-        std::cout << "\033[1;31m" << tok_str << "\033[1;37m";
+    std::cerr << "\033[1;31m" << tok_str << "\033[1;37m";
 
-        for (int i = (c_n + tok_str.size()) - 1; i < (int)(file_lines[l_n - 1].size()); i++)
-            std::cout << file_lines[l_n - 1][i];
-        std::cout << "\n";
+    for (int i = (c_n + tok_str.size()) - 1; i < (int)(file_lines[l_n - 1].size()); i++)
+        std::cerr << file_lines[l_n - 1][i];
+    std::cerr << "\n";
 
-        std::cout << std::setw(8) << " " << " |";
+    std::cerr << std::setw(8) << " " << " |";
 
-        for (int i = 0; i < c_n; i++)
-            std::cout << ' ';
+    for (int i = 0; i < c_n; i++)
+        std::cerr << ' ';
 
-        std::cout << "\033[1;31m";
-        for (int i = 0; i < (int)tok_str.size(); i++)
-            std::cout << '^';
+    std::cerr << "\033[1;31m";
+    for (int i = 0; i < (int)tok_str.size(); i++)
+        std::cerr << '^';
 
-        std::cout << "\033[1;37m\n\n";
-
-        return false;
-    }
-
-    return true;
+    std::cerr << "\033[1;37m\n\n";
 }
 
 // void Parser::var_bind_ctxt(const std::string& fun_ctxt,

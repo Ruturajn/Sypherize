@@ -32,6 +32,9 @@ int main(int argc, char* argv[]) {
     // Lex
     Lexer lexer(file_data);
     lexer.lex();
+    if (lexer.failed)
+        return -1;
+
     lexer.print_tokens();
 
     // Parse

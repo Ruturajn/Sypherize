@@ -38,8 +38,8 @@ public:
     enum DeclType conv_type(enum Token::TokType t_ty);
     Parser(std::vector<Token>& _tok_list, const std::string& _file_data,
             const std::string& _file_name);
-    bool expect(Token::TokType t_ty, const char* error_str, const Token& tok);
-    bool expect(Token::TokType t_ty, const char* error_str);
+    void expect(Token::TokType t_ty, const char* error_str, const Token& tok);
+    void expect(Token::TokType t_ty, const char* error_str);
     Token::TokType check_next() const;
     bool is_next_binop() const;
     int get_precedence(enum Token::TokType t_ty);

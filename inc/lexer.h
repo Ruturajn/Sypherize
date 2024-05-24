@@ -13,10 +13,11 @@ public:
     ssize_t l_num;
     ssize_t col_num;
     ssize_t data_sz;
+    bool failed;
 
     Lexer(std::string _file_data):
         tok_list({}), file_data(std::move(_file_data)), curr_pos(0),
-        l_num(1), col_num(1), data_sz(0) { data_sz = file_data.size(); }
+        l_num(1), col_num(1), data_sz(0), failed(false) { data_sz = file_data.size(); }
 
     bool is_space(char c) const { return ((c == ' ') || (c == '\r')); }
     bool is_num(char c) const { return (c >= '0') && (c <= '9'); }
