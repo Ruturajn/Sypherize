@@ -3,6 +3,7 @@
 
 #include "./ast.h"
 #include "./token.h"
+#include "./diagnostics.h"
 #include <iomanip>
 #include <memory>
 #include <string>
@@ -12,8 +13,6 @@
 
 class Parser {
 public:
-    std::string file_name;
-    std::vector<std::string> file_lines;
     std::vector<Token> tok_list;
     ssize_t curr_pos;
     ssize_t tok_len;
@@ -25,11 +24,13 @@ public:
         DECL_TYPE_STRING,
         DECL_TYPE_BOOL,
     };
+    Diagnostics* diag;
+
+    Parser(std::vector<Token>& _tok_list, Diagnostics *_diag);
 
     void advance() { curr_pos += 1; }
     enum DeclType conv_type(enum Token::TokType t_ty);
-    Parser(std::vector<Token>& _tok_list, const std::string& _file_data,
-            const std::string& _file_name);
+    SRange make_srange(ssize_t beg_pos);
     void expect(Token::TokType t_ty, const char* error_str, const Token& tok);
     void expect(Token::TokType t_ty, const char* error_str);
     Token::TokType check_next() const;
@@ -37,9 +38,6 @@ public:
     int get_precedence(enum Token::TokType t_ty);
     BinopType conv_binop(const Token& t);
     UnopType conv_unop(const Token& t);
-    void var_bind_ctxt(const std::string& fun_ctxt,
-                       const std::string& var_name,
-                       Type* val);
     Type* build_type(int in_count, enum DeclType dt);
     Type* parse_type();
     Type* parse_type_wo_arr();

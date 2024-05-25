@@ -338,7 +338,7 @@ Type* UnopExpNode::typecheck(Environment& env,
             (!exp_type->is_valid_unop(uop)))
         return nullptr;
 
-    const NumberExpNode num(0);
+    const NumberExpNode num(0, SRange(SLoc(0, 0), SLoc(0, 0)));
     const ExpNode& e = *(exp.get());
 
     switch (uop) {

@@ -11,9 +11,10 @@ void Program::print_prog() const {
         d->print_decl(4);
 }
 
-bool Program::typecheck(Environment& env, FuncEnvironment& fenv) const {
+bool Program::typecheck(Environment& env, FuncEnvironment& fenv,
+                        Diagnostics* diag) const {
     for (auto& decl: decl_list) {
-        if (decl->typecheck(env, fenv) == false)
+        if (decl->typecheck(env, fenv, diag) == false)
             return false;
     }
 

@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <unordered_map>
+#include "../inc/diagnostics.h"
 
 class Type;
 
@@ -40,6 +41,25 @@ enum class UnopType {
     UNOP_NOT,
     UNOP_DEREF,
     UNOP_ADDROF
+};
+
+///===-------------------------------------------------------------------===///
+/// Source Location
+///===-------------------------------------------------------------------===///
+class SLoc {
+public:
+    ssize_t l_num{};
+    ssize_t c_num{};
+
+    SLoc(ssize_t _l_num, ssize_t _c_num) : l_num(_l_num), c_num(_c_num) {}
+};
+
+class SRange {
+public:
+    SLoc beg;
+    SLoc end;
+
+    SRange(SLoc _beg, SLoc _end) : beg(_beg), end(_end) {}
 };
 
 ///===-------------------------------------------------------------------===///
@@ -240,7 +260,8 @@ public:
 class ExpNode {
 public:
     bool is_indirect;
-    ExpNode() : is_indirect(false) {}
+    SRange sr;
+    ExpNode(const SRange& _sr) : is_indirect(false), sr(_sr) {}
     virtual ~ExpNode() = default;
     virtual void print_node(int indent) const = 0;
     virtual Type* typecheck(Environment& env, const std::string& fname,
@@ -252,7 +273,7 @@ private:
     long val;
 
 public:
-    NumberExpNode(long _val) : val(_val) {}
+    NumberExpNode(long _val, const SRange& _sr) : ExpNode(_sr), val(_val) {}
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv) const override;
@@ -263,7 +284,8 @@ private:
     std::string val;
 
 public:
-    StringExpNode(const std::string& _val) : val(_val) {}
+    StringExpNode(const std::string& _val, const SRange& _sr)
+        : ExpNode(_sr), val(_val) {}
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv) const override;
@@ -274,7 +296,8 @@ private:
     bool val;
 
 public:
-    BoolExpNode(bool _val) : val(_val) {}
+    BoolExpNode(bool _val, const SRange& _sr)
+        : ExpNode(_sr), val(_val) {}
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv) const override;
@@ -285,7 +308,8 @@ private:
     std::string val;
 
 public:
-    IdExpNode(const std::string& _val) : val(_val) {}
+    IdExpNode(const std::string& _val, const SRange& _sr)
+        : ExpNode(_sr), val(_val) {}
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv) const override;
@@ -298,8 +322,10 @@ private:
 
 public:
     CArrExpNode(std::unique_ptr<Type> _ty,
-                std::vector<ExpNode*>& _exp_list)
-        : ty(std::move(_ty)), exp_list(_exp_list) { is_indirect =  true; }
+                std::vector<ExpNode*>& _exp_list, const SRange& _sr)
+        : ExpNode(_sr), ty(std::move(_ty)), exp_list(_exp_list) {
+            is_indirect =  true;
+    }
 
     ~CArrExpNode() {
         for (auto& elem: exp_list)
@@ -319,8 +345,10 @@ private:
 
 public:
     NewExpNode(std::unique_ptr<Type> _ty,
-                  std::unique_ptr<ExpNode> _exp)
-        : ty (std::move(_ty)), exp(std::move(_exp)) { is_indirect = true; }
+               std::unique_ptr<ExpNode> _exp, const SRange& _sr)
+        : ExpNode(_sr), ty (std::move(_ty)), exp(std::move(_exp)) {
+            is_indirect = true;
+    }
 
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
@@ -334,8 +362,8 @@ private:
 
 public:
     IndexExpNode(std::unique_ptr<ExpNode> _exp,
-                  std::unique_ptr<ExpNode> _idx)
-        : exp(std::move(_exp)), idx(std::move(_idx)) {}
+                  std::unique_ptr<ExpNode> _idx, const SRange& _sr)
+        : ExpNode(_sr), exp(std::move(_exp)), idx(std::move(_idx)) {}
 
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
@@ -351,8 +379,9 @@ private:
 
 public:
     BinopExpNode(enum BinopType _binop, std::unique_ptr<ExpNode> _left,
-                 std::unique_ptr<ExpNode> _right):
-        binop(_binop), left(std::move(_left)), right(std::move(_right)) {}
+                 std::unique_ptr<ExpNode> _right, const SRange& _sr)
+        : ExpNode(_sr), binop(_binop), left(std::move(_left)),
+          right(std::move(_right)) {}
 
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
@@ -367,8 +396,9 @@ private:
     std::unique_ptr<ExpNode> exp;
 
 public:
-    UnopExpNode(enum UnopType _uop, std::unique_ptr<ExpNode> _exp)
-        : uop(_uop), exp(std::move(_exp)) {}
+    UnopExpNode(enum UnopType _uop, std::unique_ptr<ExpNode> _exp,
+                const SRange& _sr)
+        : ExpNode(_sr), uop(_uop), exp(std::move(_exp)) {}
 
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
@@ -382,8 +412,8 @@ private:
 
 public:
     FunCallExpNode(const std::string& _func_name,
-                    std::vector<ExpNode*>& _func_args)
-        : func_name(_func_name), func_args(_func_args) {}
+                    std::vector<ExpNode*>& _func_args, const SRange& _sr)
+        : ExpNode(_sr), func_name(_func_name), func_args(_func_args) {}
 
     ~FunCallExpNode() {
         for (auto& elem: func_args)
@@ -405,7 +435,7 @@ public:
     virtual ~StmtNode() = default;
     virtual void print_stmt(int indent) const = 0;
     virtual bool typecheck(Environment& env, const std::string& fname,
-                            FuncEnvironment& fenv) const = 0;
+                           FuncEnvironment& fenv, Diagnostics* diag) const = 0;
 };
 
 class AssnStmtNode : public StmtNode {
@@ -418,7 +448,7 @@ public:
 
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
-                            FuncEnvironment& fenv) const override;
+                   FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class DeclStmtNode : public StmtNode {
@@ -435,7 +465,7 @@ public:
 
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
-                            FuncEnvironment& fenv) const override;
+                   FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class SCallStmtNode : public StmtNode {
@@ -455,7 +485,7 @@ public:
 
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
-                            FuncEnvironment& fenv) const override;
+                   FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class RetStmtNode : public StmtNode {
@@ -468,7 +498,7 @@ public:
 
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
-                            FuncEnvironment& fenv) const override;
+                   FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class IfStmtNode : public StmtNode {
@@ -494,7 +524,7 @@ public:
 
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
-                            FuncEnvironment& fenv) const override;
+                   FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class ForStmtNode : public StmtNode {
@@ -522,7 +552,7 @@ public:
 
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
-                            FuncEnvironment& fenv) const override;
+                   FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class WhileStmtNode : public StmtNode {
@@ -542,7 +572,7 @@ public:
 
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
-                            FuncEnvironment& fenv) const override;
+                   FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -553,7 +583,8 @@ public:
     Decls() = default;
     virtual ~Decls() = default;
     virtual void print_decl(int indent) const = 0;
-    virtual bool typecheck(Environment& env, FuncEnvironment& fenv) const = 0;
+    virtual bool typecheck(Environment& env, FuncEnvironment& fenv,
+                           Diagnostics* diag) const = 0;
 };
 
 class FunDecl : public Decls {
@@ -579,7 +610,8 @@ public:
     }
 
     void print_decl(int indent) const override;
-    bool typecheck(Environment& env, FuncEnvironment& fenv) const override;
+    bool typecheck(Environment& env, FuncEnvironment& fenv,
+                   Diagnostics* diag) const override;
 };
 
 class GlobalDecl : public Decls {
@@ -594,7 +626,8 @@ public:
         : ty (std::move(_ty)), id (_id), exp(std::move(_exp)) {}
 
     void print_decl(int indent) const override;
-    bool typecheck(Environment& env, FuncEnvironment& fenv) const override;
+    bool typecheck(Environment& env, FuncEnvironment& fenv,
+                   Diagnostics* diag) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -612,7 +645,8 @@ public:
     }
 
     void print_prog() const;
-    bool typecheck(Environment& env, FuncEnvironment& fenv) const;
+    bool typecheck(Environment& env, FuncEnvironment& fenv,
+                   Diagnostics *diag) const;
 };
 
 #endif // __AST_H__

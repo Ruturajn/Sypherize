@@ -1,7 +1,8 @@
 #ifndef __TYPECHECKER_H__
 #define __TYPECHECKER_H__
 
-#include "../inc/parser.h"
+#include "./parser.h"
+#include "./diagnostics.h"
 
 using Environment =
     std::unordered_map<std::string, std::unordered_map<std::string, Type*>>;
@@ -18,8 +19,8 @@ public:
 
     TypeChecker(Program* _prog): env({}), fenv({}), prog(_prog) {};
 
-    bool typecheck() {
-        return prog->typecheck(env, fenv);
+    bool typecheck(Diagnostics* diag) {
+        return prog->typecheck(env, fenv, diag);
     }
 };
 

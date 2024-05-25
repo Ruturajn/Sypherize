@@ -24,7 +24,9 @@ void AssnStmtNode::print_stmt(int indent) const {
 }
 
 bool AssnStmtNode::typecheck(Environment& env, const std::string& fname,
-                             FuncEnvironment& fenv) const {
+                             FuncEnvironment& fenv, Diagnostics* diag) const {
+
+    (void)diag;
 
     auto lhs_type = lhs->typecheck(env, fname, fenv);
     auto rhs_type = rhs->typecheck(env, fname, fenv);
@@ -68,7 +70,9 @@ void DeclStmtNode::print_stmt(int indent) const {
 }
 
 bool DeclStmtNode::typecheck(Environment& env, const std::string& fname,
-                             FuncEnvironment& fenv) const {
+                             FuncEnvironment& fenv, Diagnostics* diag) const {
+
+    (void)diag;
 
     auto exp_ty = exp->typecheck(env, fname, fenv);
 
@@ -123,7 +127,9 @@ void SCallStmtNode::print_stmt(int indent) const {
 }
 
 bool SCallStmtNode::typecheck(Environment& env, const std::string& fname,
-                             FuncEnvironment& fenv) const {
+                              FuncEnvironment& fenv, Diagnostics* diag) const {
+
+    (void)diag;
 
     if (fenv.find(this->fname) == fenv.end())
         return false;
@@ -165,7 +171,9 @@ void RetStmtNode::print_stmt(int indent) const {
 }
 
 bool RetStmtNode::typecheck(Environment& env, const std::string& fname,
-                             FuncEnvironment& fenv) const {
+                            FuncEnvironment& fenv, Diagnostics* diag) const {
+
+    (void)diag;
 
     if (fenv.find(fname) == fenv.end())
         return false;
@@ -214,7 +222,7 @@ void IfStmtNode::print_stmt(int indent) const {
 }
 
 bool IfStmtNode::typecheck(Environment& env, const std::string& fname,
-                             FuncEnvironment& fenv) const {
+                           FuncEnvironment& fenv, Diagnostics* diag) const {
 
     if (cond->typecheck(env, fname, fenv) == nullptr)
         return false;
@@ -222,14 +230,14 @@ bool IfStmtNode::typecheck(Environment& env, const std::string& fname,
     Environment env_if = env;
 
     for (auto& s: then_body) {
-        if (s->typecheck(env_if, fname, fenv) == false)
+        if (s->typecheck(env_if, fname, fenv, diag) == false)
             return false;
     }
 
     Environment env_else = env;
 
     for (auto& s: else_body) {
-        if (s->typecheck(env_else, fname, fenv) == false)
+        if (s->typecheck(env_else, fname, fenv, diag) == false)
             return false;
     }
 
@@ -274,23 +282,23 @@ void ForStmtNode::print_stmt(int indent) const {
 }
 
 bool ForStmtNode::typecheck(Environment& env, const std::string& fname,
-                             FuncEnvironment& fenv) const {
+                            FuncEnvironment& fenv, Diagnostics* diag) const {
 
     Environment env_decl = env;
 
     for (auto& d: decl_list) {
-        if (d->typecheck(env_decl, fname, fenv) == false)
+        if (d->typecheck(env_decl, fname, fenv, diag) == false)
             return false;
     }
 
     if (cond->typecheck(env_decl, fname, fenv) == nullptr)
         return false;
 
-    if (iter->typecheck(env_decl, fname, fenv) == false)
+    if (iter->typecheck(env_decl, fname, fenv, diag) == false)
         return false;
 
     for (auto& s: body) {
-        if (s->typecheck(env_decl, fname, fenv) == false)
+        if (s->typecheck(env_decl, fname, fenv, diag) == false)
             return false;
     }
 
@@ -322,7 +330,7 @@ void WhileStmtNode::print_stmt(int indent) const {
 }
 
 bool WhileStmtNode::typecheck(Environment& env, const std::string& fname,
-                             FuncEnvironment& fenv) const {
+                              FuncEnvironment& fenv, Diagnostics* diag) const {
 
     if (cond->typecheck(env, fname, fenv) == nullptr)
         return false;
@@ -330,7 +338,7 @@ bool WhileStmtNode::typecheck(Environment& env, const std::string& fname,
     Environment env_body = env;
 
     for (auto& s: body) {
-        if (s->typecheck(env_body, fname, fenv) == false)
+        if (s->typecheck(env_body, fname, fenv, diag) == false)
             return false;
     }
 

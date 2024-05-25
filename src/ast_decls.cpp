@@ -39,7 +39,8 @@ void FunDecl::print_decl(int indent) const {
         s->print_stmt(indent + 8);
 }
 
-bool FunDecl::typecheck(Environment& env, FuncEnvironment& fenv) const {
+bool FunDecl::typecheck(Environment& env, FuncEnvironment& fenv,
+                        Diagnostics* diag) const {
 
     if (fenv.find(fname) != fenv.end())
         return false;
@@ -55,7 +56,7 @@ bool FunDecl::typecheck(Environment& env, FuncEnvironment& fenv) const {
     }
 
     for (auto& s: block) {
-        if (s->typecheck(env, this->fname, fenv) == false)
+        if (s->typecheck(env, this->fname, fenv, diag) == false)
             return false;
     }
 
@@ -93,7 +94,10 @@ void GlobalDecl::print_decl(int indent) const {
     exp->print_node(indent + 12);
 }
 
-bool GlobalDecl::typecheck(Environment& env, FuncEnvironment& fenv) const {
+bool GlobalDecl::typecheck(Environment& env, FuncEnvironment& fenv,
+                           Diagnostics* diag) const {
+
+    (void)diag;
 
     const char* global_env = "__global__";
 

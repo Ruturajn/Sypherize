@@ -5,27 +5,10 @@
 /// Helper Functions
 ///===-------------------------------------------------------------------===///
 
-enum Parser::DeclType Parser::conv_type(enum Token::TokType t_ty) {
-    switch (t_ty) {
-        case Token::TOK_TYPE_INT:
-            return DECL_TYPE_INT;
-
-        case Token::TOK_TYPE_STRING:
-            return DECL_TYPE_STRING;
-
-        case Token::TOK_TYPE_BOOL:
-            return DECL_TYPE_BOOL;
-
-        default:
-            expect(Token::TOK_EOF, "Invalid syntax for decl type");
-            return DECL_TYPE_INT;
-    }
-}
-
-Parser::Parser(std::vector<Token>& _tok_list, const std::string& _file_data,
-        const std::string& _file_name)
-    : file_name(_file_name), file_lines({}), tok_list(_tok_list), curr_pos(0),
-        tok_len(_tok_list.size()), precedence({}), prog(Program()), failed(false) {
+Parser::Parser(std::vector<Token>& _tok_list, Diagnostics* _diag)
+    : tok_list(_tok_list), curr_pos(0),
+        tok_len(_tok_list.size()), precedence({}), prog(Program()),
+        failed(false), diag(_diag) {
 
     precedence[Token::TOK_MULT] = 100;
     precedence[Token::TOK_DIV] = 100;
@@ -54,14 +37,34 @@ Parser::Parser(std::vector<Token>& _tok_list, const std::string& _file_data,
     precedence[Token::TOK_LOGAND] = 5;
 
     precedence[Token::TOK_LOGOR] = 3;
+}
 
-    std::istringstream stream(_file_data);
-    std::string line;
+enum Parser::DeclType Parser::conv_type(enum Token::TokType t_ty) {
+    switch (t_ty) {
+        case Token::TOK_TYPE_INT:
+            return DECL_TYPE_INT;
 
-    // Traverse each line using std::getline
-    while (std::getline(stream, line)) {
-        file_lines.push_back(line);
+        case Token::TOK_TYPE_STRING:
+            return DECL_TYPE_STRING;
+
+        case Token::TOK_TYPE_BOOL:
+            return DECL_TYPE_BOOL;
+
+        default:
+            expect(Token::TOK_EOF, "Invalid syntax for decl type");
+            return DECL_TYPE_INT;
     }
+}
+
+SRange Parser::make_srange(ssize_t beg_pos) {
+    if ((beg_pos >= 0) && (curr_pos < tok_len) && (curr_pos >= 0)) {
+        return SRange(SLoc(tok_list[beg_pos].line_num,
+                           tok_list[beg_pos].col_num),
+                      SLoc(tok_list[curr_pos].line_num,
+                           tok_list[curr_pos].col_num));
+
+    } else
+        return SRange(SLoc(0, 0), SLoc(0,0));
 }
 
 Token::TokType Parser::check_next() const {
@@ -204,34 +207,7 @@ void Parser::expect(Token::TokType t_ty, const char* error_str, const Token& tok
     if (failed == false)
         failed = true;
 
-    ssize_t l_n = tok.line_num;
-    ssize_t c_n = tok.col_num;
-    std::string tok_str = tok.lexeme;
-
-    std::cerr << "\033[1;31m[ERR]:\033[1;37m " << error_str << "\n";
-    std::cerr << ">> " << file_name << "[" << l_n << "," << c_n << "]\n";
-
-    std::cerr << std::setw(8) << tok_list[curr_pos].line_num << " | ";
-
-    for (int i = 0; i < c_n - 1; i++)
-        std::cerr << file_lines[l_n - 1][i];
-
-    std::cerr << "\033[1;31m" << tok_str << "\033[1;37m";
-
-    for (int i = (c_n + tok_str.size()) - 1; i < (int)(file_lines[l_n - 1].size()); i++)
-        std::cerr << file_lines[l_n - 1][i];
-    std::cerr << "\n";
-
-    std::cerr << std::setw(8) << " " << " |";
-
-    for (int i = 0; i < c_n; i++)
-        std::cerr << ' ';
-
-    std::cerr << "\033[1;31m";
-    for (int i = 0; i < (int)tok_str.size(); i++)
-        std::cerr << '^';
-
-    std::cerr << "\033[1;37m\n\n";
+    diag->print_error(tok.line_num, tok.col_num, error_str, tok.lexeme.size());
 }
 
 Type* Parser::build_type(int in_count, enum DeclType dt) {
@@ -292,6 +268,8 @@ Type* Parser::parse_type_wo_arr() {
 ///===-------------------------------------------------------------------===///
 std::unique_ptr<ExpNode> Parser::parse_binop(int prev_prec,
                                              std::unique_ptr<ExpNode> lhs) {
+    ssize_t beg_pos = curr_pos;
+
     Token curr_tok = tok_list[curr_pos];
 
     while (prev_prec < get_precedence(curr_tok.tok_ty)) {
@@ -303,7 +281,7 @@ std::unique_ptr<ExpNode> Parser::parse_binop(int prev_prec,
         auto rhs = parse_expr(get_precedence(curr_tok.tok_ty));
 
         auto binop = std::make_unique<BinopExpNode>(conv_binop(curr_tok),
-                        std::move(lhs), std::move(rhs));
+                        std::move(lhs), std::move(rhs), make_srange(beg_pos));
 
         lhs = std::move(binop);
 
@@ -314,9 +292,11 @@ std::unique_ptr<ExpNode> Parser::parse_binop(int prev_prec,
 }
 
 std::unique_ptr<ExpNode> Parser::parse_lhs(int prev_prec) {
+    ssize_t beg_pos = curr_pos;
     switch (tok_list[curr_pos].tok_ty) {
         case Token::TOK_IDENT: {
-            auto id = std::make_unique<IdExpNode>(tok_list[curr_pos].lexeme);
+            auto id = std::make_unique<IdExpNode>(tok_list[curr_pos].lexeme,
+                                                  make_srange(beg_pos));
 
             Token::TokType next_tok = check_next();
 
@@ -334,7 +314,7 @@ std::unique_ptr<ExpNode> Parser::parse_lhs(int prev_prec) {
                 expect(Token::TOK_RBRACKET, "`]` for index operation");
 
                 return std::make_unique<IndexExpNode>(std::move(id),
-                        std::move(index));
+                        std::move(index), make_srange(beg_pos));
             }
 
             return id;
@@ -349,6 +329,8 @@ std::unique_ptr<ExpNode> Parser::parse_lhs(int prev_prec) {
 }
 
 std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
+    ssize_t beg_pos = curr_pos;
+
     switch (tok_list[curr_pos].tok_ty) {
         case Token::TOK_LPAREN: {
             advance();
@@ -365,21 +347,34 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
 
         case Token::TOK_NUMBER:
             if (is_next_binop()) {
+
                 std::unique_ptr<ExpNode> lhs =
-                    std::make_unique<NumberExpNode>(stol(tok_list[curr_pos].lexeme));
+                    std::make_unique<NumberExpNode>(
+                        stol(tok_list[curr_pos].lexeme),
+                        make_srange(beg_pos)
+                );
 
                 advance();
 
                 return parse_binop(prev_prec, std::move(lhs));
             }
             else
-                return std::make_unique<NumberExpNode>(stol(tok_list[curr_pos].lexeme));
+                return std::make_unique<NumberExpNode>(
+                    stol(tok_list[curr_pos].lexeme),
+                    make_srange(beg_pos)
+                );
 
         case Token::TOK_STRING:
-            return std::make_unique<StringExpNode>(tok_list[curr_pos].lexeme);
+            return std::make_unique<StringExpNode>(
+                tok_list[curr_pos].lexeme,
+                make_srange(beg_pos)
+            );
 
         case Token::TOK_IDENT: {
-            auto id = std::make_unique<IdExpNode>(tok_list[curr_pos].lexeme);
+            auto id = std::make_unique<IdExpNode>(
+                tok_list[curr_pos].lexeme,
+                make_srange(beg_pos)
+            );
 
             Token::TokType next_tok = check_next();
 
@@ -407,7 +402,8 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
                     advance();
                 }
 
-                auto funcall = std::make_unique<FunCallExpNode>(fun_name, f_args);
+                auto funcall = std::make_unique<FunCallExpNode>(
+                    fun_name, f_args, make_srange(beg_pos));
 
                 if (tok_list[curr_pos].tok_ty == Token::TOK_LBRACKET) {
                     auto index = parse_expr(prev_prec);
@@ -416,7 +412,7 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
                     expect(Token::TOK_RBRACKET, "`]` for index operation");
 
                     return std::make_unique<IndexExpNode>(std::move(funcall),
-                            std::move(index));
+                            std::move(index), make_srange(beg_pos));
                 }
 
                 return funcall;
@@ -436,7 +432,7 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
                 expect(Token::TOK_RBRACKET, "`]` for index operation");
 
                 return std::make_unique<IndexExpNode>(std::move(id),
-                        std::move(index));
+                        std::move(index), make_srange(beg_pos));
             }
 
             if (is_next_binop()) {
@@ -449,11 +445,11 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
         }
 
         case Token::TOK_BOOL_TRUE:
-            return std::make_unique<BoolExpNode>(true);
+            return std::make_unique<BoolExpNode>(true, make_srange(beg_pos));
             break;
 
         case Token::TOK_BOOL_FALSE:
-            return std::make_unique<BoolExpNode>(false);
+            return std::make_unique<BoolExpNode>(false, make_srange(beg_pos));
             break;
 
         case Token::TOK_PLUS:
@@ -486,7 +482,10 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
         case Token::TOK_ADDROF: {
             auto unop = conv_unop(tok_list[curr_pos]);
             advance();
-            return std::make_unique<UnopExpNode>(unop, parse_expr(prev_prec));
+            return std::make_unique<UnopExpNode>(
+                unop, parse_expr(prev_prec),
+                make_srange(beg_pos)
+            );
         }
 
         default:
@@ -521,6 +520,8 @@ std::pair<Type*, std::string> Parser::parse_arg() {
 
 
 std::unique_ptr<ExpNode> Parser::parse_new_type_exp() {
+    ssize_t beg_pos = curr_pos;
+
     enum DeclType type_set = conv_type(tok_list[curr_pos].tok_ty);
 
     int indirection_count = 0;
@@ -544,10 +545,16 @@ std::unique_ptr<ExpNode> Parser::parse_new_type_exp() {
 
         expect(Token::TOK_RBRACKET, "`]` for ending array decl");
 
-        return std::make_unique<NewExpNode>(std::move(p_type_uptr), std::move(size));
+        return std::make_unique<NewExpNode>(
+            std::move(p_type_uptr), std::move(size),
+            make_srange(beg_pos)
+        );
     }
 
-    return std::make_unique<NewExpNode>(std::move(p_type_uptr), nullptr);
+    return std::make_unique<NewExpNode>(
+        std::move(p_type_uptr), nullptr,
+        make_srange(beg_pos)
+    );
 }
 
 StmtNode* Parser::parse_vdecl() {
@@ -591,7 +598,10 @@ StmtNode* Parser::parse_vdecl() {
         std::unique_ptr<Type> elem_type(parse_type_wo_arr());
         curr_pos = orig;
 
-        auto carr_exp = std::make_unique<CArrExpNode>(std::move(elem_type), init_exps);
+        auto carr_exp = std::make_unique<CArrExpNode>(
+            std::move(elem_type), init_exps,
+            make_srange(type_pos)
+        );
 
         return new DeclStmtNode(std::move(vtype_ptr), vname, std::move(carr_exp));
     }

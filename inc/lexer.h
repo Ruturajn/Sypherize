@@ -15,9 +15,9 @@ public:
     ssize_t data_sz;
     bool failed;
 
-    Lexer(std::string _file_data):
-        tok_list({}), file_data(std::move(_file_data)), curr_pos(0),
-        l_num(1), col_num(1), data_sz(0), failed(false) { data_sz = file_data.size(); }
+    Lexer(const std::string& _file_data):
+        tok_list({}), file_data(_file_data), curr_pos(0),
+        l_num(1), col_num(1), data_sz(_file_data.size()), failed(false) {}
 
     bool is_space(char c) const { return ((c == ' ') || (c == '\r')); }
     bool is_num(char c) const { return (c >= '0') && (c <= '9'); }

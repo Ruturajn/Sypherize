@@ -16,22 +16,11 @@ int main(int argc, char* argv[]) {
 
     char *file_name = *argv++;
 
-    std::ifstream input_file;
-    input_file.open(file_name);
-
-    if (!input_file.is_open()) {
-        std::cerr << "Invalid: file path!\n";
-        std::cerr << "  Usage: " << program << " <FILE_PATH>\n";
-        return -1;
-    }
-
-    std::string file_data((std::istreambuf_iterator<char>(input_file)),
-                          std::istreambuf_iterator<char>());
-
-    input_file.close();
+    Diagnostics diag(file_name);
+    diag.read_file(program);
 
     // Lex
-    Lexer lexer(file_data);
+    Lexer lexer(diag.file_data);
     lexer.lex();
     if (lexer.failed)
         return -1;
@@ -39,7 +28,7 @@ int main(int argc, char* argv[]) {
     lexer.print_tokens();
 
     // Parse
-    Parser parser(lexer.tok_list, file_data, file_name);
+    Parser parser(lexer.tok_list, &diag);
     parser.parse_prog();
     if (parser.failed)
         return -1;
@@ -48,7 +37,7 @@ int main(int argc, char* argv[]) {
 
     // Typecheck
     TypeChecker tc(&parser.prog);
-    if (!tc.typecheck())
+    if (!tc.typecheck(&diag))
         return -1;
 
     return 0;
