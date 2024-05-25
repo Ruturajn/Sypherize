@@ -1,0 +1,11 @@
+string: c = "hello";
+bool: t = true;
+bool: s = false;
+
+int: d = 2 * 3 + 4 / 2;
+int: e = 2 + 3 & 4 ^ 2;
+int: f = 2 & 4 * (3 ^ 2);
+
+int: g = 10;
+int@: a = #g;
+int@: b = a;
