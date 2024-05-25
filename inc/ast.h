@@ -54,6 +54,7 @@ public:
     virtual ~Type() = default;
     virtual void print_type() const = 0;
     virtual bool operator==(const Type& other) const = 0;
+    bool operator!=(const Type& other) const { return !operator==(other); }
     virtual Type* get_underlying_type() const = 0;
     virtual bool is_valid_binop(BinopType b) const = 0;
     virtual bool is_valid_unop(UnopType u) const = 0;
@@ -75,6 +76,7 @@ public:
         switch (u) {
             case UnopType::UNOP_NEG:
             case UnopType::UNOP_NOT:
+            case UnopType::UNOP_ADDROF:
                 return true;
 
             default:
@@ -169,7 +171,7 @@ public:
     bool operator==(const Type& other) const override {
         if (typeid(*this) == typeid(other)) {
             const TRef& tref = static_cast<const TRef&>(other);
-            return (*this).type == tref.type;
+            return static_cast<const Type&>(*(*this).type) == *(tref.type);
         }
         return false;
     }
@@ -211,7 +213,7 @@ public:
     bool operator==(const Type& other) const override {
         if (typeid(*this) == typeid(other)) {
             const TArray& tarr = static_cast<const TArray&>(other);
-            return (*this).type == tarr.type;
+            return static_cast<const Type&>(*(*this).type) == *(tarr.type);
         }
         return false;
     }
@@ -237,7 +239,8 @@ public:
 
 class ExpNode {
 public:
-    ExpNode() = default;
+    bool is_indirect;
+    ExpNode() : is_indirect(false) {}
     virtual ~ExpNode() = default;
     virtual void print_node(int indent) const = 0;
     virtual Type* typecheck(Environment& env, const std::string& fname,
@@ -296,7 +299,7 @@ private:
 public:
     CArrExpNode(std::unique_ptr<Type> _ty,
                 std::vector<ExpNode*>& _exp_list)
-        : ty(std::move(_ty)), exp_list(_exp_list) {}
+        : ty(std::move(_ty)), exp_list(_exp_list) { is_indirect =  true; }
 
     ~CArrExpNode() {
         for (auto& elem: exp_list)
@@ -317,7 +320,7 @@ private:
 public:
     NewExpNode(std::unique_ptr<Type> _ty,
                   std::unique_ptr<ExpNode> _exp)
-        : ty (std::move(_ty)), exp(std::move(_exp)) {}
+        : ty (std::move(_ty)), exp(std::move(_exp)) { is_indirect = true; }
 
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
@@ -550,7 +553,7 @@ public:
     Decls() = default;
     virtual ~Decls() = default;
     virtual void print_decl(int indent) const = 0;
-    virtual bool typecheck(Environment& env, FuncEnvironment& fenv) const;
+    virtual bool typecheck(Environment& env, FuncEnvironment& fenv) const = 0;
 };
 
 class FunDecl : public Decls {

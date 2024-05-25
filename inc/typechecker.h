@@ -17,6 +17,10 @@ public:
     Program* prog;
 
     TypeChecker(Program* _prog): env({}), fenv({}), prog(_prog) {};
+
+    bool typecheck() {
+        return prog->typecheck(env, fenv);
+    }
 };
 
 #endif // __TYPECHECKER_H__

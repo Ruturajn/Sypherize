@@ -44,10 +44,15 @@ bool FunDecl::typecheck(Environment& env, FuncEnvironment& fenv) const {
     if (fenv.find(fname) != fenv.end())
         return false;
 
+    if (env.find(fname) != env.end())
+        return false;
+
     fenv[fname] = {frtype.get()};
 
-    for (auto& arg: args)
+    for (auto& arg: args) {
         fenv[fname].push_back(arg.first);
+        env[fname][arg.second] = arg.first;
+    }
 
     for (auto& s: block) {
         if (s->typecheck(env, this->fname, fenv) == false)

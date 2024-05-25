@@ -234,22 +234,6 @@ void Parser::expect(Token::TokType t_ty, const char* error_str, const Token& tok
     std::cerr << "\033[1;37m\n\n";
 }
 
-// void Parser::var_bind_ctxt(const std::string& fun_ctxt,
-//                    const std::string& var_name,
-//                    Type* val) {
-// 
-//     if (env.find(fun_ctxt) == env.end())
-//         env[fun_ctxt] = {};
-// 
-//     if (env[fun_ctxt].find(var_name) != env[fun_ctxt].end())
-//         std::cout << "[ERR]: Redefinition of variable " << var_name <<
-//                      " at: " <<
-//                      "[" << tok_list[curr_pos].line_num << "," <<
-//                      tok_list[curr_pos].col_num << "]\n";
-// 
-//     env[fun_ctxt][var_name] = val;
-// }
-
 Type* Parser::build_type(int in_count, enum DeclType dt) {
     if (in_count == 0) {
         switch (dt) {
@@ -377,7 +361,6 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
             expect(Token::TOK_RPAREN, "`)` closing paren");
 
             return ret;
-            break;
         }
 
         case Token::TOK_NUMBER:
@@ -391,11 +374,9 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
             }
             else
                 return std::make_unique<NumberExpNode>(stol(tok_list[curr_pos].lexeme));
-            break;
 
         case Token::TOK_STRING:
             return std::make_unique<StringExpNode>(tok_list[curr_pos].lexeme);
-            break;
 
         case Token::TOK_IDENT: {
             auto id = std::make_unique<IdExpNode>(tok_list[curr_pos].lexeme);
@@ -465,7 +446,6 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
             }
 
             return id;
-            break;
         }
 
         case Token::TOK_BOOL_TRUE:
@@ -530,9 +510,6 @@ std::pair<Type*, std::string> Parser::parse_arg() {
     std::string& p_name = tok_list[curr_pos].lexeme;
 
     advance();
-
-    // Bind variable name in global context to it's type.
-    /* var_bind_ctxt(fn_name, p_name, p_type); */
 
     if (tok_list[curr_pos].tok_ty != Token::TOK_RPAREN) {
         expect(Token::TOK_COMMA, "`,` to delimit function paramaters");

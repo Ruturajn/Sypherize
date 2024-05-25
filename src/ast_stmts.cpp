@@ -75,7 +75,15 @@ bool DeclStmtNode::typecheck(Environment& env, const std::string& fname,
     if (exp_ty == nullptr)
         return false;
 
-    if (!((*exp_ty) == (*(ty.get()))))
+    Type* base_ty = ty.get();
+
+    if (exp->is_indirect)
+        base_ty = base_ty->get_underlying_type();
+
+    if (base_ty == nullptr)
+        return false;
+
+    if ((*exp_ty) != (*base_ty))
         return false;
 
     // TODO: Print out good error messages, this one is a huge problem

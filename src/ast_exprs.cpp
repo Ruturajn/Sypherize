@@ -54,7 +54,7 @@ Type* BoolExpNode::typecheck(Environment& env,
     (void)env;
     (void)fname;
     (void)fenv;
-    return new TString;
+    return new TBool;
 }
 
 ///===-------------------------------------------------------------------===///
@@ -74,8 +74,12 @@ Type* IdExpNode::typecheck(Environment& env,
     if (env.find(fname) == env.end())
         return nullptr;
 
-    if (env[fname].find(val) == env[fname].end())
-        return nullptr;
+    if (env[fname].find(val) == env[fname].end()) {
+        if (env["__global__"].find(val) == env["__global__"].end())
+            return nullptr;
+
+        return env["__global__"][val];
+    }
 
     return env[fname][val];
 }
@@ -146,9 +150,11 @@ void NewExpNode::print_node(int indent) const {
 Type* NewExpNode::typecheck(Environment& env,
                             const std::string& fname,
                             FuncEnvironment& fenv) const {
-    (void)env;
-    (void)fname;
-    (void)fenv;
+    if (exp != nullptr) {
+        if (exp->typecheck(env, fname, fenv) == nullptr)
+            return nullptr;
+    }
+
     return ty.get();
 }
 
@@ -298,7 +304,7 @@ void UnopExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "UNOP:\n";
+    std::cout << "UNOP:";
     switch (uop) {
         case UnopType::UNOP_NEG:
             std::cout << "~";
@@ -332,15 +338,25 @@ Type* UnopExpNode::typecheck(Environment& env,
             (!exp_type->is_valid_unop(uop)))
         return nullptr;
 
+    const NumberExpNode num(0);
+    const ExpNode& e = *(exp.get());
+
     switch (uop) {
         case UnopType::UNOP_NEG:
         case UnopType::UNOP_NOT:
             return exp_type;
 
-        case UnopType::UNOP_DEREF:
+        case UnopType::UNOP_DEREF: {
+            if (typeid(e) == typeid(num))
+                return nullptr;
+
             return exp_type->get_underlying_type();
+        }
 
         case UnopType::UNOP_ADDROF:
+            if (typeid(e) == typeid(num))
+                return nullptr;
+
             return new TRef(exp_type);
 
         default:

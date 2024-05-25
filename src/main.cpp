@@ -2,6 +2,7 @@
 #include <iostream>
 #include "../inc/lexer.h"
 #include "../inc/parser.h"
+#include "../inc/typechecker.h"
 
 int main(int argc, char* argv[]) {
 
@@ -46,6 +47,9 @@ int main(int argc, char* argv[]) {
     parser.prog.print_prog();
 
     // Typecheck
+    TypeChecker tc(&parser.prog);
+    if (!tc.typecheck())
+        return -1;
 
     return 0;
 }
