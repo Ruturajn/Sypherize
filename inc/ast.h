@@ -2,6 +2,7 @@
 #define __AST_H__
 
 #include <memory>
+#include <ostream>
 #include <vector>
 #include <iostream>
 #include <unordered_map>
@@ -52,6 +53,9 @@ public:
     ssize_t c_num{};
 
     SLoc(ssize_t _l_num, ssize_t _c_num) : l_num(_l_num), c_num(_c_num) {}
+    void print_sloc(std::ostream& os) const {
+        os << "<" << l_num << "," << c_num << ">";
+    }
 };
 
 class SRange {
@@ -60,6 +64,13 @@ public:
     SLoc end;
 
     SRange(SLoc _beg, SLoc _end) : beg(_beg), end(_end) {}
+    void print_srange(std::ostream& os) const {
+        os << "[";
+        beg.print_sloc(os);
+        os << ",";
+        end.print_sloc(os);
+        os << "]";
+    }
 };
 
 ///===-------------------------------------------------------------------===///
@@ -431,7 +442,8 @@ public:
 
 class StmtNode {
 public:
-    StmtNode() = default;
+    SRange sr;
+    StmtNode(const SRange& _sr) : sr(_sr) {}
     virtual ~StmtNode() = default;
     virtual void print_stmt(int indent) const = 0;
     virtual bool typecheck(Environment& env, const std::string& fname,
@@ -443,8 +455,9 @@ private:
     std::unique_ptr<ExpNode> lhs, rhs;
 
 public:
-    AssnStmtNode(std::unique_ptr<ExpNode> _lhs, std::unique_ptr<ExpNode> _rhs)
-        : lhs(std::move(_lhs)), rhs(std::move(_rhs)) {}
+    AssnStmtNode(std::unique_ptr<ExpNode> _lhs, std::unique_ptr<ExpNode> _rhs,
+                 const SRange& _sr)
+        : StmtNode(_sr), lhs(std::move(_lhs)), rhs(std::move(_rhs)) {}
 
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
@@ -460,8 +473,9 @@ private:
 public:
     DeclStmtNode(std::unique_ptr<Type> _ty,
                  const std::string& _id,
-                 std::unique_ptr<ExpNode> _exp)
-        : ty(std::move(_ty)), id(_id), exp(std::move(_exp)) {}
+                 std::unique_ptr<ExpNode> _exp,
+                 const SRange& _sr)
+        : StmtNode(_sr), ty(std::move(_ty)), id(_id), exp(std::move(_exp)) {}
 
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
@@ -475,8 +489,9 @@ private:
 
 public:
     SCallStmtNode(const std::string& _fname,
-                    std::vector<ExpNode*>& _fargs)
-        : fname(_fname), fargs(_fargs) {}
+                  std::vector<ExpNode*>& _fargs,
+                  const SRange& _sr)
+        : StmtNode(_sr), fname(_fname), fargs(_fargs) {}
 
     ~SCallStmtNode() {
         for (auto& elem: fargs)
@@ -493,8 +508,8 @@ private:
     std::unique_ptr<ExpNode> exp;
 
 public:
-    RetStmtNode(std::unique_ptr<ExpNode> _exp = nullptr)
-        : exp(std::move(_exp)) {}
+    RetStmtNode(std::unique_ptr<ExpNode> _exp, const SRange& _sr)
+        : StmtNode(_sr), exp(std::move(_exp)) {}
 
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
@@ -510,8 +525,9 @@ private:
 public:
     IfStmtNode(std::unique_ptr<ExpNode> _cond,
                 std::vector<StmtNode*>& _then_body,
-                std::vector<StmtNode*>& _else_body)
-        : cond(std::move(_cond)), then_body(_then_body),
+                std::vector<StmtNode*>& _else_body,
+                const SRange& _sr)
+        : StmtNode(_sr), cond(std::move(_cond)), then_body(_then_body),
             else_body(_else_body) {}
 
     ~IfStmtNode() {
@@ -538,8 +554,9 @@ public:
     ForStmtNode(std::vector<StmtNode*>& _decl_list,
                 std::unique_ptr<ExpNode> _cond,
                 std::unique_ptr<StmtNode> _iter,
-                std::vector<StmtNode*>& _body)
-        : decl_list(_decl_list), cond(std::move(_cond)),
+                std::vector<StmtNode*>& _body,
+                const SRange& _sr)
+        : StmtNode(_sr), decl_list(_decl_list), cond(std::move(_cond)),
             iter(std::move(_iter)), body(_body) {}
 
     ~ForStmtNode() {
@@ -562,8 +579,9 @@ private:
 
 public:
     WhileStmtNode(std::unique_ptr<ExpNode> _cond,
-                std::vector<StmtNode*>& _body)
-        : cond(std::move(_cond)), body(_body) {}
+                  std::vector<StmtNode*>& _body,
+                  const SRange& _sr)
+        : StmtNode(_sr), cond(std::move(_cond)), body(_body) {}
 
     ~WhileStmtNode() {
         for (auto& elem: body)
@@ -580,7 +598,8 @@ public:
 ///===-------------------------------------------------------------------===///
 class Decls {
 public:
-    Decls() = default;
+    SRange sr;
+    Decls(const SRange& _sr) : sr(_sr) {}
     virtual ~Decls() = default;
     virtual void print_decl(int indent) const = 0;
     virtual bool typecheck(Environment& env, FuncEnvironment& fenv,
@@ -597,8 +616,9 @@ public:
     FunDecl(std::unique_ptr<Type> _frtype,
             const std::string& _fname,
             std::vector<std::pair<Type*, std::string>>& _args,
-            std::vector<StmtNode*>& _block)
-        : frtype(std::move(_frtype)), fname(_fname),
+            std::vector<StmtNode*>& _block,
+            const SRange& _sr)
+        : Decls(_sr), frtype(std::move(_frtype)), fname(_fname),
             args(_args), block(_block) {}
 
     ~FunDecl() {
@@ -622,8 +642,9 @@ public:
 
     GlobalDecl(std::unique_ptr<Type> _ty,
                const std::string& _id,
-               std::unique_ptr<ExpNode> _exp)
-        : ty (std::move(_ty)), id (_id), exp(std::move(_exp)) {}
+               std::unique_ptr<ExpNode> _exp,
+               const SRange& _sr)
+        : Decls(_sr), ty (std::move(_ty)), id (_id), exp(std::move(_exp)) {}
 
     void print_decl(int indent) const override;
     bool typecheck(Environment& env, FuncEnvironment& fenv,

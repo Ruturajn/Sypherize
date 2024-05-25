@@ -7,7 +7,10 @@
 void NumberExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
-    std::cout << "NUM: " << val << "\n";
+
+    std::cout << "NUM";
+    sr.print_srange(std::cout);
+    std::cout << ": " << val << "\n";
 }
 
 Type* NumberExpNode::typecheck(Environment& env,
@@ -26,7 +29,10 @@ Type* NumberExpNode::typecheck(Environment& env,
 void StringExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
-    std::cout << "STRING: " << val << "\n";
+
+    std::cout << "STRING";
+    sr.print_srange(std::cout);
+    std::cout << ": " << val << "\n";
 }
 
 Type* StringExpNode::typecheck(Environment& env,
@@ -45,7 +51,10 @@ Type* StringExpNode::typecheck(Environment& env,
 void BoolExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
-    std::cout << "BOOL: " << val << "\n";
+
+    std::cout << "BOOL";
+    sr.print_srange(std::cout);
+    std::cout << ": " << val << "\n";
 }
 
 Type* BoolExpNode::typecheck(Environment& env,
@@ -64,7 +73,10 @@ Type* BoolExpNode::typecheck(Environment& env,
 void IdExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
-    std::cout << "ID: " << val << "\n";
+
+    std::cout << "ID";
+    sr.print_srange(std::cout);
+    std::cout << ": " << val << "\n";
 }
 
 Type* IdExpNode::typecheck(Environment& env,
@@ -92,7 +104,9 @@ void CArrExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "CARR:\n";
+    std::cout << "CARR";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
 
     for (int i = 0; i < indent + 4; i++)
         std::cout << " ";
@@ -130,7 +144,10 @@ void NewExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "NEWEXP:\n";
+    std::cout << "NEWEXP";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
+
     for (int i = 0; i < indent + 4; i++)
         std::cout << " ";
 
@@ -166,7 +183,9 @@ void IndexExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "INDEX:\n";
+    std::cout << "INDEX";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
 
     exp->print_node(indent + 4);
     idx->print_node(indent + 4);
@@ -203,7 +222,9 @@ void BinopExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "BINOP: ";
+    std::cout << "BINOP";
+    sr.print_srange(std::cout);
+    std::cout << ": ";
 
     switch (binop) {
         case BinopType::BINOP_PLUS:
@@ -304,7 +325,10 @@ void UnopExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "UNOP:";
+    std::cout << "UNOP";
+    sr.print_srange(std::cout);
+    std::cout << ":";
+
     switch (uop) {
         case UnopType::UNOP_NEG:
             std::cout << "~";
@@ -372,7 +396,9 @@ void FunCallExpNode::print_node(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "FUNCALL:\n";
+    std::cout << "FUNCALL";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
 
     for (int i = 0; i < indent + 4; i++)
         std::cout << " ";

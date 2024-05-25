@@ -63,7 +63,13 @@ SRange Parser::make_srange(ssize_t beg_pos) {
                       SLoc(tok_list[curr_pos].line_num,
                            tok_list[curr_pos].col_num));
 
-    } else
+    } else if (curr_pos >= tok_len) {
+        return SRange(SLoc(tok_list[beg_pos].line_num,
+                           tok_list[beg_pos].col_num),
+                      SLoc(tok_list[curr_pos - 1].line_num,
+                           tok_list[curr_pos - 1].col_num));
+    }
+    else
         return SRange(SLoc(0, 0), SLoc(0,0));
 }
 
@@ -280,8 +286,13 @@ std::unique_ptr<ExpNode> Parser::parse_binop(int prev_prec,
 
         auto rhs = parse_expr(get_precedence(curr_tok.tok_ty));
 
+        auto srange = make_srange(beg_pos);
+
+        auto b_srange = SRange(lhs->sr.beg, srange.end);
+
         auto binop = std::make_unique<BinopExpNode>(conv_binop(curr_tok),
-                        std::move(lhs), std::move(rhs), make_srange(beg_pos));
+                        std::move(lhs), std::move(rhs),
+                        b_srange);
 
         lhs = std::move(binop);
 
@@ -598,12 +609,15 @@ StmtNode* Parser::parse_vdecl() {
         std::unique_ptr<Type> elem_type(parse_type_wo_arr());
         curr_pos = orig;
 
+        auto srange = make_srange(type_pos);
+
         auto carr_exp = std::make_unique<CArrExpNode>(
             std::move(elem_type), init_exps,
-            make_srange(type_pos)
+            srange
         );
 
-        return new DeclStmtNode(std::move(vtype_ptr), vname, std::move(carr_exp));
+        return new DeclStmtNode(std::move(vtype_ptr), vname, std::move(carr_exp),
+                                srange);
     }
 
     expect(Token::TOK_EQUAL, "`=` operator");
@@ -614,16 +628,22 @@ StmtNode* Parser::parse_vdecl() {
 
         auto new_exp = parse_new_type_exp();
         advance();
-        return new DeclStmtNode(std::move(vtype_ptr), vname, std::move(new_exp));
+        return new DeclStmtNode(
+            std::move(vtype_ptr), vname, std::move(new_exp),
+            make_srange(type_pos));
     }
 
     std::unique_ptr<ExpNode> init_exp = parse_expr(0);
     advance();
 
-    return new DeclStmtNode(std::move(vtype_ptr), vname, std::move(init_exp));
+    return new DeclStmtNode(
+        std::move(vtype_ptr), vname, std::move(init_exp),
+        make_srange(type_pos));
 }
 
 StmtNode* Parser::parse_sfun_call() {
+    ssize_t beg_pos = curr_pos;
+
     switch (tok_list[curr_pos].tok_ty) {
         case Token::TOK_IDENT: {
             std::string& fun_name = tok_list[curr_pos].lexeme;
@@ -652,7 +672,7 @@ StmtNode* Parser::parse_sfun_call() {
             advance();
             expect(Token::TOK_SEMIC, "terminating `;` operator");
 
-            return new SCallStmtNode(fun_name, f_args);
+            return new SCallStmtNode(fun_name, f_args, make_srange(beg_pos));
         }
 
         default:
@@ -663,6 +683,8 @@ StmtNode* Parser::parse_sfun_call() {
 }
 
 StmtNode* Parser::parse_stmt() {
+    ssize_t beg_pos = curr_pos;
+
     switch (tok_list[curr_pos].tok_ty) {
         case Token::TOK_TYPE_INT:
         case Token::TOK_TYPE_STRING:
@@ -678,10 +700,10 @@ StmtNode* Parser::parse_stmt() {
             if (tok_list[curr_pos].tok_ty == Token::TOK_SEMIC) {
                 advance();
                 expect(Token::TOK_SEMIC, "terminating `;` operator");
-                return new RetStmtNode();
+                return new RetStmtNode(nullptr, make_srange(beg_pos));
             }
             else{
-                auto ret_node = new RetStmtNode(parse_expr(0));
+                auto ret_node = new RetStmtNode(parse_expr(0), make_srange(beg_pos));
                 advance();
                 expect(Token::TOK_SEMIC, "terminating `;` operator");
                 return ret_node;
@@ -708,7 +730,8 @@ StmtNode* Parser::parse_stmt() {
 
             advance();
             expect(Token::TOK_SEMIC, "terminating `;` operator");
-            return new AssnStmtNode(std::move(left), std::move(right));
+            return new AssnStmtNode(std::move(left), std::move(right),
+                make_srange(beg_pos));
         }
 
         case Token::TOK_IF: {
@@ -740,11 +763,13 @@ StmtNode* Parser::parse_stmt() {
 
                 auto else_body = parse_block();
 
-                return new IfStmtNode(std::move(cond), then_body, else_body);
+                return new IfStmtNode(std::move(cond), then_body, else_body,
+                    make_srange(beg_pos));
             }
 
             std::vector<StmtNode*> else_body {};
-            return new IfStmtNode(std::move(cond), then_body, else_body);
+            return new IfStmtNode(std::move(cond), then_body, else_body,
+                make_srange(beg_pos));
         }
 
         case Token::TOK_FOR: {
@@ -781,7 +806,7 @@ StmtNode* Parser::parse_stmt() {
 
             std::unique_ptr<StmtNode> iter_uptr(iter);
             return new ForStmtNode(decls, std::move(cond), std::move(iter_uptr),
-                                    for_body);
+                                    for_body, make_srange(beg_pos));
         }
 
         case Token::TOK_WHILE: {
@@ -801,7 +826,8 @@ StmtNode* Parser::parse_stmt() {
 
             auto while_body = parse_block();
 
-            return new WhileStmtNode(std::move(cond), while_body);
+            return new WhileStmtNode(std::move(cond), while_body,
+                make_srange(beg_pos));
         }
 
         default:
@@ -822,6 +848,8 @@ std::vector<StmtNode*> Parser::parse_block() {
 
 // fdecl ::== fun <ident> (arg1,...,argn) { <stmt1>; <stmt2>; ... }
 Decls* Parser::parse_fdecl() {
+    ssize_t beg_pos = curr_pos;
+
     expect(Token::TOK_FUNCTION, "`fun` keyword");
 
     advance();
@@ -870,11 +898,14 @@ Decls* Parser::parse_fdecl() {
     advance();
 
     std::unique_ptr<Type> fret_type_uptr(fret_type);
-    return new FunDecl(std::move(fret_type_uptr), f_name, params, fn_body);
+    return new FunDecl(std::move(fret_type_uptr), f_name, params, fn_body,
+        make_srange(beg_pos));
 }
 
 // vdecl ::== <type> : <ident> = <exp>
 Decls* Parser::parse_gvdecl() {
+    ssize_t beg_pos = curr_pos;
+
     std::unique_ptr<Type> gvtype_ptr(parse_type());
 
     advance();
@@ -897,7 +928,8 @@ Decls* Parser::parse_gvdecl() {
     expect(Token::TOK_SEMIC, "terminating `;` operator");
     advance();
 
-    return new GlobalDecl(std::move(gvtype_ptr), gvname, std::move(init_exp));
+    return new GlobalDecl(std::move(gvtype_ptr), gvname, std::move(init_exp),
+        make_srange(beg_pos));
 }
 
 Decls* Parser::parse_decl() {

@@ -8,7 +8,9 @@ void AssnStmtNode::print_stmt(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "ASSN:\n";
+    std::cout << "ASSN";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
 
     for (int i = 0; i < indent + 4; i++)
         std::cout << " ";
@@ -45,7 +47,9 @@ void DeclStmtNode::print_stmt(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "DECL:\n";
+    std::cout << "DECL";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
 
     for (int i = 0; i < indent + 4; i++)
         std::cout << " ";
@@ -110,7 +114,9 @@ void SCallStmtNode::print_stmt(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "SFUNCALL:\n";
+    std::cout << "SFUNCALL";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
 
     for (int i = 0; i < indent + 4; i++)
         std::cout << " ";
@@ -158,7 +164,9 @@ void RetStmtNode::print_stmt(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "RETURN:\n";
+    std::cout << "RETURN";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
 
     if (exp != nullptr)
         exp->print_node(indent + 4);
@@ -198,7 +206,10 @@ bool RetStmtNode::typecheck(Environment& env, const std::string& fname,
 void IfStmtNode::print_stmt(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
-    std::cout << "IF:\n";
+
+    std::cout << "IF";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
 
     for (int i = 0; i < indent + 4; i++)
         std::cout << " ";
@@ -252,7 +263,9 @@ void ForStmtNode::print_stmt(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "FOR:\n";
+    std::cout << "FOR";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
 
     for (int i = 0; i < indent + 4; i++)
         std::cout << " ";
@@ -313,7 +326,9 @@ void WhileStmtNode::print_stmt(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "WHILE:\n";
+    std::cout << "WHILE";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
 
     for (int i = 0; i < indent + 4; i++)
         std::cout << " ";

@@ -8,7 +8,9 @@ void FunDecl::print_decl(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "FUN_DECL:\n";
+    std::cout << "FUN_DECL";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
 
     for (int i = 0; i < indent + 4; i++)
         std::cout << " ";
@@ -71,7 +73,9 @@ void GlobalDecl::print_decl(int indent) const {
     for (int i = 0; i < indent; i++)
         std::cout << " ";
 
-    std::cout << "GLOBAL_DECL:\n";
+    std::cout << "GLOBAL_DECL";
+    sr.print_srange(std::cout);
+    std::cout << ":\n";
 
     for (int i = 0; i < indent + 8; i++)
         std::cout << " ";
