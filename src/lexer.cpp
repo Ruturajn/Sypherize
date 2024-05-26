@@ -145,15 +145,16 @@ void Lexer::lex_identifier() {
 }
 
 void Lexer::lex_string() {
-    curr_pos += 1;
     ssize_t final_pos = curr_pos;
+    final_pos += 1;
     while (final_pos < data_sz) {
-        if (file_data[final_pos] == '"')
+        if (file_data[final_pos] == '"') {
+            final_pos += 1;
             break;
+        }
         final_pos += 1;
     }
     push_tok((final_pos - curr_pos), Token::TOK_STRING);
-    curr_pos += 1;
 }
 
 void Lexer::lex() {

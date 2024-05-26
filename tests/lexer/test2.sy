@@ -5,7 +5,8 @@
 $sdcsdc
 
 (^ sdcjksbdcsdc ^)
+^)
 
+string: _test = "hello";
 
-_test
              __sdcsdc
