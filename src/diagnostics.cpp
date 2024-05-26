@@ -34,7 +34,7 @@ bool Diagnostics::read_file(const char* program) {
 }
 
 void Diagnostics::print_error(ssize_t l_n, ssize_t c_n, const char* error_str,
-                              ssize_t highlight_len) {
+                               ssize_t highlight_len) {
 
     std::cerr << "\033[1;31m[ERR]:\033[1;37m " << error_str << "\n";
     std::cerr << ">> " << file_name << "[" << l_n << "," << c_n << "]\n";
@@ -60,4 +60,14 @@ void Diagnostics::print_error(ssize_t l_n, ssize_t c_n, const char* error_str,
         std::cerr << '^';
 
     std::cerr << "\033[1;37m\n\n";
+}
+
+void Diagnostics::print_error(const SRange& sr, const char* error_str) {
+    if (sr.beg.l_num == sr.end.l_num)
+        print_error(sr.beg.l_num, sr.beg.c_num, error_str,
+            (sr.end.c_num - sr.beg.c_num) + 1);
+    else {
+        ssize_t line_sz = file_lines[sr.beg.l_num - 1].size();
+        print_error(sr.beg.l_num, sr.beg.c_num, error_str, line_sz);
+    }
 }

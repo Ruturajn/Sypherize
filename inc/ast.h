@@ -6,7 +6,7 @@
 #include <vector>
 #include <iostream>
 #include <unordered_map>
-#include "../inc/diagnostics.h"
+#include "./diagnostics.h"
 
 class Type;
 
@@ -45,35 +45,6 @@ enum class UnopType {
 };
 
 ///===-------------------------------------------------------------------===///
-/// Source Location
-///===-------------------------------------------------------------------===///
-class SLoc {
-public:
-    ssize_t l_num{};
-    ssize_t c_num{};
-
-    SLoc(ssize_t _l_num, ssize_t _c_num) : l_num(_l_num), c_num(_c_num) {}
-    void print_sloc(std::ostream& os) const {
-        os << "<" << l_num << "," << c_num << ">";
-    }
-};
-
-class SRange {
-public:
-    SLoc beg;
-    SLoc end;
-
-    SRange(SLoc _beg, SLoc _end) : beg(_beg), end(_end) {}
-    void print_srange(std::ostream& os) const {
-        os << "[";
-        beg.print_sloc(os);
-        os << ",";
-        end.print_sloc(os);
-        os << "]";
-    }
-};
-
-///===-------------------------------------------------------------------===///
 /// Types
 ///===-------------------------------------------------------------------===///
 class Type {
@@ -84,6 +55,7 @@ public:
     Type() : is_indexable(false), is_index(false), is_void(false) {};
     virtual ~Type() = default;
     virtual void print_type() const = 0;
+    virtual std::string get_source_type() const = 0;
     virtual bool operator==(const Type& other) const = 0;
     bool operator!=(const Type& other) const { return !operator==(other); }
     virtual Type* get_underlying_type() const = 0;
@@ -95,6 +67,7 @@ class TInt : public Type {
 public:
     TInt() { is_index = true; }
     void print_type() const override { std::cout << "[TInt]"; }
+    std::string get_source_type() const override { return "int"; }
     bool operator==(const Type& other) const override {
         return typeid(*this) == typeid(other);
     }
@@ -103,67 +76,31 @@ public:
         (void)b;
         return true;
     }
-    bool is_valid_unop(UnopType u) const override {
-        switch (u) {
-            case UnopType::UNOP_NEG:
-            case UnopType::UNOP_NOT:
-            case UnopType::UNOP_ADDROF:
-                return true;
+    bool is_valid_unop(UnopType u) const override;
 
-            default:
-                return false;
-        }
-    }
 };
 
 class TBool : public Type {
 public:
     void print_type() const override { std::cout << "[TBool]"; }
+    std::string get_source_type() const override { return "bool"; }
     bool operator==(const Type& other) const override {
         return typeid(*this) == typeid(other);
     }
     Type* get_underlying_type() const override { return nullptr; }
-    bool is_valid_binop(BinopType b) const override {
-        switch (b) {
-            case BinopType::BINOP_EQEQUAL:
-            case BinopType::BINOP_NEQUAL:
-            case BinopType::BINOP_LOGAND:
-            case BinopType::BINOP_LOGOR:
-                return true;
-            default:
-                return false;
-        }
-    }
-    bool is_valid_unop(UnopType u) const override {
-        switch (u) {
-            case UnopType::UNOP_NOT:
-                return true;
-
-            default:
-                return false;
-        }
-    }
+    bool is_valid_binop(BinopType b) const override;
+    bool is_valid_unop(UnopType u) const override;
 };
 
 class TString : public Type {
 public:
     void print_type() const override { std::cout << "[TString]"; }
+    std::string get_source_type() const override { return "string"; }
     bool operator==(const Type& other) const override {
         return typeid(*this) == typeid(other);
     }
     Type* get_underlying_type() const override { return nullptr; }
-    bool is_valid_binop(BinopType b) const override {
-        switch (b) {
-            case BinopType::BINOP_PLUS:
-            case BinopType::BINOP_MULT:
-            case BinopType::BINOP_EQEQUAL:
-            case BinopType::BINOP_NEQUAL:
-                return true;
-
-            default:
-                return false;
-        }
-    }
+    bool is_valid_binop(BinopType b) const override;
     bool is_valid_unop(UnopType u) const override {
         (void)u;
         return false;
@@ -174,6 +111,7 @@ class TVoid : public Type {
 public:
     TVoid() { is_void = true; }
     void print_type() const override { std::cout << "[TVoid]"; }
+    std::string get_source_type() const override { return "void"; }
     bool operator==(const Type& other) const override {
         return typeid(*this) == typeid(other);
     }
@@ -199,35 +137,11 @@ public:
         std::cout << "[TRef]";
         type->print_type();
     }
-    bool operator==(const Type& other) const override {
-        if (typeid(*this) == typeid(other)) {
-            const TRef& tref = static_cast<const TRef&>(other);
-            return static_cast<const Type&>(*(*this).type) == *(tref.type);
-        }
-        return false;
-    }
+    std::string get_source_type() const override;
+    bool operator==(const Type& other) const override;
     Type* get_underlying_type() const override { return type; }
-    bool is_valid_binop(BinopType b) const override {
-        switch (b) {
-            case BinopType::BINOP_PLUS:
-            case BinopType::BINOP_EQEQUAL:
-            case BinopType::BINOP_NEQUAL:
-                return true;
-
-            default:
-                return false;
-        }
-    }
-    bool is_valid_unop(UnopType u) const override {
-        switch (u) {
-            case UnopType::UNOP_ADDROF:
-            case UnopType::UNOP_DEREF:
-                return true;
-
-            default:
-                return false;
-        }
-    }
+    bool is_valid_binop(BinopType b) const override;
+    bool is_valid_unop(UnopType u) const override;
 };
 
 class TArray : public Type {
@@ -241,27 +155,14 @@ public:
         std::cout << "[TArray]";
         type->print_type();
     }
-    bool operator==(const Type& other) const override {
-        if (typeid(*this) == typeid(other)) {
-            const TArray& tarr = static_cast<const TArray&>(other);
-            return static_cast<const Type&>(*(*this).type) == *(tarr.type);
-        }
-        return false;
-    }
+    std::string get_source_type() const override;
+    bool operator==(const Type& other) const override;
     Type* get_underlying_type() const override { return type; }
     bool is_valid_binop(BinopType b) const override {
         (void)b;
         return false;
     }
-    bool is_valid_unop(UnopType u) const override {
-        switch (u) {
-            case UnopType::UNOP_ADDROF:
-                return true;
-
-            default:
-                return false;
-        }
-    }
+    bool is_valid_unop(UnopType u) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -276,7 +177,7 @@ public:
     virtual ~ExpNode() = default;
     virtual void print_node(int indent) const = 0;
     virtual Type* typecheck(Environment& env, const std::string& fname,
-                            FuncEnvironment& fenv) const = 0;
+                            FuncEnvironment& fenv, Diagnostics* diag) const = 0;
 };
 
 class NumberExpNode : public ExpNode {
@@ -287,7 +188,7 @@ public:
     NumberExpNode(long _val, const SRange& _sr) : ExpNode(_sr), val(_val) {}
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
-                    FuncEnvironment& fenv) const override;
+                    FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class StringExpNode : public ExpNode {
@@ -299,7 +200,7 @@ public:
         : ExpNode(_sr), val(_val) {}
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
-                    FuncEnvironment& fenv) const override;
+                    FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class BoolExpNode : public ExpNode {
@@ -311,7 +212,7 @@ public:
         : ExpNode(_sr), val(_val) {}
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
-                    FuncEnvironment& fenv) const override;
+                    FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class IdExpNode : public ExpNode {
@@ -323,7 +224,7 @@ public:
         : ExpNode(_sr), val(_val) {}
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
-                    FuncEnvironment& fenv) const override;
+                    FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class CArrExpNode : public ExpNode {
@@ -345,7 +246,7 @@ public:
 
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
-                    FuncEnvironment& fenv) const override;
+                    FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class NewExpNode : public ExpNode {
@@ -363,7 +264,7 @@ public:
 
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
-                    FuncEnvironment& fenv) const override;
+                    FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class IndexExpNode : public ExpNode {
@@ -378,7 +279,7 @@ public:
 
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
-                    FuncEnvironment& fenv) const override;
+                    FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class BinopExpNode : public ExpNode {
@@ -396,7 +297,7 @@ public:
 
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
-                    FuncEnvironment& fenv) const override;
+                    FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class UnopExpNode : public ExpNode {
@@ -413,7 +314,7 @@ public:
 
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
-                    FuncEnvironment& fenv) const override;
+                    FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 class FunCallExpNode : public ExpNode {
@@ -433,7 +334,7 @@ public:
 
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
-                    FuncEnvironment& fenv) const override;
+                    FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
 ///===-------------------------------------------------------------------===///

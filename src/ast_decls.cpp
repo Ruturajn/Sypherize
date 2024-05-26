@@ -44,11 +44,16 @@ void FunDecl::print_decl(int indent) const {
 bool FunDecl::typecheck(Environment& env, FuncEnvironment& fenv,
                         Diagnostics* diag) const {
 
-    if (fenv.find(fname) != fenv.end())
+    if (fenv.find(fname) != fenv.end()) {
+        diag->print_error(sr, "Redefinition of function");
         return false;
+    }
 
-    if (env.find(fname) != env.end())
+    if (env.find(fname) != env.end()) {
+        diag->print_error(sr, "[ICE] Function local scope exists without it being"
+                "present in fenv");
         return false;
+    }
 
     fenv[fname] = {frtype.get()};
 
@@ -101,23 +106,28 @@ void GlobalDecl::print_decl(int indent) const {
 bool GlobalDecl::typecheck(Environment& env, FuncEnvironment& fenv,
                            Diagnostics* diag) const {
 
-    (void)diag;
-
     const char* global_env = "__global__";
 
     if (env.find(global_env) == env.end())
         env[global_env] = {};
 
-    if (env[global_env].find(id) != env[global_env].end())
+    if (env[global_env].find(id) != env[global_env].end()) {
+        diag->print_error(sr, "Redefinition of global variable");
         return false;
+    }
 
-    auto exp_ty = exp->typecheck(env, global_env, fenv);
+    auto exp_ty = exp->typecheck(env, global_env, fenv, diag);
 
     if (exp_ty == nullptr)
         return false;
 
-    if (!((*exp_ty) == (*(ty.get()))))
+    if (!((*exp_ty) == (*(ty.get())))) {
+        std::string err = "Expected type: " + ty.get()->get_source_type() +
+            "for global variable decl";
+        diag->print_error(exp->sr, err.c_str());
+
         return false;
+    }
 
     env[global_env][id] = ty.get();
 

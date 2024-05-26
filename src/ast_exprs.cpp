@@ -15,10 +15,12 @@ void NumberExpNode::print_node(int indent) const {
 
 Type* NumberExpNode::typecheck(Environment& env,
                                const std::string& fname,
-                               FuncEnvironment& fenv) const {
+                               FuncEnvironment& fenv,
+                               Diagnostics* diag) const {
     (void)env;
     (void)fname;
     (void)fenv;
+    (void)diag;
     return new TInt;
 }
 
@@ -37,10 +39,12 @@ void StringExpNode::print_node(int indent) const {
 
 Type* StringExpNode::typecheck(Environment& env,
                                const std::string& fname,
-                               FuncEnvironment& fenv) const {
+                               FuncEnvironment& fenv,
+                               Diagnostics* diag) const {
     (void)env;
     (void)fname;
     (void)fenv;
+    (void)diag;
     return new TString;
 }
 
@@ -59,10 +63,12 @@ void BoolExpNode::print_node(int indent) const {
 
 Type* BoolExpNode::typecheck(Environment& env,
                              const std::string& fname,
-                             FuncEnvironment& fenv) const {
+                             FuncEnvironment& fenv,
+                             Diagnostics* diag) const {
     (void)env;
     (void)fname;
     (void)fenv;
+    (void)diag;
     return new TBool;
 }
 
@@ -81,14 +87,20 @@ void IdExpNode::print_node(int indent) const {
 
 Type* IdExpNode::typecheck(Environment& env,
                            const std::string& fname,
-                           FuncEnvironment& fenv) const {
+                           FuncEnvironment& fenv,
+                           Diagnostics* diag) const {
     (void)fenv;
-    if (env.find(fname) == env.end())
+
+    if (env.find(fname) == env.end()) {
+        diag->print_error(sr, "[ICE] Invalid `fname` passed to IdExpNode");
         return nullptr;
+    }
 
     if (env[fname].find(val) == env[fname].end()) {
-        if (env["__global__"].find(val) == env["__global__"].end())
+        if (env["__global__"].find(val) == env["__global__"].end()) {
+            diag->print_error(sr, "Unknown variable accessed");
             return nullptr;
+        }
 
         return env["__global__"][val];
     }
@@ -121,16 +133,19 @@ void CArrExpNode::print_node(int indent) const {
 
 Type* CArrExpNode::typecheck(Environment& env,
                              const std::string& fname,
-                             FuncEnvironment& fenv) const {
+                             FuncEnvironment& fenv,
+                             Diagnostics* diag) const {
     Type* exp_ty = nullptr;
 
     for (auto& exp: exp_list) {
-        exp_ty = exp->typecheck(env, fname, fenv);
-        if (exp_ty == nullptr)
-            return nullptr;
+        exp_ty = exp->typecheck(env, fname, fenv, diag);
 
-        if (!((*(ty.get())) == (*(exp_ty))))
+        if (exp_ty == nullptr || (*(ty.get()) != (*exp_ty))) {
+            std::string err = "Expected type: " + ty->get_source_type() +
+                "for array initialization";
+            diag->print_error(exp->sr, err.c_str());
             return nullptr;
+        }
     }
 
     return ty.get();
@@ -166,10 +181,16 @@ void NewExpNode::print_node(int indent) const {
 
 Type* NewExpNode::typecheck(Environment& env,
                             const std::string& fname,
-                            FuncEnvironment& fenv) const {
+                            FuncEnvironment& fenv,
+                            Diagnostics* diag) const {
+
     if (exp != nullptr) {
-        if (exp->typecheck(env, fname, fenv) == nullptr)
+        auto exp_ty = exp->typecheck(env, fname, fenv, diag);
+        if (exp_ty == nullptr || exp_ty->is_index == false) {
+            diag->print_error(exp->sr, "Expected `int` type for the size"
+                    " expression");
             return nullptr;
+        }
     }
 
     return ty.get();
@@ -193,23 +214,23 @@ void IndexExpNode::print_node(int indent) const {
 
 Type* IndexExpNode::typecheck(Environment& env,
                               const std::string& fname,
-                              FuncEnvironment& fenv) const {
+                              FuncEnvironment& fenv,
+                              Diagnostics* diag) const {
 
     // If exp is of type TArray or TRef, it is indexable.
-    auto exp_type = exp->typecheck(env, fname, fenv);
-    if (exp_type == nullptr)
+    auto exp_type = exp->typecheck(env, fname, fenv, diag);
+    if (exp_type == nullptr || !(exp_type->is_indexable)) {
+        diag->print_error(exp->sr, "Expected indexable type for index operation");
         return nullptr;
-
-    if (!(*exp_type).is_indexable)
-        return nullptr;
+    }
 
     // If idx is of type TInt, this node is typechecked.
-    auto idx_type = idx->typecheck(env, fname, fenv);
-    if (idx_type == nullptr)
+    auto idx_type = idx->typecheck(env, fname, fenv, diag);
+    if (idx_type == nullptr || !(idx_type->is_index)) {
+        diag->print_error(idx->sr, "Expected `int` type for the index"
+                " expression");
         return nullptr;
-
-    if (!(*idx_type).is_index)
-        return nullptr;
+    }
 
     return exp_type->get_underlying_type();
 }
@@ -299,20 +320,36 @@ void BinopExpNode::print_node(int indent) const {
 
 Type* BinopExpNode::typecheck(Environment& env,
                               const std::string& fname,
-                              FuncEnvironment& fenv) const {
+                              FuncEnvironment& fenv,
+                              Diagnostics* diag) const {
 
-    auto left_type = left->typecheck(env, fname, fenv);
-    auto right_type = right->typecheck(env, fname, fenv);
+    auto left_type = left->typecheck(env, fname, fenv, diag);
+    auto right_type = right->typecheck(env, fname, fenv, diag);
 
-    if (left_type == nullptr || right_type == nullptr)
+    if (left_type == nullptr || right_type == nullptr) {
+        if (left_type == nullptr)
+            diag->print_error(left->sr, "Expected valid LHS expression for binop");
+        if (right_type == nullptr)
+            diag->print_error(right->sr, "Expected valid RHS expression for binop");
         return nullptr;
+    }
 
-    if (!((*left_type) == (*right_type)))
+    if (!((*left_type) == (*right_type))) {
+        diag->print_error(sr, "Expected compatible types for LHS and RHS of"
+                " binop expression");
         return nullptr;
+    }
 
     if (!(left_type->is_valid_binop(binop) &&
-                right_type->is_valid_binop(binop)))
+                right_type->is_valid_binop(binop))) {
+        if (!left_type->is_valid_binop(binop))
+            diag->print_error(left->sr, "Expected valid type for LHS of"
+                    " binop expression");
+        if (!right_type->is_valid_binop(binop))
+            diag->print_error(right->sr, "Expected valid type for RHS of"
+                    " binop expression");
         return nullptr;
+    }
 
     return left_type;
 }
@@ -354,13 +391,17 @@ void UnopExpNode::print_node(int indent) const {
 
 Type* UnopExpNode::typecheck(Environment& env,
                              const std::string& fname,
-                             FuncEnvironment& fenv) const {
+                             FuncEnvironment& fenv,
+                             Diagnostics* diag) const {
 
-    auto exp_type = exp->typecheck(env, fname, fenv);
+    auto exp_type = exp->typecheck(env, fname, fenv, diag);
 
     if (exp_type == nullptr ||
-            (!exp_type->is_valid_unop(uop)))
+            (!exp_type->is_valid_unop(uop))) {
+        diag->print_error(exp->sr, "Expected compatible type for"
+                " unop expression");
         return nullptr;
+    }
 
     const NumberExpNode num(0, SRange(SLoc(0, 0), SLoc(0, 0)));
     const ExpNode& e = *(exp.get());
@@ -371,19 +412,27 @@ Type* UnopExpNode::typecheck(Environment& env,
             return exp_type;
 
         case UnopType::UNOP_DEREF: {
-            if (typeid(e) == typeid(num))
+            if (typeid(e) == typeid(num)) {
+                diag->print_error(exp->sr, "Disallowed literal value for"
+                        " unop expression");
                 return nullptr;
+            }
 
             return exp_type->get_underlying_type();
         }
 
         case UnopType::UNOP_ADDROF:
-            if (typeid(e) == typeid(num))
+            if (typeid(e) == typeid(num)) {
+                diag->print_error(exp->sr, "Disallowed literal value for"
+                        " unop expression");
                 return nullptr;
+            }
 
             return new TRef(exp_type);
 
         default:
+            diag->print_error(exp->sr, "[ICE] Unreachable case - during "
+                    "typechecking UnopExpNode");
             return nullptr;
     }
 }
@@ -416,24 +465,38 @@ void FunCallExpNode::print_node(int indent) const {
 
 Type* FunCallExpNode::typecheck(Environment& env,
                                 const std::string& fname,
-                                FuncEnvironment& fenv) const {
-    if (fenv.find(func_name) == fenv.end())
-        return nullptr;
+                                FuncEnvironment& fenv,
+                                Diagnostics* diag) const {
 
-    if ((fenv[func_name].size() - 1) != func_args.size())
+    if (fenv.find(func_name) == fenv.end()) {
+        diag->print_error(sr, "Call to unknown function");
         return nullptr;
+    }
+
+    if ((fenv[func_name].size() - 1) != func_args.size()) {
+        if ((fenv[func_name].size() - 1) > func_args.size())
+            diag->print_error(sr, "Too few arguments for function call");
+        else
+            diag->print_error(sr, "Too many arguments for function call");
+
+        return nullptr;
+    }
 
     Type* ret_type = fenv[func_name][0];
 
     Type* arg_ty = nullptr;
     for (int i = 0; i < (int)func_args.size(); i++) {
-        arg_ty = func_args[i]->typecheck(env, fname, fenv);
+        arg_ty = func_args[i]->typecheck(env, fname, fenv, diag);
 
         if (arg_ty == nullptr)
             return nullptr;
 
-        if (!((*arg_ty) == (*fenv[func_name][i + 1])))
+        if ((*arg_ty) != (*fenv[func_name][i + 1])) {
+            std::string err = "Expected type: " + fenv[func_name][i+1]->get_source_type() +
+                "for array initialization";
+            diag->print_error(func_args[i]->sr, err.c_str());
             return nullptr;
+        }
     }
 
     return ret_type;

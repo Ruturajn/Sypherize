@@ -286,7 +286,9 @@ std::unique_ptr<ExpNode> Parser::parse_binop(int prev_prec,
 
         auto rhs = parse_expr(get_precedence(curr_tok.tok_ty));
 
+        curr_pos += 1;
         auto srange = make_srange(beg_pos);
+        curr_pos -= 1;
 
         auto b_srange = SRange(lhs->sr.beg, srange.end);
 
