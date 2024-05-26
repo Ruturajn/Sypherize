@@ -235,9 +235,7 @@ private:
 public:
     CArrExpNode(std::unique_ptr<Type> _ty,
                 std::vector<ExpNode*>& _exp_list, const SRange& _sr)
-        : ExpNode(_sr), ty(std::move(_ty)), exp_list(_exp_list) {
-            is_indirect =  true;
-    }
+        : ExpNode(_sr), ty(std::move(_ty)), exp_list(_exp_list) {}
 
     ~CArrExpNode() {
         for (auto& elem: exp_list)
@@ -252,13 +250,13 @@ public:
 class NewExpNode : public ExpNode {
 private:
     std::unique_ptr<Type> ty;
-    std::unique_ptr<ExpNode> exp; // If nullptr then just one elem of primitive
+    std::vector<ExpNode*> exp_list; // If nullptr then just one elem of primitive
                                   // type.
 
 public:
     NewExpNode(std::unique_ptr<Type> _ty,
-               std::unique_ptr<ExpNode> _exp, const SRange& _sr)
-        : ExpNode(_sr), ty (std::move(_ty)), exp(std::move(_exp)) {
+               std::vector<ExpNode*>& _exp_list, const SRange& _sr)
+        : ExpNode(_sr), ty (std::move(_ty)), exp_list(_exp_list) {
             is_indirect = true;
     }
 

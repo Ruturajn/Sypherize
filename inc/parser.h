@@ -40,6 +40,7 @@ public:
     UnopType conv_unop(const Token& t);
     Type* build_type(int in_count, enum DeclType dt);
     Type* build_arr_type(int arr_count, Type* t);
+    Type* build_ref_type(int in_count, Type *t);
     Type* parse_type();
     Type* parse_type_wo_arr();
     std::unique_ptr<ExpNode> parse_new_type_exp();

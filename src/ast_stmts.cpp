@@ -41,8 +41,8 @@ bool AssnStmtNode::typecheck(Environment& env, const std::string& fname,
 
     if ((*lhs_type) != (*rhs_type)) {
         std::string err = "Expected type: " + lhs_type->get_source_type() +
-            "for assignment RHS";
-        diag->print_error(sr, err.c_str());
+            " for assignment RHS";
+        diag->print_error(rhs->sr, err.c_str());
         return false;
     }
 
@@ -93,8 +93,15 @@ bool DeclStmtNode::typecheck(Environment& env, const std::string& fname,
 
     Type* base_ty = ty.get();
 
-    if (exp->is_indirect)
+    if (exp->is_indirect) {
+        const TRef t(nullptr);
+        if (typeid(*exp_ty) != typeid(t)) {
+            diag->print_error(sr, "Expected reference type for decl type");
+            return false;
+        }
+
         base_ty = base_ty->get_underlying_type();
+    }
 
     if (base_ty == nullptr) {
         if (exp->is_indirect)

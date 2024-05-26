@@ -249,29 +249,54 @@ Type* Parser::build_arr_type(int arr_count, Type *t) {
     return new TArray(build_arr_type(arr_count - 1, t));
 }
 
+Type* Parser::build_ref_type(int in_count, Type *t) {
+    if (in_count == 0)
+        return t;
+
+    return new TRef(build_ref_type(in_count - 1, t));
+}
+
 Type* Parser::parse_type() {
     enum DeclType type_set = conv_type(tok_list[curr_pos].tok_ty);
 
+    Type* final_type = nullptr;
     int indirection_count = 0;
-    while (check_next() == Token::TOK_DEREF) {
-        advance();
-        indirection_count += 1;
-    }
-
     int arr_count = 0;
+    Type* p_type = nullptr;
 
-    while (check_next() == Token::TOK_LBRACKET) {
+    do {
+        indirection_count = 0;
+        while (check_next() == Token::TOK_DEREF) {
+            advance();
+            indirection_count += 1;
+        }
 
-        // Consume TOK_LBRACKET
-        advance();
+        if (final_type == nullptr)
+            p_type = build_type(indirection_count, type_set);
+        else
+            final_type = build_ref_type(indirection_count, final_type);
 
-        advance();
-        expect(Token::TOK_RBRACKET, "`]` for ending array decl");
-        arr_count += 1;
-    }
+        arr_count = 0;
 
-    auto p_type = build_type(indirection_count, type_set);
-    return build_arr_type(arr_count, p_type);
+        while (check_next() == Token::TOK_LBRACKET) {
+
+            // Consume TOK_LBRACKET
+            advance();
+
+            advance();
+            expect(Token::TOK_RBRACKET, "`]` for ending array decl");
+            arr_count += 1;
+        }
+
+        if (final_type == nullptr)
+            final_type = build_arr_type(arr_count, p_type);
+        else
+            final_type = build_arr_type(arr_count, final_type);
+
+    } while (check_next() == Token::TOK_DEREF ||
+            check_next() == Token::TOK_LBRACKET);
+
+    return final_type;
 }
 
 Type* Parser::parse_type_wo_arr() {
@@ -556,46 +581,52 @@ std::unique_ptr<ExpNode> Parser::parse_new_type_exp() {
     enum DeclType type_set = conv_type(tok_list[curr_pos].tok_ty);
 
     int indirection_count = 0;
-    while (check_next() == Token::TOK_DEREF) {
-        advance();
-        indirection_count += 1;
-    }
-
     int arr_count = 0;
-
     std::vector<ExpNode*> init_size {};
+    Type* final_type = nullptr;
+    Type* p_type = nullptr;
 
-    while (check_next() == Token::TOK_LBRACKET) {
+    do {
+        indirection_count = 0;
 
-        // Consume TOK_LBRACKET
-        advance();
+        while (check_next() == Token::TOK_DEREF) {
+            advance();
+            indirection_count += 1;
+        }
 
-        advance();
+        if (final_type == nullptr)
+            p_type = build_type(indirection_count, type_set);
+        else
+            final_type = build_ref_type(indirection_count, final_type);
 
-        init_size.push_back(parse_expr(0).release());
-        advance();
+        arr_count = 0;
 
-        expect(Token::TOK_RBRACKET, "`]` for ending array decl");
-    }
+        while (check_next() == Token::TOK_LBRACKET) {
 
-    std::unique_ptr<Type> p_type_uptr(
-        build_arr_type(arr_count,
-            build_type(indirection_count, type_set)));
+            // Consume TOK_LBRACKET
+            advance();
 
-    /* const TArray tarr(nullptr); */
-    /* const Type& ty = *p_type_uptr.get(); */
+            advance();
 
-    /* if (typeid(ty) == typeid(tarr)) { */
-    /*     const TArray& t = static_cast<const TArray&>(*(p_type_uptr.get())); */
+            init_size.push_back(parse_expr(0).release());
+            advance();
 
-    /*     return std::make_unique<NewExpNode>( */
-    /*         std::move(p_type_uptr), nullptr, */
-    /*         make_srange(beg_pos) */
-    /*     ); */
-    /* } */
+            expect(Token::TOK_RBRACKET, "`]` for ending array decl");
+            arr_count += 1;
+        }
+
+        if (final_type == nullptr)
+            final_type = build_arr_type(arr_count, p_type);
+        else
+            final_type = build_arr_type(arr_count, final_type);
+
+    } while (check_next() == Token::TOK_DEREF ||
+             check_next() == Token::TOK_LBRACKET);
+
+    std::unique_ptr<Type> p_type_uptr(final_type);
 
     return std::make_unique<NewExpNode>(
-        std::move(p_type_uptr), nullptr,
+        std::move(p_type_uptr), init_size,
         make_srange(beg_pos)
     );
 }
@@ -657,8 +688,6 @@ StmtNode* Parser::parse_vdecl() {
     expect(Token::TOK_EQUAL, "`=` operator");
     advance();
 
-    // FIXME: NewExpNode doesn't work currently (What is even expected behaviour ?)
-    // FIXME: Why is parse_expr not handling this?
     if (tok_list[curr_pos].tok_ty == Token::TOK_NEW) {
         advance();
 

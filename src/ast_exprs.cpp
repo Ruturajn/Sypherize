@@ -137,11 +137,19 @@ Type* CArrExpNode::typecheck(Environment& env,
                              Diagnostics* diag) const {
     Type* exp_ty = nullptr;
 
+    Type* base_ty = ty.get()->get_underlying_type();
+
+    if (base_ty == nullptr) {
+        diag->print_error(sr, "Expected array type for array initializer"
+                " expression");
+        return nullptr;
+    }
+
     for (auto& exp: exp_list) {
         exp_ty = exp->typecheck(env, fname, fenv, diag);
 
-        if (exp_ty == nullptr || (*(ty.get()) != (*exp_ty))) {
-            std::string err = "Expected type: " + ty->get_source_type() +
+        if (exp_ty == nullptr || (*(base_ty) != (*exp_ty))) {
+            std::string err = "Expected type: " + base_ty->get_source_type() +
                 " for array initialization";
             diag->print_error(exp->sr, err.c_str());
             return nullptr;
@@ -170,8 +178,10 @@ void NewExpNode::print_node(int indent) const {
     ty->print_type();
     std::cout << "\n";
 
-    if (exp != nullptr)
-        exp->print_node(indent + 4);
+    if (exp_list.size() != 0) {
+        for (auto& x : exp_list)
+            x->print_node(indent + 4);
+    }
     else {
         for (int i = 0; i < indent + 4; i++)
             std::cout << " ";
@@ -184,12 +194,14 @@ Type* NewExpNode::typecheck(Environment& env,
                             FuncEnvironment& fenv,
                             Diagnostics* diag) const {
 
-    if (exp != nullptr) {
-        auto exp_ty = exp->typecheck(env, fname, fenv, diag);
-        if (exp_ty == nullptr || exp_ty->is_index == false) {
-            diag->print_error(exp->sr, "Expected `int` type for the size"
-                    " expression");
-            return nullptr;
+    if (exp_list.size() != 0) {
+            for (auto&x : exp_list) {
+            auto exp_ty = x->typecheck(env, fname, fenv, diag);
+            if (exp_ty == nullptr || exp_ty->is_index == false) {
+                diag->print_error(x->sr, "Expected `int` type for the size"
+                        " expression");
+                return nullptr;
+            }
         }
     }
 
