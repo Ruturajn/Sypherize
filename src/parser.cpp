@@ -342,7 +342,7 @@ std::unique_ptr<ExpNode> Parser::parse_binop(int prev_prec,
     return lhs;
 }
 
-std::unique_ptr<ExpNode> Parser::parse_lhs(int prev_prec) {
+std::unique_ptr<ExpNode> Parser::parse_lhs() {
     ssize_t beg_pos = curr_pos;
     switch (tok_list[curr_pos].tok_ty) {
         case Token::TOK_IDENT: {
@@ -393,7 +393,6 @@ void Parser::parse_idx_exp_indices(std::vector<ExpNode*>& indices) {
         advance();
     }
 
-    advance();
     expect(Token::TOK_RBRACKET, "`]` for index operation");
 }
 
@@ -793,7 +792,7 @@ StmtNode* Parser::parse_stmt() {
             if (check_next() == Token::TOK_LPAREN)
                 return parse_sfun_call();
 
-            auto left = parse_lhs(0);
+            auto left = parse_lhs();
             advance();
 
             expect(Token::TOK_EQUAL, "`=` operator for assign statement");

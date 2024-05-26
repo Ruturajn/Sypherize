@@ -48,7 +48,7 @@ public:
     std::unique_ptr<ExpNode> parse_binop(int prev_prec,
                                          std::unique_ptr<ExpNode> lhs);
     std::unique_ptr<ExpNode> parse_expr(int prev_prec);
-    std::unique_ptr<ExpNode> parse_lhs(int prev_prec);
+    std::unique_ptr<ExpNode> parse_lhs();
     StmtNode* parse_vdecl();
     StmtNode* parse_sfun_call();
     StmtNode* parse_stmt();
