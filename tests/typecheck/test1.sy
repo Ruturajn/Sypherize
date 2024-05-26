@@ -10,5 +10,5 @@ int: g = 10;
 int@: a = #g;
 int@: b = a;
 
-string: i = c + "two";
-int: j = 2 + "three";
+string: idk = c + "two";
+int: just_checking = idk + "three";

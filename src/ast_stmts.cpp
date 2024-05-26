@@ -106,7 +106,7 @@ bool DeclStmtNode::typecheck(Environment& env, const std::string& fname,
 
     if ((*exp_ty) != (*base_ty)) {
         std::string err = "Expected type: " + base_ty->get_source_type() +
-            "for variable decl";
+            " for variable decl";
         diag->print_error(exp->sr, err.c_str());
         return false;
     }

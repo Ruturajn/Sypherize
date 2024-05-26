@@ -123,7 +123,7 @@ bool GlobalDecl::typecheck(Environment& env, FuncEnvironment& fenv,
 
     if (!((*exp_ty) == (*(ty.get())))) {
         std::string err = "Expected type: " + ty.get()->get_source_type() +
-            "for global variable decl";
+            " for global variable decl";
         diag->print_error(exp->sr, err.c_str());
 
         return false;

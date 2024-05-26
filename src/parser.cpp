@@ -57,7 +57,8 @@ enum Parser::DeclType Parser::conv_type(enum Token::TokType t_ty) {
 }
 
 SRange Parser::make_srange(ssize_t beg_pos) {
-    if ((beg_pos >= 0) && (curr_pos < tok_len) && (curr_pos >= 0)) {
+    if ((beg_pos >= 0) && (curr_pos < tok_len) &&
+            (curr_pos >= 0) && (beg_pos != curr_pos)) {
         return SRange(SLoc(tok_list[beg_pos].line_num,
                            tok_list[beg_pos].col_num),
                       SLoc(tok_list[curr_pos].line_num,
@@ -68,6 +69,12 @@ SRange Parser::make_srange(ssize_t beg_pos) {
                            tok_list[beg_pos].col_num),
                       SLoc(tok_list[curr_pos - 1].line_num,
                            tok_list[curr_pos - 1].col_num));
+    } else if (beg_pos == curr_pos) {
+        return SRange(SLoc(tok_list[curr_pos].line_num,
+                           tok_list[curr_pos].col_num),
+                      SLoc(tok_list[curr_pos].line_num,
+                           tok_list[curr_pos].col_num +
+                           tok_list[curr_pos].lexeme.size() - 1));
     }
     else
         return SRange(SLoc(0, 0), SLoc(0,0));
@@ -213,7 +220,8 @@ void Parser::expect(Token::TokType t_ty, const char* error_str, const Token& tok
     if (failed == false)
         failed = true;
 
-    diag->print_error(tok.line_num, tok.col_num, error_str, tok.lexeme.size());
+    std::string err_str = "Expected " + std::string(error_str);
+    diag->print_error(tok.line_num, tok.col_num, err_str.c_str(), tok.lexeme.size());
 }
 
 Type* Parser::build_type(int in_count, enum DeclType dt) {
@@ -234,6 +242,13 @@ Type* Parser::build_type(int in_count, enum DeclType dt) {
     return new TRef(build_type(in_count - 1,dt));
 }
 
+Type* Parser::build_arr_type(int arr_count, Type *t) {
+    if (arr_count == 0)
+        return t;
+
+    return new TArray(build_arr_type(arr_count - 1, t));
+}
+
 Type* Parser::parse_type() {
     enum DeclType type_set = conv_type(tok_list[curr_pos].tok_ty);
 
@@ -243,17 +258,20 @@ Type* Parser::parse_type() {
         indirection_count += 1;
     }
 
-    if (check_next() == Token::TOK_LBRACKET) {
+    int arr_count = 0;
+
+    while (check_next() == Token::TOK_LBRACKET) {
+
+        // Consume TOK_LBRACKET
         advance();
 
         advance();
         expect(Token::TOK_RBRACKET, "`]` for ending array decl");
-
-        return new TArray(build_type(indirection_count, type_set));
+        arr_count += 1;
     }
 
     auto p_type = build_type(indirection_count, type_set);
-    return p_type;
+    return build_arr_type(arr_count, p_type);
 }
 
 Type* Parser::parse_type_wo_arr() {
@@ -274,8 +292,6 @@ Type* Parser::parse_type_wo_arr() {
 ///===-------------------------------------------------------------------===///
 std::unique_ptr<ExpNode> Parser::parse_binop(int prev_prec,
                                              std::unique_ptr<ExpNode> lhs) {
-    ssize_t beg_pos = curr_pos;
-
     Token curr_tok = tok_list[curr_pos];
 
     while (prev_prec < get_precedence(curr_tok.tok_ty)) {
@@ -286,11 +302,7 @@ std::unique_ptr<ExpNode> Parser::parse_binop(int prev_prec,
 
         auto rhs = parse_expr(get_precedence(curr_tok.tok_ty));
 
-        curr_pos += 1;
-        auto srange = make_srange(beg_pos);
-        curr_pos -= 1;
-
-        auto b_srange = SRange(lhs->sr.beg, srange.end);
+        auto b_srange = SRange(lhs->sr.beg, rhs->sr.end);
 
         auto binop = std::make_unique<BinopExpNode>(conv_binop(curr_tok),
                         std::move(lhs), std::move(rhs),
@@ -335,7 +347,7 @@ std::unique_ptr<ExpNode> Parser::parse_lhs(int prev_prec) {
         }
 
         default:
-            expect(Token::TOK_EOF, "Encountered invalid syntax");
+            expect(Token::TOK_EOF, "valid syntax");
             advance();
             return nullptr;
     }
@@ -361,10 +373,12 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
         case Token::TOK_NUMBER:
             if (is_next_binop()) {
 
+                auto srange = make_srange(beg_pos);
+
                 std::unique_ptr<ExpNode> lhs =
                     std::make_unique<NumberExpNode>(
                         stol(tok_list[curr_pos].lexeme),
-                        make_srange(beg_pos)
+                        srange
                 );
 
                 advance();
@@ -377,16 +391,20 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
                     make_srange(beg_pos)
                 );
 
-        case Token::TOK_STRING:
+        case Token::TOK_STRING: {
+            auto srange = make_srange(beg_pos);
             return std::make_unique<StringExpNode>(
                 tok_list[curr_pos].lexeme,
-                make_srange(beg_pos)
+                srange
             );
+        }
 
         case Token::TOK_IDENT: {
+            auto srange = make_srange(beg_pos);
+
             auto id = std::make_unique<IdExpNode>(
                 tok_list[curr_pos].lexeme,
-                make_srange(beg_pos)
+                srange
             );
 
             Token::TokType next_tok = check_next();
@@ -483,7 +501,7 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
         case Token::TOK_LTE:
         case Token::TOK_LOGAND:
         case Token::TOK_LOGOR:
-            expect(Token::TOK_EOF, "Encountered invalid syntax, found binary"
+            expect(Token::TOK_EOF, "Expected valid syntax, found binary"
                     " op without preceding compatible type expression");
             advance();
             return nullptr;
@@ -502,7 +520,7 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
         }
 
         default:
-            expect(Token::TOK_EOF, "Encountered invalid syntax");
+            expect(Token::TOK_EOF, "valid syntax");
             advance();
             return nullptr;
     }
@@ -543,26 +561,38 @@ std::unique_ptr<ExpNode> Parser::parse_new_type_exp() {
         indirection_count += 1;
     }
 
-    auto p_type = build_type(indirection_count, type_set);
-    std::unique_ptr<Type> p_type_uptr(p_type);
+    int arr_count = 0;
 
-    if (check_next() == Token::TOK_LBRACKET) {
+    std::vector<ExpNode*> init_size {};
+
+    while (check_next() == Token::TOK_LBRACKET) {
 
         // Consume TOK_LBRACKET
         advance();
 
         advance();
 
-        auto size = parse_expr(0);
+        init_size.push_back(parse_expr(0).release());
         advance();
 
         expect(Token::TOK_RBRACKET, "`]` for ending array decl");
-
-        return std::make_unique<NewExpNode>(
-            std::move(p_type_uptr), std::move(size),
-            make_srange(beg_pos)
-        );
     }
+
+    std::unique_ptr<Type> p_type_uptr(
+        build_arr_type(arr_count,
+            build_type(indirection_count, type_set)));
+
+    /* const TArray tarr(nullptr); */
+    /* const Type& ty = *p_type_uptr.get(); */
+
+    /* if (typeid(ty) == typeid(tarr)) { */
+    /*     const TArray& t = static_cast<const TArray&>(*(p_type_uptr.get())); */
+
+    /*     return std::make_unique<NewExpNode>( */
+    /*         std::move(p_type_uptr), nullptr, */
+    /*         make_srange(beg_pos) */
+    /*     ); */
+    /* } */
 
     return std::make_unique<NewExpNode>(
         std::move(p_type_uptr), nullptr,
@@ -587,6 +617,8 @@ StmtNode* Parser::parse_vdecl() {
 
     if (tok_list[curr_pos].tok_ty == Token::TOK_LBRACE) {
 
+        ssize_t beg_pos = curr_pos;
+
         advance();
 
         std::vector<ExpNode*> init_exps {};
@@ -608,15 +640,15 @@ StmtNode* Parser::parse_vdecl() {
 
         ssize_t orig = curr_pos;
         curr_pos = type_pos;
-        std::unique_ptr<Type> elem_type(parse_type_wo_arr());
+        std::unique_ptr<Type> elem_type(parse_type());
         curr_pos = orig;
-
-        auto srange = make_srange(type_pos);
 
         auto carr_exp = std::make_unique<CArrExpNode>(
             std::move(elem_type), init_exps,
-            srange
+            make_srange(beg_pos)
         );
+
+        auto srange = make_srange(type_pos);
 
         return new DeclStmtNode(std::move(vtype_ptr), vname, std::move(carr_exp),
                                 srange);
@@ -625,6 +657,8 @@ StmtNode* Parser::parse_vdecl() {
     expect(Token::TOK_EQUAL, "`=` operator");
     advance();
 
+    // FIXME: NewExpNode doesn't work currently (What is even expected behaviour ?)
+    // FIXME: Why is parse_expr not handling this?
     if (tok_list[curr_pos].tok_ty == Token::TOK_NEW) {
         advance();
 
@@ -678,7 +712,7 @@ StmtNode* Parser::parse_sfun_call() {
         }
 
         default:
-            expect(Token::TOK_EOF, "Encountered invalid syntax");
+            expect(Token::TOK_EOF, "valid syntax");
             advance();
             return nullptr;
     }
@@ -714,15 +748,11 @@ StmtNode* Parser::parse_stmt() {
 
         case Token::TOK_IDENT: {
 
-            ssize_t orig = curr_pos;
+            if (check_next() == Token::TOK_LPAREN)
+                return parse_sfun_call();
 
             auto left = parse_lhs(0);
             advance();
-
-            if (tok_list[curr_pos].tok_ty != Token::TOK_EQUAL) {
-                curr_pos = orig;
-                return parse_sfun_call();
-            }
 
             expect(Token::TOK_EQUAL, "`=` operator for assign statement");
 
@@ -833,7 +863,7 @@ StmtNode* Parser::parse_stmt() {
         }
 
         default:
-            expect(Token::TOK_EOF, "Encountered invalid syntax");
+            expect(Token::TOK_EOF, "valid syntax construct");
             advance();
             return nullptr;
     }
@@ -876,7 +906,7 @@ Decls* Parser::parse_fdecl() {
                 break;
 
             default:
-                expect(Token::TOK_EOF, "Encountered invalid syntax for function parameters");
+                expect(Token::TOK_EOF, "valid syntax for function parameters");
                 advance();
                 return nullptr;
         }
@@ -947,8 +977,8 @@ Decls* Parser::parse_decl() {
             break;
 
         default:
-            expect(Token::TOK_EOF, "Encountered invalid syntax top level" 
-                    "declaration");
+            expect(Token::TOK_EOF, "valid syntax for top level"
+                    " declaration");
             advance();
             return nullptr;
             break;

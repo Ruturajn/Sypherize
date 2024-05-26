@@ -142,7 +142,7 @@ Type* CArrExpNode::typecheck(Environment& env,
 
         if (exp_ty == nullptr || (*(ty.get()) != (*exp_ty))) {
             std::string err = "Expected type: " + ty->get_source_type() +
-                "for array initialization";
+                " for array initialization";
             diag->print_error(exp->sr, err.c_str());
             return nullptr;
         }

@@ -43,7 +43,7 @@ void Diagnostics::print_error(ssize_t l_n, ssize_t c_n, const char* error_str,
 
     l_n -= 1;
     for (int i = 0; i < (int)file_lines[l_n].size(); i++) {
-        if (i < c_n - 1 || i >= (c_n + highlight_len - 1))
+        if (i < c_n - 1 || i >= (c_n + highlight_len))
             std::cerr << file_lines[l_n][i];
         else
             std::cerr << "\033[1;31m" << file_lines[l_n][i] << "\033[1;37m";
@@ -56,16 +56,17 @@ void Diagnostics::print_error(ssize_t l_n, ssize_t c_n, const char* error_str,
         std::cerr << ' ';
 
     std::cerr << "\033[1;31m";
-    for (int i = 0; i < (int)highlight_len; i++)
+    for (int i = 0; i <= (int)highlight_len; i++)
         std::cerr << '^';
 
     std::cerr << "\033[1;37m\n\n";
 }
 
 void Diagnostics::print_error(const SRange& sr, const char* error_str) {
-    if (sr.beg.l_num == sr.end.l_num)
+    if (sr.beg.l_num == sr.end.l_num) {
         print_error(sr.beg.l_num, sr.beg.c_num, error_str,
-            (sr.end.c_num - sr.beg.c_num) + 1);
+            (sr.end.c_num - sr.beg.c_num));
+    }
     else {
         ssize_t line_sz = file_lines[sr.beg.l_num - 1].size();
         print_error(sr.beg.l_num, sr.beg.c_num, error_str, line_sz);
