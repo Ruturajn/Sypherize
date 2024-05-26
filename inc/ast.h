@@ -260,6 +260,11 @@ public:
             is_indirect = true;
     }
 
+    ~NewExpNode() {
+        for (auto& elem: exp_list)
+            delete elem;
+    }
+
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
@@ -268,12 +273,17 @@ public:
 class IndexExpNode : public ExpNode {
 private:
     std::unique_ptr<ExpNode> exp;
-    std::unique_ptr<ExpNode> idx;
+    std::vector<ExpNode*> idx_list;
 
 public:
     IndexExpNode(std::unique_ptr<ExpNode> _exp,
-                  std::unique_ptr<ExpNode> _idx, const SRange& _sr)
-        : ExpNode(_sr), exp(std::move(_exp)), idx(std::move(_idx)) {}
+                  std::vector<ExpNode*>& _idx_list, const SRange& _sr)
+        : ExpNode(_sr), exp(std::move(_exp)), idx_list(_idx_list) {}
+
+    ~IndexExpNode() {
+        for (auto& elem: idx_list)
+            delete elem;
+    }
 
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,

@@ -221,7 +221,8 @@ void IndexExpNode::print_node(int indent) const {
     std::cout << ":\n";
 
     exp->print_node(indent + 4);
-    idx->print_node(indent + 4);
+    for (auto &e: idx_list)
+        e->print_node(indent + 4);
 }
 
 Type* IndexExpNode::typecheck(Environment& env,
@@ -237,11 +238,13 @@ Type* IndexExpNode::typecheck(Environment& env,
     }
 
     // If idx is of type TInt, this node is typechecked.
-    auto idx_type = idx->typecheck(env, fname, fenv, diag);
-    if (idx_type == nullptr || !(idx_type->is_index)) {
-        diag->print_error(idx->sr, "Expected `int` type for the index"
-                " expression");
-        return nullptr;
+    for (auto& idx: idx_list) {
+        auto idx_type = idx->typecheck(env, fname, fenv, diag);
+        if (idx_type == nullptr || !(idx_type->is_index)) {
+            diag->print_error(idx->sr, "Expected `int` type for the index"
+                    " expression");
+            return nullptr;
+        }
     }
 
     return exp_type->get_underlying_type();

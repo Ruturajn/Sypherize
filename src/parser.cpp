@@ -1,5 +1,6 @@
 #include "../inc/parser.h"
 #include <memory>
+#include <vector>
 
 ///===-------------------------------------------------------------------===///
 /// Helper Functions
@@ -353,18 +354,12 @@ std::unique_ptr<ExpNode> Parser::parse_lhs(int prev_prec) {
             // Index expression
             if (next_tok == Token::TOK_LBRACKET) {
 
-                // Consume the TOK_LBRACKET
-                advance();
+                std::vector<ExpNode*> indices{};
 
-                advance();
-
-                auto index = parse_expr(prev_prec);
-
-                advance();
-                expect(Token::TOK_RBRACKET, "`]` for index operation");
+                parse_idx_exp_indices(indices);
 
                 return std::make_unique<IndexExpNode>(std::move(id),
-                        std::move(index), make_srange(beg_pos));
+                    indices, make_srange(beg_pos));
             }
 
             return id;
@@ -376,6 +371,30 @@ std::unique_ptr<ExpNode> Parser::parse_lhs(int prev_prec) {
             advance();
             return nullptr;
     }
+}
+
+void Parser::parse_idx_exp_indices(std::vector<ExpNode*>& indices) {
+
+    // Consume the TOK_LBRACKET
+    advance();
+
+    advance();
+
+    while ((curr_pos < tok_len) &&
+            (tok_list[curr_pos].tok_ty != Token::TOK_RBRACKET)) {
+        indices.push_back(parse_expr(0).release());
+        advance();
+
+        if (tok_list[curr_pos].tok_ty == Token::TOK_RBRACKET)
+            break;
+
+        expect(Token::TOK_COMMA, "`,` operator to separate function"
+                " arguments");
+        advance();
+    }
+
+    advance();
+    expect(Token::TOK_RBRACKET, "`]` for index operation");
 }
 
 std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
@@ -447,7 +466,7 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
 
                 while ((curr_pos < tok_len) &&
                         (tok_list[curr_pos].tok_ty != Token::TOK_RPAREN)) {
-                    f_args.push_back(parse_expr(prev_prec).release());
+                    f_args.push_back(parse_expr(0).release());
                     advance();
 
                     if (tok_list[curr_pos].tok_ty == Token::TOK_RPAREN)
@@ -462,13 +481,13 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
                     fun_name, f_args, make_srange(beg_pos));
 
                 if (tok_list[curr_pos].tok_ty == Token::TOK_LBRACKET) {
-                    auto index = parse_expr(prev_prec);
 
-                    advance();
-                    expect(Token::TOK_RBRACKET, "`]` for index operation");
+                    std::vector<ExpNode*> indices{};
+
+                    parse_idx_exp_indices(indices);
 
                     return std::make_unique<IndexExpNode>(std::move(funcall),
-                            std::move(index), make_srange(beg_pos));
+                            indices, make_srange(beg_pos));
                 }
 
                 return funcall;
@@ -477,18 +496,12 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
             // Index expression
             if (next_tok == Token::TOK_LBRACKET) {
 
-                // Consume the TOK_LBRACKET
-                advance();
+                std::vector<ExpNode*> indices{};
 
-                advance();
-
-                auto index = parse_expr(prev_prec);
-
-                advance();
-                expect(Token::TOK_RBRACKET, "`]` for index operation");
+                parse_idx_exp_indices(indices);
 
                 return std::make_unique<IndexExpNode>(std::move(id),
-                        std::move(index), make_srange(beg_pos));
+                    indices, make_srange(beg_pos));
             }
 
             if (is_next_binop()) {
@@ -575,7 +588,7 @@ std::pair<Type*, std::string> Parser::parse_arg() {
 }
 
 
-std::unique_ptr<ExpNode> Parser::parse_new_type_exp() {
+std::unique_ptr<ExpNode> Parser::parse_new_exp() {
     ssize_t beg_pos = curr_pos;
 
     enum DeclType type_set = conv_type(tok_list[curr_pos].tok_ty);
@@ -691,7 +704,7 @@ StmtNode* Parser::parse_vdecl() {
     if (tok_list[curr_pos].tok_ty == Token::TOK_NEW) {
         advance();
 
-        auto new_exp = parse_new_type_exp();
+        auto new_exp = parse_new_exp();
         advance();
         return new DeclStmtNode(
             std::move(vtype_ptr), vname, std::move(new_exp),

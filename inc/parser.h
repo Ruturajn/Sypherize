@@ -43,7 +43,8 @@ public:
     Type* build_ref_type(int in_count, Type *t);
     Type* parse_type();
     Type* parse_type_wo_arr();
-    std::unique_ptr<ExpNode> parse_new_type_exp();
+    std::unique_ptr<ExpNode> parse_new_exp();
+    void parse_idx_exp_indices(std::vector<ExpNode*>& indices);
     std::unique_ptr<ExpNode> parse_binop(int prev_prec,
                                          std::unique_ptr<ExpNode> lhs);
     std::unique_ptr<ExpNode> parse_expr(int prev_prec);

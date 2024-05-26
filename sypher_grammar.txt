@@ -4,13 +4,16 @@ t ::==
     | bool
     | t e
 
+e ::==
+    | arr
+    | ind
+
 arr ::==
-    | [] arr
+    | [] ind arr
     | epsilon
 
 ind ::==
-    | @ ind
-    | @ arr
+    | @ arr ind
     | epsilon
 
 vdecl ::==
@@ -53,7 +56,7 @@ lhs ::==
 exp ::==
     | integer
     | id
-    | t [exp]
+    | t [exp1, ..., expn]
     | id ( exp1, ..., expn )
     | ( exp )
     | exp bop exp
