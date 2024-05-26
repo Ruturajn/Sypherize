@@ -19,7 +19,7 @@ OBJS = $(addprefix ./$(BUILD_DIR)/,$(notdir $(SRCS:.cpp=.o)))
 
 #==============================================================================
 
-.PHONY: all clean build_and_bin_dir run
+.PHONY: all clean build_and_bin_dir run test
 
 all: build_and_bin_dir $(TARGET)
 
@@ -43,3 +43,6 @@ clean:
 run: clean all
 	@printf "\033[1;33m[+] Running the executable ...\033[1;37m\n"
 	./$(BIN_DIR)/$(TARGET) $(FILE_PATH)
+
+test:
+	@./$(BIN_DIR)/$(TARGET) $(FILE_PATH)
