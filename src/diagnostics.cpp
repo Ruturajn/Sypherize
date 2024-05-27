@@ -1,12 +1,12 @@
 #include "../inc/diagnostics.h"
 
-bool Diagnostics::read_file(const char* program) {
+bool Diagnostics::read_file() {
     std::ifstream input_file;
     input_file.open(file_name);
 
     if (!input_file.is_open()) {
-        std::cerr << "Invalid: file path!\n";
-        std::cerr << "  Usage: " << program << " <FILE_PATH>\n";
+        std::string err = "Invalid file path: " + file_name;
+        cmd->print_error(err.c_str());
         return false;
     }
 

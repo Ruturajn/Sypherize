@@ -1,6 +1,7 @@
 #ifndef __DIAGNOSTICS_H__
 #define __DIAGNOSTICS_H__
 
+#include "./cmdops.h"
 #include <string>
 #include <vector>
 #include <fstream>
@@ -43,11 +44,12 @@ public:
     std::string file_name;
     std::string file_data;
     std::vector<std::string> file_lines;
+    CmdOps* cmd;
 
-    Diagnostics(const std::string& _file_name)
-        : file_name(_file_name), file_data({}), file_lines({}) {}
+    Diagnostics(const std::string& _file_name, CmdOps* _cmd)
+        : file_name(_file_name), file_data({}), file_lines({}), cmd(_cmd) {}
 
-    bool read_file(const char* program);
+    bool read_file();
     void print_error(ssize_t l_n, ssize_t c_n, const char* error_str,
                      ssize_t highlight_len);
     void print_error(const SRange& sr, const char* error_str);
