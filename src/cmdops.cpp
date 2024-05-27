@@ -45,8 +45,10 @@ bool CmdOps::parse_cmd(int argc, char* argv[], int min_ops_required) {
         auto op_ptr = defined_op_map[op];
         auto& acc_vals = op_ptr->accepted_vals;
 
-        if (acc_vals.size() == 0)
+        if (acc_vals.size() == 0) {
+            passed_op_map[op_ptr->op_ty] = {};
             continue;
+        }
 
         val = *argv++;
 
