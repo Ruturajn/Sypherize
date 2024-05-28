@@ -17,11 +17,10 @@ Type* NumberExpNode::typecheck(Environment& env,
                                const std::string& fname,
                                FuncEnvironment& fenv,
                                Diagnostics* diag) const {
-    (void)env;
     (void)fname;
     (void)fenv;
     (void)diag;
-    return new TInt;
+    return env["__global__"]["int"];
 }
 
 ///===-------------------------------------------------------------------===///
@@ -41,11 +40,10 @@ Type* StringExpNode::typecheck(Environment& env,
                                const std::string& fname,
                                FuncEnvironment& fenv,
                                Diagnostics* diag) const {
-    (void)env;
     (void)fname;
     (void)fenv;
     (void)diag;
-    return new TString;
+    return env["__global__"]["string"];
 }
 
 ///===-------------------------------------------------------------------===///
@@ -65,11 +63,50 @@ Type* BoolExpNode::typecheck(Environment& env,
                              const std::string& fname,
                              FuncEnvironment& fenv,
                              Diagnostics* diag) const {
+    (void)fname;
+    (void)fenv;
+    (void)diag;
+    return env["__global__"]["bool"];
+}
+
+///===-------------------------------------------------------------------===///
+/// NullExpNode
+///===-------------------------------------------------------------------===///
+
+void NullExpNode::print_node(int indent) const {
+    for (int i = 0; i < indent; i++)
+        std::cout << " ";
+
+    std::cout << "NULL:";
+    sr.print_srange(std::cout);
+    std::cout << "\n";
+
+    for (int i = 0; i < indent + 4; i++)
+        std::cout << " ";
+
+    std::cout << "TYPE:";
+    ty->print_type();
+    std::cout << "\n";
+}
+
+Type* NullExpNode::typecheck(Environment& env,
+                             const std::string& fname,
+                             FuncEnvironment& fenv,
+                             Diagnostics* diag) const {
     (void)env;
     (void)fname;
     (void)fenv;
     (void)diag;
-    return new TBool;
+
+    const TRef tr(nullptr);
+    auto null_ty = ty.get();
+
+    if (typeid(tr) != typeid(*null_ty)) {
+        diag->print_error(sr, "Non-ref type for `null` expression");
+        return nullptr;
+    }
+
+    return ty.get();
 }
 
 ///===-------------------------------------------------------------------===///

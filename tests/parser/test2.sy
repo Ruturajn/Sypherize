@@ -12,6 +12,8 @@ fun main(int: argc, string[]: argv) -> int {
 
     int: f = new int;
 
+    int@: h = null;
+
     int: c = a[3];
 
     int[]: g {0, 1, 2, 3, 4};

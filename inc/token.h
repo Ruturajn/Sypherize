@@ -63,6 +63,7 @@ public:
         TOK_TYPE_INT,   // Keyword: "int"
         TOK_TYPE_STRING,    // Keyword: "string"
         TOK_TYPE_BOOL,  // Keyword: "bool"
+        TOK_TYPE_VOID,   // Keyword: "void"
 
         TOK_IF, // Keyword: "if"
         TOK_ELSE,   // Keyword: "else"
@@ -71,7 +72,6 @@ public:
         TOK_RETURN, // Keyword: "return"
         TOK_FUNCTION,   // Keyword: "fun"
         TOK_NEW,   // Keyword: "new"
-        TOK_VOID,   // Keyword: "void"
         TOK_NULL,   // Keyword: "null"
 
         TOK_EOF
@@ -273,6 +273,10 @@ public:
                 std::cout << "TOK_TYPE_BOOL";
                 break;
 
+            case TOK_TYPE_VOID:
+                std::cout << "TOK_VOID";
+                break;
+
             case TOK_IF:
                 std::cout << "TOK_IF";
                 break;
@@ -299,10 +303,6 @@ public:
 
             case TOK_NEW:
                 std::cout << "TOK_NEW";
-                break;
-
-            case TOK_VOID:
-                std::cout << "TOK_VOID";
                 break;
 
             case TOK_NULL:

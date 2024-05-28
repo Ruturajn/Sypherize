@@ -17,7 +17,18 @@ public:
     FuncEnvironment fenv;
     Program* prog;
 
-    TypeChecker(Program* _prog): env({}), fenv({}), prog(_prog) {};
+    TypeChecker(Program* _prog): env({}), fenv({}), prog(_prog) {
+        const char* global_env = "__global__";
+        env[global_env]["int"] = new TInt;
+        env[global_env]["string"] = new TString;
+        env[global_env]["bool"] = new TBool;
+    }
+
+    ~TypeChecker() {
+        delete env["__global__"]["int"];
+        delete env["__global__"]["string"];
+        delete env["__global__"]["bool"];
+    }
 
     bool typecheck(Diagnostics* diag) {
         return prog->typecheck(env, fenv, diag);

@@ -75,6 +75,10 @@ Token Lexer::create_token(ssize_t tok_sz, enum Token::TokType t_ty) {
     else if (lexeme == "bool")
         return Token(Token::TOK_TYPE_BOOL, col_num, l_num, lexeme);
 
+    // TODO: Parse and typecheck this.
+    else if (lexeme == "void")
+        return Token(Token::TOK_TYPE_VOID, col_num, l_num, lexeme);
+
     else if (lexeme == "true")
         return Token(Token::TOK_BOOL_TRUE, col_num, l_num, lexeme);
 
@@ -102,13 +106,8 @@ Token Lexer::create_token(ssize_t tok_sz, enum Token::TokType t_ty) {
     else if (lexeme == "new")
         return Token(Token::TOK_NEW, col_num, l_num, lexeme);
 
-    // TODO: Parse and typecheck this.
-    else if (lexeme == "void")
-        return Token(Token::TOK_VOID, col_num, l_num, lexeme);
-
-    // TODO: Parse and typecheck this.
     else if (lexeme == "null")
-        return Token(Token::TOK_VOID, col_num, l_num, lexeme);
+        return Token(Token::TOK_NULL, col_num, l_num, lexeme);
 
     else if (lexeme == "__global__") {
         if (failed == false)

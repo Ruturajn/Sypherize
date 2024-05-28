@@ -51,8 +51,11 @@ enum Parser::DeclType Parser::conv_type(enum Token::TokType t_ty) {
         case Token::TOK_TYPE_BOOL:
             return DECL_TYPE_BOOL;
 
+        case Token::TOK_TYPE_VOID:
+            return DECL_TYPE_VOID;
+
         default:
-            expect(Token::TOK_EOF, "Invalid syntax for decl type");
+            expect(Token::TOK_EOF, "valid syntax for decl type");
             return DECL_TYPE_INT;
     }
 }
@@ -68,8 +71,9 @@ SRange Parser::make_srange(ssize_t beg_pos) {
     } else if (curr_pos >= tok_len) {
         return SRange(SLoc(tok_list[beg_pos].line_num,
                            tok_list[beg_pos].col_num),
-                      SLoc(tok_list[curr_pos - 1].line_num,
-                           tok_list[curr_pos - 1].col_num));
+                      SLoc(tok_list[tok_len - 1].line_num,
+                           tok_list[tok_len - 1].col_num));
+
     } else if (beg_pos == curr_pos) {
         return SRange(SLoc(tok_list[curr_pos].line_num,
                            tok_list[curr_pos].col_num),
@@ -182,7 +186,7 @@ BinopType Parser::conv_binop(const Token& t) {
             return BinopType::BINOP_LOGOR;
 
         default:
-            expect(Token::TOK_EOF, "Invalid token for binop conversion", t);
+            expect(Token::TOK_EOF, "valid token for binop conversion", t);
             return BinopType::BINOP_PLUS;
     }
 }
@@ -202,7 +206,7 @@ UnopType Parser::conv_unop(const Token& t) {
             return UnopType::UNOP_ADDROF;
 
         default:
-            expect(Token::TOK_EOF, "Invalid token for unop conversion", t);
+            expect(Token::TOK_EOF, "valid token for unop conversion", t);
             return UnopType::UNOP_NEG;
     }
 }
@@ -222,7 +226,7 @@ void Parser::expect(Token::TokType t_ty, const char* error_str, const Token& tok
         failed = true;
 
     std::string err_str = "Expected " + std::string(error_str);
-    diag->print_error(tok.line_num, tok.col_num, err_str.c_str(), tok.lexeme.size());
+    diag->print_error(tok.line_num, tok.col_num, err_str.c_str(), tok.lexeme.size() - 1);
 }
 
 Type* Parser::build_type(int in_count, enum DeclType dt) {
@@ -236,6 +240,9 @@ Type* Parser::build_type(int in_count, enum DeclType dt) {
                 break;
             case DECL_TYPE_BOOL:
                 return new TBool();
+                break;
+            case DECL_TYPE_VOID:
+                return new TVoid();
                 break;
         }
     }
@@ -298,19 +305,6 @@ Type* Parser::parse_type() {
             check_next() == Token::TOK_LBRACKET);
 
     return final_type;
-}
-
-Type* Parser::parse_type_wo_arr() {
-    enum DeclType type_set = conv_type(tok_list[curr_pos].tok_ty);
-
-    int indirection_count = 0;
-    while (check_next() == Token::TOK_DEREF) {
-        advance();
-        indirection_count += 1;
-    }
-
-    auto p_type = build_type(indirection_count, type_set);
-    return p_type;
 }
 
 ///===-------------------------------------------------------------------===///
@@ -710,6 +704,23 @@ StmtNode* Parser::parse_vdecl() {
             make_srange(type_pos));
     }
 
+    if (tok_list[curr_pos].tok_ty == Token::TOK_NULL) {
+        ssize_t beg_pos = curr_pos;
+
+        ssize_t orig = curr_pos;
+        curr_pos = type_pos;
+        std::unique_ptr<Type> elem_type(parse_type());
+        curr_pos = orig;
+
+        auto null_exp = std::make_unique<NullExpNode>(
+            std::move(elem_type), make_srange(beg_pos));
+        advance();
+
+        return new DeclStmtNode(
+            std::move(vtype_ptr), vname, std::move(null_exp),
+            make_srange(type_pos));
+    }
+
     std::unique_ptr<ExpNode> init_exp = parse_expr(0);
     advance();
 
@@ -765,7 +776,8 @@ StmtNode* Parser::parse_stmt() {
     switch (tok_list[curr_pos].tok_ty) {
         case Token::TOK_TYPE_INT:
         case Token::TOK_TYPE_STRING:
-        case Token::TOK_TYPE_BOOL: {
+        case Token::TOK_TYPE_BOOL:
+        case Token::TOK_TYPE_VOID: {
             auto decl = parse_vdecl();
             expect(Token::TOK_SEMIC, "terminating `;` operator");
             return decl;
@@ -775,8 +787,8 @@ StmtNode* Parser::parse_stmt() {
             advance();
 
             if (tok_list[curr_pos].tok_ty == Token::TOK_SEMIC) {
-                advance();
                 expect(Token::TOK_SEMIC, "terminating `;` operator");
+                advance();
                 return new RetStmtNode(nullptr, make_srange(beg_pos));
             }
             else{
@@ -943,6 +955,7 @@ Decls* Parser::parse_fdecl() {
             case Token::TOK_TYPE_INT:
             case Token::TOK_TYPE_STRING:
             case Token::TOK_TYPE_BOOL:
+            case Token::TOK_TYPE_VOID:
                 params.push_back(parse_arg());
                 break;
 
@@ -992,8 +1005,79 @@ Decls* Parser::parse_gvdecl() {
 
     advance();
 
+    if (tok_list[curr_pos].tok_ty == Token::TOK_LBRACE) {
+
+        ssize_t beg_pos_arr = curr_pos;
+
+        advance();
+
+        std::vector<ExpNode*> init_exps {};
+
+        while ((curr_pos < tok_len) &&
+                (tok_list[curr_pos].tok_ty != Token::TOK_RBRACE)) {
+            init_exps.push_back(parse_expr(0).release());
+            advance();
+
+            if (tok_list[curr_pos].tok_ty == Token::TOK_RBRACE)
+                break;
+
+            expect(Token::TOK_COMMA, "`,` operator to separate function"
+                    " arguments");
+            advance();
+        }
+
+        advance();
+
+        ssize_t orig = curr_pos;
+        curr_pos = beg_pos;
+        std::unique_ptr<Type> elem_type(parse_type());
+        curr_pos = orig;
+
+        auto carr_exp = std::make_unique<CArrExpNode>(
+            std::move(elem_type), init_exps,
+            make_srange(beg_pos_arr)
+        );
+
+        auto srange = make_srange(beg_pos);
+        advance();
+
+        return new GlobalDecl(std::move(gvtype_ptr), gvname, std::move(carr_exp),
+                                srange);
+    }
+
     expect(Token::TOK_EQUAL, "`=` operator");
     advance();
+
+    if (tok_list[curr_pos].tok_ty == Token::TOK_NEW) {
+        advance();
+
+        auto new_exp = parse_new_exp();
+        advance();
+        return new GlobalDecl(
+            std::move(gvtype_ptr), gvname, std::move(new_exp),
+            make_srange(beg_pos));
+    }
+
+    if (tok_list[curr_pos].tok_ty == Token::TOK_NULL) {
+        ssize_t beg_pos_null = curr_pos;
+
+        ssize_t orig = curr_pos;
+        curr_pos = beg_pos;
+        std::unique_ptr<Type> elem_type(parse_type());
+        curr_pos = orig;
+
+        auto null_exp = std::make_unique<NullExpNode>(
+            std::move(elem_type), make_srange(beg_pos_null));
+
+        advance();
+
+        expect(Token::TOK_SEMIC, "terminating `;` operator");
+        advance();
+
+        return new GlobalDecl(
+            std::move(gvtype_ptr), gvname, std::move(null_exp),
+            make_srange(beg_pos));
+    }
 
     std::unique_ptr<ExpNode> init_exp = parse_expr(0);
     advance();
@@ -1010,6 +1094,7 @@ Decls* Parser::parse_decl() {
         case Token::TOK_TYPE_INT:
         case Token::TOK_TYPE_STRING:
         case Token::TOK_TYPE_BOOL:
+        case Token::TOK_TYPE_VOID:
             return parse_gvdecl();
             break;
 

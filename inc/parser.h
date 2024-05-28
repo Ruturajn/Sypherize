@@ -23,6 +23,7 @@ public:
         DECL_TYPE_INT,
         DECL_TYPE_STRING,
         DECL_TYPE_BOOL,
+        DECL_TYPE_VOID,
     };
     Diagnostics* diag;
 
@@ -42,7 +43,6 @@ public:
     Type* build_arr_type(int arr_count, Type* t);
     Type* build_ref_type(int in_count, Type *t);
     Type* parse_type();
-    Type* parse_type_wo_arr();
     std::unique_ptr<ExpNode> parse_new_exp();
     void parse_idx_exp_indices(std::vector<ExpNode*>& indices);
     std::unique_ptr<ExpNode> parse_binop(int prev_prec,

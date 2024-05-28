@@ -86,12 +86,20 @@ void DeclStmtNode::print_stmt(int indent) const {
 bool DeclStmtNode::typecheck(Environment& env, const std::string& fname,
                              FuncEnvironment& fenv, Diagnostics* diag) const {
 
+    const TVoid tv;
+
+    Type* base_ty = ty.get();
+
+    if (tv == *base_ty) {
+        diag->print_error(sr, "Invalid `void` decl type");
+        return false;
+    }
+
     auto exp_ty = exp->typecheck(env, fname, fenv, diag);
 
     if (exp_ty == nullptr)
         return false;
 
-    Type* base_ty = ty.get();
 
     if (exp->is_indirect) {
         const TRef t(nullptr);
@@ -227,8 +235,11 @@ bool RetStmtNode::typecheck(Environment& env, const std::string& fname,
     auto fret = fenv[fname][0];
 
     if (exp == nullptr) {
-        if (!fret->is_void)
+        if (!fret->is_void) {
             diag->print_error(sr, "Expected `void` return type");
+            return false;
+        }
+        return true;
     }
 
     auto exp_ty = exp->typecheck(env, fname, fenv, diag);

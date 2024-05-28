@@ -215,6 +215,18 @@ public:
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
 };
 
+class NullExpNode : public ExpNode {
+private:
+    std::unique_ptr<Type> ty;
+
+public:
+    NullExpNode(std::unique_ptr<Type> _ty, const SRange& _sr)
+        : ExpNode(_sr), ty(std::move(_ty)) {}
+    void print_node(int indent) const override;
+    Type* typecheck(Environment& env, const std::string& fname,
+                    FuncEnvironment& fenv, Diagnostics* diag) const override;
+};
+
 class IdExpNode : public ExpNode {
 private:
     std::string val;
