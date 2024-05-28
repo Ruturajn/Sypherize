@@ -601,4 +601,83 @@ public:
     void print_ll_prog(std::ostream& os) const;
 };
 
+///===-------------------------------------------------------------------===///
+/// LLVM IR Instruction Stream Elements
+///===-------------------------------------------------------------------===///
+
+class LLElt {
+public:
+    LLElt() = default;
+    virtual ~LLElt() = default;
+    virtual void print_ll_elt(std::ostream& os) const;
+};
+
+class LLELables : public LLElt {
+private:
+    std::unique_ptr<LLLbls> lbl;
+
+public:
+    LLELables(std::unique_ptr<LLLbls> _lbl) : lbl(std::move(_lbl)) {}
+    void print_ll_elt(std::ostream& os) const override;
+};
+
+class LLEInsn : public LLElt {
+private:
+    std::unique_ptr<LLUid> id;
+    std::unique_ptr<LLInsn> insn;
+
+public:
+    LLEInsn(std::unique_ptr<LLUid> _uid, std::unique_ptr<LLInsn> _insn)
+        : id(std::move(_uid)), insn(std::move(_insn)) {}
+    void print_ll_elt(std::ostream& os) const override;
+};
+
+class LLETerm : public LLElt {
+private:
+    std::unique_ptr<LLTerm> term;
+
+public:
+    LLETerm(std::unique_ptr<LLTerm> _term) : term(std::move(_term)) {}
+    void print_ll_elt(std::ostream& os) const override;
+};
+
+class LLEGlbl : public LLElt {
+private:
+    std::unique_ptr<LLGid> id;
+    std::unique_ptr<LLGDecl> gdecl;
+
+public:
+    LLEGlbl(std::unique_ptr<LLGid> _gid, std::unique_ptr<LLGDecl> _gdecl)
+        : id(std::move(_gid)), gdecl(std::move(_gdecl)) {}
+    void print_ll_elt(std::ostream& os) const override;
+};
+
+class LLEEntry : public LLElt {
+private:
+    std::unique_ptr<LLUid> id;
+    std::unique_ptr<LLInsn> insn;
+
+public:
+    LLEEntry(std::unique_ptr<LLUid> _uid, std::unique_ptr<LLInsn> _insn)
+        : id(std::move(_uid)), insn(std::move(_insn)) {}
+    void print_ll_elt(std::ostream& os) const override;
+};
+
+///===-------------------------------------------------------------------===///
+/// LLVM IR Instruction Stream
+///===-------------------------------------------------------------------===///
+
+class LLStream {
+public:
+    std::vector<LLElt*> stream;
+    LLStream() : stream({}) {}
+
+    ~LLStream() {
+        for (auto& elem: stream)
+            delete elem;
+    }
+
+    void print_ll_stream() const;
+};
+
 #endif // __LLAST_H__

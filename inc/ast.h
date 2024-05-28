@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include "./diagnostics.h"
 
+namespace AST {
+
 class Type;
 
 using Environment =
@@ -590,5 +592,7 @@ public:
     bool typecheck(Environment& env, FuncEnvironment& fenv,
                    Diagnostics *diag) const;
 };
+
+} // namespace AST
 
 #endif // __AST_H__

@@ -11,6 +11,8 @@
 #include <vector>
 #include <sstream>
 
+using namespace AST;
+
 class Parser {
 public:
     std::vector<Token> tok_list;
