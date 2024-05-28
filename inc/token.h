@@ -71,6 +71,8 @@ public:
         TOK_RETURN, // Keyword: "return"
         TOK_FUNCTION,   // Keyword: "fun"
         TOK_NEW,   // Keyword: "new"
+        TOK_VOID,   // Keyword: "void"
+        TOK_NULL,   // Keyword: "null"
 
         TOK_EOF
     };
@@ -297,6 +299,14 @@ public:
 
             case TOK_NEW:
                 std::cout << "TOK_NEW";
+                break;
+
+            case TOK_VOID:
+                std::cout << "TOK_VOID";
+                break;
+
+            case TOK_NULL:
+                std::cout << "TOK_NULL";
                 break;
 
             case TOK_EOF:
