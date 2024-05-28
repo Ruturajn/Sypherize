@@ -109,6 +109,12 @@ private:
 
 public:
     LLTStruct(std::vector<LLType*>& _ty_list) : ty_list(_ty_list) {}
+
+    ~LLTStruct() {
+        for (auto& elem: ty_list)
+            delete elem;
+    }
+
     void print_ll_type(std::ostream& os) const override;
     bool operator==(const LLType& other) const override;
     LLType* get_underlying_type() const override { return nullptr; }
@@ -135,6 +141,12 @@ private:
 public:
     LLTFunc(std::vector<LLType*>& _arg_ty_list, std::unique_ptr<LLType> _ret_ty)
         : arg_ty_list(_arg_ty_list), ret_ty(std::move(_ret_ty)) {}
+
+    ~LLTFunc() {
+        for (auto& elem: arg_ty_list)
+            delete elem;
+    }
+
     void print_ll_type(std::ostream& os) const override;
     bool operator==(const LLType& other) const override;
     LLType* get_underlying_type() const override { return nullptr; }
@@ -313,6 +325,12 @@ public:
                std::unique_ptr<LLOperand> _op,
                std::vector<LLType*>& _op_list)
         : ty(std::move(_ty)), op(std::move(_op)), op_list(_op_list) {}
+
+    ~LLIGep() {
+        for (auto& elem: op_list)
+            delete elem;
+    }
+
     void print_ll_insn(std::ostream& os) const override;
 };
 
@@ -375,6 +393,17 @@ public:
     LLBlock(std::vector<std::pair<LLUid*, LLInsn*>>& _insn_list,
             std::pair<LLUid*, LLTerm*>& _term)
         : insn_list(_insn_list), term(_term) {}
+
+    ~LLBlock() {
+        for (auto &elem: insn_list) {
+            delete elem.first;
+            delete elem.second;
+        }
+
+        delete term.first;
+        delete term.second;
+    }
+
     void print_ll_block(std::ostream& os) const;
 };
 
@@ -389,6 +418,16 @@ private:
 public:
     LLCFG(std::pair<LLBlock*, std::vector<std::pair<LLLbls*, LLBlock*>>>& _cfg)
         : cfg(_cfg) {}
+
+    ~LLCFG() {
+        delete cfg.first;
+
+        for (auto& elem: cfg.second) {
+            delete elem.first;
+            delete elem.second;
+        }
+    }
+
     void print_ll_cfg(std::ostream& os) const;
 };
 
@@ -410,6 +449,17 @@ public:
             std::unique_ptr<LLCFG>& _func_cfg)
         : func_params_ty(_func_params_ty), func_ret_ty(std::move(_func_ret_ty)),
             func_params(_func_params), func_cfg(std::move(_func_cfg)) {}
+
+    ~LLFDecl() {
+        for (auto& elem: func_params_ty) {
+            delete elem;
+        }
+
+        for (auto& elem: func_params) {
+            delete elem;
+        }
+    }
+
     void print_ll_fdecl(std::ostream& os) const;
 };
 
@@ -463,6 +513,14 @@ private:
 public:
     LLGArray(std::vector<std::pair<LLType*, LLGInit*>>& _ty_ginit_list)
         : ty_ginit_list(_ty_ginit_list) {}
+
+    ~LLGArray() {
+        for (auto& elem: ty_ginit_list) {
+            delete elem.first;
+            delete elem.second;
+        }
+    }
+
     void print_ll_ginit(std::ostream& os) const override;
 };
 
@@ -473,6 +531,14 @@ private:
 public:
     LLGStruct(std::vector<std::pair<LLType*, LLGInit*>>& _ty_ginit_list)
         : ty_ginit_list(_ty_ginit_list) {}
+
+    ~LLGStruct() {
+        for (auto& elem: ty_ginit_list) {
+            delete elem.first;
+            delete elem.second;
+        }
+    }
+
     void print_ll_ginit(std::ostream& os) const override;
 };
 
@@ -519,6 +585,19 @@ public:
     LLProg(std::vector<std::pair<LLGid*, LLGDecl*>>& _gdecls,
            std::vector<std::pair<LLGid*, LLFDecl*>>& _fdecls)
         : gdecls(_gdecls), fdecls(_fdecls) {}
+
+    ~LLProg() {
+        for (auto& elem: gdecls) {
+            delete elem.first;
+            delete elem.second;
+        }
+
+        for (auto& elem: fdecls) {
+            delete elem.first;
+            delete elem.second;
+        }
+    }
+
     void print_ll_prog(std::ostream& os) const;
 };
 
