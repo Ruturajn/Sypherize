@@ -40,6 +40,18 @@ int main(int argc, char* argv[]) {
 
         Option("--asm", "-a", "Compile to assembly", {},
                 false, OptionType::OPTION_ASM),
+
+        Option("--run-lexer", "-run-lexer",
+                "Run the compiler upto the lexer stage", {},
+                false, OptionType::OPTION_RUN_LEXER),
+
+        Option("--run-parser", "-run-parser",
+                "Run the compiler upto the parser stage", {},
+                false, OptionType::OPTION_RUN_PARSER),
+
+        Option("--run-typechecker", "-run-typechecker",
+                "Run the compiler upto the typechecker stage", {},
+                false, OptionType::OPTION_RUN_TYPECHECKER),
     };
 
     CmdOps cmd(options, std::cout);
@@ -62,6 +74,9 @@ int main(int argc, char* argv[]) {
     if (cmd_flags.verbose || cmd_flags.print_tokens)
         lexer.print_tokens();
 
+    if (cmd_flags.run_lexer)
+        return 0;
+
     /// Parse
     Parser parser(lexer.tok_list, &diag);
     parser.parse_prog();
@@ -71,10 +86,16 @@ int main(int argc, char* argv[]) {
     if (cmd_flags.verbose || cmd_flags.print_ast)
         parser.prog.print_prog();
 
+    if (cmd_flags.run_parser)
+        return 0;
+
     /// Typecheck
     TypeChecker tc(&parser.prog);
     if (!tc.typecheck(&diag))
         return -1;
+
+    if (cmd_flags.run_typechecker)
+        return 0;
 
     /// Compile to LLVM
 

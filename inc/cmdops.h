@@ -15,7 +15,10 @@ enum class OptionType {
     OPTION_PRINT_AST,
     OPTION_LLVM,
     OPTION_ASM_DIALECT,
-    OPTION_ASM
+    OPTION_ASM,
+    OPTION_RUN_LEXER,
+    OPTION_RUN_PARSER,
+    OPTION_RUN_TYPECHECKER
 };
 
 struct CmdFlags {
@@ -33,10 +36,14 @@ struct CmdFlags {
     };
     AsmDialect asm_d;
     bool emit_asm;
+    bool run_lexer;
+    bool run_parser;
+    bool run_typechecker;
 
     CmdFlags() : version(false), help(false), verbose(false),
         input_files({}), output_file({}), print_tokens(false),
-        print_ast(false), emit_llvm(false), asm_d(ASM_ATT), emit_asm(false) {}
+        print_ast(false), emit_llvm(false), asm_d(ASM_ATT), emit_asm(false),
+        run_lexer(false), run_parser(false), run_typechecker(false){}
 };
 
 class Option {

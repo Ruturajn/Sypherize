@@ -137,6 +137,18 @@ void CmdOps::populate_cmd_flags(CmdFlags& cmd_flags) {
             case OptionType::OPTION_ASM:
                 cmd_flags.emit_asm = true;
                 break;
+
+            case OptionType::OPTION_RUN_LEXER:
+                cmd_flags.run_lexer = true;
+                break;
+
+            case OptionType::OPTION_RUN_PARSER:
+                cmd_flags.run_parser = true;
+                break;
+
+            case OptionType::OPTION_RUN_TYPECHECKER:
+                cmd_flags.run_typechecker = true;
+                break;
         }
     }
 }
