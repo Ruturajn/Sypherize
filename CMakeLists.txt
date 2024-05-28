@@ -2,7 +2,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.1)
 
 # Add flags that need to be passed to the compiler
-SET(GXX_FLAGS "-ggdb -Wall -Werror -pedantic")
+SET(GXX_FLAGS "-ggdb -Wall -Werror -Wextra -pedantic")
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GXX_FLAGS}")
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -36,6 +36,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Include directories for the build.
 target_include_directories(sypherc PUBLIC
-                           "${PROJECT_BINARY_DIR}"
                            "${PROJECT_SOURCE_DIR}/inc/"
                            )
