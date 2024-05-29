@@ -20,6 +20,7 @@ SET(SYPHER_SRCS
     src/cmdops.cpp
     src/diagnostics.cpp
     src/lexer.cpp
+    src/llast.cpp
     src/main.cpp
     src/parser.cpp)
 
