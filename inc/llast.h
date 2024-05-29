@@ -29,41 +29,11 @@ enum class LLCondType {
     LLCOND_GTE,
 };
 
+
 ///===-------------------------------------------------------------------===///
 /// LLVM IR Uids
 ///===-------------------------------------------------------------------===///
-struct LLUid {
-    std::string uid;
-    LLUid(const std::string& _uid) : uid(_uid) {}
-    static LLUid* gensym(const std::string& base) {
-        static ssize_t cnt = 0;
-        auto uid = new LLUid("_" + base + std::to_string(cnt));
-        cnt += 1;
-        return uid;
-    }
-};
-
-///===-------------------------------------------------------------------===///
-/// LLVM IR Gids
-///===-------------------------------------------------------------------===///
-struct LLGid {
-    std::string gid;
-    LLGid(const std::string& _gid) : gid(_gid) {}
-    static LLGid* gensym(const std::string& base) {
-        static ssize_t cnt = 0;
-        auto gid = new LLGid("_" + base + std::to_string(cnt));
-        cnt += 1;
-        return gid;
-    }
-};
-
-///===-------------------------------------------------------------------===///
-/// LLVM IR Labels
-///===-------------------------------------------------------------------===///
-struct LLLbls {
-    std::string lbl;
-    LLLbls(const std::string& _lbl) : lbl(_lbl) {}
-};
+std::string gentemp_ll(const std::string& base);
 
 ///===-------------------------------------------------------------------===///
 /// LLVM IR Types
@@ -77,6 +47,7 @@ public:
     virtual bool operator==(const LLType& other) const = 0;
     bool operator!=(const LLType& other) const { return !operator==(other); }
     virtual LLType* get_underlying_type() const = 0;
+    virtual std::unique_ptr<LLType> clone() const = 0;
 };
 
 class LLTVoid : public LLType {
@@ -86,6 +57,9 @@ public:
         return typeid(*this) == typeid(other);
     }
     LLType* get_underlying_type() const override { return nullptr; }
+    std::unique_ptr<LLType> clone() const override {
+        return std::make_unique<LLTVoid>();
+    }
 };
 
 class LLTi1 : public LLType {
@@ -95,6 +69,9 @@ public:
         return typeid(*this) == typeid(other);
     }
     LLType* get_underlying_type() const override { return nullptr; }
+    std::unique_ptr<LLType> clone() const override {
+        return std::make_unique<LLTi1>();
+    }
 };
 
 class LLTi8 : public LLType {
@@ -104,6 +81,9 @@ public:
         return typeid(*this) == typeid(other);
     }
     LLType* get_underlying_type() const override { return nullptr; }
+    std::unique_ptr<LLType> clone() const override {
+        return std::make_unique<LLTi8>();
+    }
 };
 
 class LLTi64 : public LLType {
@@ -113,6 +93,9 @@ public:
         return typeid(*this) == typeid(other);
     }
     LLType* get_underlying_type() const override { return nullptr; }
+    std::unique_ptr<LLType> clone() const override {
+        return std::make_unique<LLTi64>();
+    }
 };
 
 class LLTPtr : public LLType {
@@ -124,6 +107,9 @@ public:
     void print_ll_type(std::ostream& os) const override;
     bool operator==(const LLType& other) const override;
     LLType* get_underlying_type() const override { return nullptr; }
+    std::unique_ptr<LLType> clone() const override {
+        return std::make_unique<LLTPtr>(ty->clone());
+    }
 };
 
 class LLTStruct : public LLType {
@@ -141,6 +127,14 @@ public:
     void print_ll_type(std::ostream& os) const override;
     bool operator==(const LLType& other) const override;
     LLType* get_underlying_type() const override { return nullptr; }
+    std::unique_ptr<LLType> clone() const override {
+        std::vector<LLType*> clone_ty_list {};
+
+        for (auto elem: ty_list)
+            clone_ty_list.push_back(elem->clone().release());
+
+        return std::make_unique<LLTStruct>(clone_ty_list);
+    }
 };
 
 class LLTArray : public LLType {
@@ -154,6 +148,9 @@ public:
     void print_ll_type(std::ostream& os) const override;
     bool operator==(const LLType& other) const override;
     LLType* get_underlying_type() const override { return arr_ty.get(); }
+    std::unique_ptr<LLType> clone() const override {
+        return std::make_unique<LLTArray>(arr_len, arr_ty->clone());
+    }
 };
 
 class LLTFunc : public LLType {
@@ -173,6 +170,14 @@ public:
     void print_ll_type(std::ostream& os) const override;
     bool operator==(const LLType& other) const override;
     LLType* get_underlying_type() const override { return nullptr; }
+    std::unique_ptr<LLType> clone() const override {
+        std::vector<LLType*> clone_arg_ty_list {};
+
+        for (auto elem: arg_ty_list)
+            clone_arg_ty_list.push_back(elem->clone().release());
+
+        return std::make_unique<LLTFunc>(clone_arg_ty_list, ret_ty->clone());
+    }
 };
 
 class LLTNamed : public LLType {
@@ -215,20 +220,20 @@ public:
 
 class LLOGid : public LLOperand {
 private:
-    std::unique_ptr<LLGid> id;
+    std::string id;
 
 public:
-    LLOGid(std::unique_ptr<LLGid> _id) : id(std::move(_id)) {}
-    void print_ll_op(std::ostream& os) const override { os << id->gid; }
+    LLOGid(const std::string& _id) : id(_id) {}
+    void print_ll_op(std::ostream& os) const override { os << id; }
 };
 
 class LLOId : public LLOperand {
 private:
-    std::unique_ptr<LLUid> id;
+    std::string uid;
 
 public:
-    LLOId(std::unique_ptr<LLUid> _id) : id(std::move(_id)) {}
-    void print_ll_op(std::ostream& os) const override { os << id->uid; }
+    LLOId(const std::string& _uid) : uid(_uid) {}
+    void print_ll_op(std::ostream& os) const override { os << uid; }
 };
 
 ///===-------------------------------------------------------------------===///
@@ -341,12 +346,17 @@ class LLIGep : public LLInsn {
 private:
     std::unique_ptr<LLType> ty;
     std::unique_ptr<LLOperand> op;
-    std::vector<LLType*> op_list;
+    std::vector<LLOperand*> op_list;
 
 public:
     LLIGep(std::unique_ptr<LLType> _ty,
-               std::unique_ptr<LLOperand> _op,
-               std::vector<LLType*>& _op_list)
+           std::unique_ptr<LLOperand> _op,
+           std::vector<LLOperand*>& _op_list)
+        : ty(std::move(_ty)), op(std::move(_op)), op_list(_op_list) {}
+
+    LLIGep(std::unique_ptr<LLType> _ty,
+           std::unique_ptr<LLOperand> _op,
+           const std::initializer_list<LLOperand*>& _op_list)
         : ty(std::move(_ty)), op(std::move(_op)), op_list(_op_list) {}
 
     ~LLIGep() {
@@ -381,25 +391,25 @@ public:
 
 class LLTermBr : public LLTerm {
 private:
-    std::unique_ptr<LLLbls> lbl;
+    std::string lbl;
 
 public:
-    LLTermBr(std::unique_ptr<LLLbls> _lbl) : lbl(std::move(_lbl)) {}
+    LLTermBr(const std::string& _lbl) : lbl(_lbl) {}
     void print_ll_term(std::ostream& os) const override;
 };
 
 class LLTermCbr : public LLTerm {
 private:
     std::unique_ptr<LLOperand> op;
-    std::unique_ptr<LLLbls> true_lbl;
-    std::unique_ptr<LLLbls> false_lbl;
+    std::string true_lbl;
+    std::string false_lbl;
 
 public:
     LLTermCbr(std::unique_ptr<LLOperand> _op,
-              std::unique_ptr<LLLbls> _true_lbl,
-              std::unique_ptr<LLLbls> _false_lbl)
-        : op(std::move(_op)), true_lbl(std::move(_true_lbl)),
-            false_lbl(std::move(_false_lbl)) {}
+              const std::string& _true_lbl,
+              const std::string& _false_lbl)
+        : op(std::move(_op)), true_lbl(_true_lbl),
+            false_lbl(_false_lbl) {}
     void print_ll_term(std::ostream& os) const override;
 };
 
@@ -409,21 +419,19 @@ public:
 
 class LLBlock {
 private:
-    std::vector<std::pair<LLUid*, LLInsn*>> insn_list;
-    std::pair<LLUid*, LLTerm*> term;
+    std::vector<std::pair<std::string, LLInsn*>> insn_list;
+    std::pair<std::string, LLTerm*> term;
 
 public:
-    LLBlock(std::vector<std::pair<LLUid*, LLInsn*>>& _insn_list,
-            std::pair<LLUid*, LLTerm*>& _term)
+    LLBlock(std::vector<std::pair<std::string, LLInsn*>>& _insn_list,
+            std::pair<std::string, LLTerm*>& _term)
         : insn_list(_insn_list), term(_term) {}
 
     ~LLBlock() {
         for (auto &elem: insn_list) {
-            delete elem.first;
             delete elem.second;
         }
 
-        delete term.first;
         delete term.second;
     }
 
@@ -436,19 +444,17 @@ public:
 
 class LLCFG {
 private:
-    std::pair<LLBlock*, std::vector<std::pair<LLLbls*, LLBlock*>>> cfg;
+    std::pair<LLBlock*, std::vector<std::pair<std::string, LLBlock*>>> cfg;
 
 public:
-    LLCFG(std::pair<LLBlock*, std::vector<std::pair<LLLbls*, LLBlock*>>>& _cfg)
+    LLCFG(std::pair<LLBlock*, std::vector<std::pair<std::string, LLBlock*>>>& _cfg)
         : cfg(_cfg) {}
 
     ~LLCFG() {
         delete cfg.first;
 
-        for (auto& elem: cfg.second) {
-            delete elem.first;
+        for (auto& elem: cfg.second)
             delete elem.second;
-        }
     }
 
     void print_ll_cfg(std::ostream& os) const;
@@ -462,25 +468,20 @@ class LLFDecl {
 private:
     std::vector<LLType*> func_params_ty;
     std::unique_ptr<LLType> func_ret_ty;
-    std::vector<LLUid*> func_params;
+    std::vector<std::string> func_params;
     std::unique_ptr<LLCFG> func_cfg;
 
 public:
     LLFDecl(std::vector<LLType*>& _func_params_ty,
             std::unique_ptr<LLType>& _func_ret_ty,
-            std::vector<LLUid*>& _func_params,
+            std::vector<std::string>& _func_params,
             std::unique_ptr<LLCFG>& _func_cfg)
         : func_params_ty(_func_params_ty), func_ret_ty(std::move(_func_ret_ty)),
             func_params(_func_params), func_cfg(std::move(_func_cfg)) {}
 
     ~LLFDecl() {
-        for (auto& elem: func_params_ty) {
+        for (auto& elem: func_params_ty)
             delete elem;
-        }
-
-        for (auto& elem: func_params) {
-            delete elem;
-        }
     }
 
     void print_ll_fdecl(std::ostream& os) const;
@@ -504,10 +505,10 @@ public:
 
 class LLGGid : public LLGInit {
 private:
-    std::unique_ptr<LLGid> val;
+    std::string gid;
 
 public:
-    LLGGid(std::unique_ptr<LLGid> _val) : val(std::move(_val)) {}
+    LLGGid(const std::string& _gid) : gid(_gid) {}
     void print_ll_ginit(std::ostream& os) const override;
 };
 
@@ -601,24 +602,20 @@ public:
 
 class LLProg {
 private:
-    std::vector<std::pair<LLGid*, LLGDecl*>> gdecls;
-    std::vector<std::pair<LLGid*, LLFDecl*>> fdecls;
+    std::vector<std::pair<std::string, LLGDecl*>> gdecls;
+    std::vector<std::pair<std::string, LLFDecl*>> fdecls;
 
 public:
-    LLProg(std::vector<std::pair<LLGid*, LLGDecl*>>& _gdecls,
-           std::vector<std::pair<LLGid*, LLFDecl*>>& _fdecls)
+    LLProg(std::vector<std::pair<std::string, LLGDecl*>>& _gdecls,
+           std::vector<std::pair<std::string, LLFDecl*>>& _fdecls)
         : gdecls(_gdecls), fdecls(_fdecls) {}
 
     ~LLProg() {
-        for (auto& elem: gdecls) {
-            delete elem.first;
+        for (auto& elem: gdecls)
             delete elem.second;
-        }
 
-        for (auto& elem: fdecls) {
-            delete elem.first;
+        for (auto& elem: fdecls)
             delete elem.second;
-        }
     }
 
     void print_ll_prog(std::ostream& os) const;
@@ -637,21 +634,21 @@ public:
 
 class LLELables : public LLElt {
 private:
-    std::unique_ptr<LLLbls> lbl;
+    std::string lbl;
 
 public:
-    LLELables(std::unique_ptr<LLLbls> _lbl) : lbl(std::move(_lbl)) {}
+    LLELables(const std::string& _lbl) : lbl(_lbl) {}
     void print_ll_elt(std::ostream& os) const override;
 };
 
 class LLEInsn : public LLElt {
 private:
-    std::unique_ptr<LLUid> id;
+    std::string uid;
     std::unique_ptr<LLInsn> insn;
 
 public:
-    LLEInsn(std::unique_ptr<LLUid> _uid, std::unique_ptr<LLInsn> _insn)
-        : id(std::move(_uid)), insn(std::move(_insn)) {}
+    LLEInsn(const std::string& _uid, std::unique_ptr<LLInsn> _insn)
+        : uid(_uid), insn(std::move(_insn)) {}
     void print_ll_elt(std::ostream& os) const override;
 };
 
@@ -666,23 +663,23 @@ public:
 
 class LLEGlbl : public LLElt {
 private:
-    std::unique_ptr<LLGid> id;
+    std::string id;
     std::unique_ptr<LLGDecl> gdecl;
 
 public:
-    LLEGlbl(std::unique_ptr<LLGid> _gid, std::unique_ptr<LLGDecl> _gdecl)
-        : id(std::move(_gid)), gdecl(std::move(_gdecl)) {}
+    LLEGlbl(const std::string& _gid, std::unique_ptr<LLGDecl> _gdecl)
+        : id(_gid), gdecl(std::move(_gdecl)) {}
     void print_ll_elt(std::ostream& os) const override;
 };
 
 class LLEEntry : public LLElt {
 private:
-    std::unique_ptr<LLUid> id;
+    std::string id;
     std::unique_ptr<LLInsn> insn;
 
 public:
-    LLEEntry(std::unique_ptr<LLUid> _uid, std::unique_ptr<LLInsn> _insn)
-        : id(std::move(_uid)), insn(std::move(_insn)) {}
+    LLEEntry(const std::string& _uid, std::unique_ptr<LLInsn> _insn)
+        : id(_uid), insn(std::move(_insn)) {}
     void print_ll_elt(std::ostream& os) const override;
 };
 

@@ -1,4 +1,5 @@
 #include "../inc/ast.h"
+#include <memory>
 
 using namespace AST;
 
@@ -25,6 +26,23 @@ Type* NumberExpNode::typecheck(Environment& env,
     return env["__global__"]["int"];
 }
 
+bool NumberExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
+                            bool is_lhs) const {
+
+    (void)ctxt;
+
+    if (is_lhs) {
+        diag->print_error(sr, "[ICE] Can't compile NumberExpNode as LHS");
+        return false;
+    }
+
+    out.first.first = ctxt["int"].first;
+
+    auto num_op = std::make_unique<LLOId>(gentemp_ll("num_exp"));
+    out.first.second = std::move(num_op);
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// StringExpNode
 ///===-------------------------------------------------------------------===///
@@ -48,6 +66,49 @@ Type* StringExpNode::typecheck(Environment& env,
     return env["__global__"]["string"];
 }
 
+bool StringExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
+                            bool is_lhs) const {
+
+    (void)ctxt;
+
+    if (is_lhs) {
+        diag->print_error(sr, "[ICE] Can't compile StringExpNode as LHS");
+        return false;
+    }
+
+    out.first.first = ctxt["string"].first;
+
+    auto op_uid = gentemp_ll("gep_str_op");
+    auto op_ptr = new LLOId(op_uid);
+    std::unique_ptr<LLOId> str_op(op_ptr);
+    out.first.second = std::move(str_op);
+
+    auto string_gid = gentemp_ll("string_exp");
+
+    auto gdecl = std::make_unique<LLGDecl>(
+        std::make_unique<LLTArray>(this->val.size() + 1,
+                                   std::make_unique<LLTi8>()),
+        std::make_unique<LLGString>(this->val)
+    );
+
+    out.second->stream.push_back(new LLEGlbl(string_gid, std::move(gdecl)));
+
+    auto str_arr_ty = std::make_unique<LLTArray>(this->val.size() + 1,
+        std::make_unique<LLTi8>());
+
+    auto gep_ty = std::make_unique<LLTPtr>(std::move(str_arr_ty));
+    auto gep_insn = new LLIGep(
+        std::move(gep_ty),
+        std::make_unique<LLOId>(string_gid),
+        {new LLOConst(0), new LLOConst(0)}
+    );
+
+    std::unique_ptr<LLIGep> gep_insn_ptr(gep_insn);
+    out.second->stream.push_back(new LLEInsn(op_uid, std::move(gep_insn_ptr)));
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// BoolExpNode
 ///===-------------------------------------------------------------------===///
@@ -69,6 +130,29 @@ Type* BoolExpNode::typecheck(Environment& env,
     (void)fenv;
     (void)diag;
     return env["__global__"]["bool"];
+}
+
+bool BoolExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
+                          bool is_lhs) const{
+    (void)ctxt;
+
+    if (is_lhs) {
+        diag->print_error(sr, "[ICE] Can't compile BoolExpNode as LHS");
+        return false;
+    }
+
+    out.first.first = ctxt["bool"].first;
+
+    LLOConst* bool_op = nullptr;
+    if (this->val)
+        bool_op = new LLOConst(1);
+    else
+        bool_op = new LLOConst(0);
+
+    std::unique_ptr<LLOConst> bool_op_ptr(bool_op);
+    out.first.second = std::move(bool_op_ptr);
+
+    return true;
 }
 
 ///===-------------------------------------------------------------------===///
@@ -111,6 +195,22 @@ Type* NullExpNode::typecheck(Environment& env,
     return ty.get();
 }
 
+bool NullExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
+                          bool is_lhs) const{
+    (void)ctxt;
+
+    if (is_lhs) {
+        diag->print_error(sr, "[ICE] Can't compile NullExpNode as LHS");
+        return false;
+    }
+
+    auto null_ty = this->ty->compile_type();
+    out.first.first = null_ty;
+    out.first.second = nullptr;
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// IdExpNode
 ///===-------------------------------------------------------------------===///
@@ -145,6 +245,32 @@ Type* IdExpNode::typecheck(Environment& env,
     }
 
     return env[fname][val];
+}
+
+bool IdExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
+                        bool is_lhs) const{
+    (void)ctxt;
+
+    if (ctxt.find(this->val) == ctxt.end()) {
+        diag->print_error(sr, "[ICE] Encountered unknown identifier "
+                "during compilation");
+        return false;
+    }
+
+    out.first.first = ctxt[this->val].first;
+
+    auto id_op_uid = gentemp_ll(this->val);
+    out.first.second = std::make_unique<LLOId>(id_op_uid);
+
+    auto res_uid = gentemp_ll("id_exp");
+
+    std::unique_ptr<LLType> load_ty(new LLTPtr(ctxt[this->val].first->clone()));
+    auto load_insn = std::make_unique<LLILoad>(std::move(load_ty),
+        std::make_unique<LLOId>(id_op_uid));
+
+    out.second->stream.push_back(new LLEInsn(res_uid, std::move(load_insn)));
+
+    return true;
 }
 
 ///===-------------------------------------------------------------------===///
@@ -196,6 +322,14 @@ Type* CArrExpNode::typecheck(Environment& env,
     }
 
     return ty.get();
+}
+
+bool CArrExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
+                          bool is_lhs) const{
+    (void)ctxt;
+
+
+    return true;
 }
 
 ///===-------------------------------------------------------------------===///
