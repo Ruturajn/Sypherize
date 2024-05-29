@@ -35,6 +35,12 @@ enum class LLCondType {
 struct LLUid {
     std::string uid;
     LLUid(const std::string& _uid) : uid(_uid) {}
+    static LLUid* gensym(const std::string& base) {
+        static ssize_t cnt = 0;
+        auto uid = new LLUid("_" + base + std::to_string(cnt));
+        cnt += 1;
+        return uid;
+    }
 };
 
 ///===-------------------------------------------------------------------===///
@@ -43,6 +49,12 @@ struct LLUid {
 struct LLGid {
     std::string gid;
     LLGid(const std::string& _gid) : gid(_gid) {}
+    static LLGid* gensym(const std::string& base) {
+        static ssize_t cnt = 0;
+        auto gid = new LLGid("_" + base + std::to_string(cnt));
+        cnt += 1;
+        return gid;
+    }
 };
 
 ///===-------------------------------------------------------------------===///
@@ -100,6 +112,17 @@ public:
     bool operator==(const LLType& other) const override {
         return typeid(*this) == typeid(other);
     }
+    LLType* get_underlying_type() const override { return nullptr; }
+};
+
+class LLTPtr : public LLType {
+private:
+    std::unique_ptr<LLType> ty;
+
+public:
+    LLTPtr(std::unique_ptr<LLType> _ty) : ty(std::move(_ty)) {}
+    void print_ll_type(std::ostream& os) const override;
+    bool operator==(const LLType& other) const override;
     LLType* get_underlying_type() const override { return nullptr; }
 };
 

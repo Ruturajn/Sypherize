@@ -7,14 +7,17 @@
 #include <iostream>
 #include <unordered_map>
 #include "./diagnostics.h"
+#include "./llast.h"
 
 namespace AST {
 
-class Type;
+class IdExpNode;
+using LLCtxt = std::unordered_map<IdExpNode*, std::pair<LLType*, LLOperand*>>;
+using LLOut = std::pair<std::pair<LLType*, LLOperand*>, LLStream*>;
 
+class Type;
 using Environment =
     std::unordered_map<std::string, std::unordered_map<std::string, Type*>>;
-
 using FuncEnvironment =
     std::unordered_map<std::string, std::vector<Type*>>;
 
@@ -63,6 +66,7 @@ public:
     virtual Type* get_underlying_type() const = 0;
     virtual bool is_valid_binop(BinopType b) const = 0;
     virtual bool is_valid_unop(UnopType u) const = 0;
+    virtual LLType* compile_type() const = 0;
 };
 
 class TInt : public Type {
@@ -79,7 +83,7 @@ public:
         return true;
     }
     bool is_valid_unop(UnopType u) const override;
-
+    LLType* compile_type() const override { return new LLTi64; }
 };
 
 class TBool : public Type {
@@ -92,6 +96,7 @@ public:
     Type* get_underlying_type() const override { return nullptr; }
     bool is_valid_binop(BinopType b) const override;
     bool is_valid_unop(UnopType u) const override;
+    LLType* compile_type() const override { return new LLTi1; }
 };
 
 class TString : public Type {
@@ -106,6 +111,9 @@ public:
     bool is_valid_unop(UnopType u) const override {
         (void)u;
         return false;
+    }
+    LLType* compile_type() const override {
+        return new LLTPtr(std::make_unique<LLTi8>());
     }
 };
 
@@ -126,6 +134,7 @@ public:
         (void)u;
         return false;
     }
+    LLType* compile_type() const override { return new LLTVoid; }
 };
 
 class TRef : public Type {
@@ -144,6 +153,10 @@ public:
     Type* get_underlying_type() const override { return type; }
     bool is_valid_binop(BinopType b) const override;
     bool is_valid_unop(UnopType u) const override;
+    LLType* compile_type() const override {
+        std::unique_ptr<LLType> ty_ptr(type->compile_type());
+        return new LLTPtr(std::move(ty_ptr));
+    }
 };
 
 class TArray : public Type {
@@ -165,6 +178,11 @@ public:
         return false;
     }
     bool is_valid_unop(UnopType u) const override;
+    LLType* compile_type() const override {
+        std::unique_ptr<LLType> arr_ty(type->compile_type());
+        std::vector<LLType*> tys {new LLTi64, new LLTArray(0, std::move(arr_ty))};
+        return new LLTPtr(std::make_unique<LLTStruct>(tys));
+    }
 };
 
 ///===-------------------------------------------------------------------===///
@@ -180,6 +198,7 @@ public:
     virtual void print_node(int indent) const = 0;
     virtual Type* typecheck(Environment& env, const std::string& fname,
                             FuncEnvironment& fenv, Diagnostics* diag) const = 0;
+    virtual bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const = 0;
 };
 
 class NumberExpNode : public ExpNode {
@@ -191,6 +210,7 @@ public:
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class StringExpNode : public ExpNode {
@@ -203,6 +223,7 @@ public:
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class BoolExpNode : public ExpNode {
@@ -215,6 +236,7 @@ public:
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class NullExpNode : public ExpNode {
@@ -227,6 +249,7 @@ public:
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class IdExpNode : public ExpNode {
@@ -239,6 +262,7 @@ public:
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class CArrExpNode : public ExpNode {
@@ -259,6 +283,7 @@ public:
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class NewExpNode : public ExpNode {
@@ -282,6 +307,7 @@ public:
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class IndexExpNode : public ExpNode {
@@ -302,6 +328,7 @@ public:
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class BinopExpNode : public ExpNode {
@@ -320,6 +347,7 @@ public:
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class UnopExpNode : public ExpNode {
@@ -337,6 +365,7 @@ public:
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class FunCallExpNode : public ExpNode {
@@ -357,6 +386,7 @@ public:
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -371,6 +401,7 @@ public:
     virtual void print_stmt(int indent) const = 0;
     virtual bool typecheck(Environment& env, const std::string& fname,
                            FuncEnvironment& fenv, Diagnostics* diag) const = 0;
+    virtual bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const = 0;
 };
 
 class AssnStmtNode : public StmtNode {
@@ -385,6 +416,7 @@ public:
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
                    FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class DeclStmtNode : public StmtNode {
@@ -403,6 +435,7 @@ public:
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
                    FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class SCallStmtNode : public StmtNode {
@@ -424,6 +457,7 @@ public:
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
                    FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class RetStmtNode : public StmtNode {
@@ -437,6 +471,7 @@ public:
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
                    FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class IfStmtNode : public StmtNode {
@@ -464,6 +499,7 @@ public:
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
                    FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class ForStmtNode : public StmtNode {
@@ -493,6 +529,7 @@ public:
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
                    FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class WhileStmtNode : public StmtNode {
@@ -514,6 +551,7 @@ public:
     void print_stmt(int indent) const override;
     bool typecheck(Environment& env, const std::string& fname,
                    FuncEnvironment& fenv, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -527,6 +565,7 @@ public:
     virtual void print_decl(int indent) const = 0;
     virtual bool typecheck(Environment& env, FuncEnvironment& fenv,
                            Diagnostics* diag) const = 0;
+    virtual bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const = 0;
 };
 
 class FunDecl : public Decls {
@@ -555,6 +594,7 @@ public:
     void print_decl(int indent) const override;
     bool typecheck(Environment& env, FuncEnvironment& fenv,
                    Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 class GlobalDecl : public Decls {
@@ -572,6 +612,7 @@ public:
     void print_decl(int indent) const override;
     bool typecheck(Environment& env, FuncEnvironment& fenv,
                    Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -591,6 +632,7 @@ public:
     void print_prog() const;
     bool typecheck(Environment& env, FuncEnvironment& fenv,
                    Diagnostics *diag) const;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag);
 };
 
 } // namespace AST
