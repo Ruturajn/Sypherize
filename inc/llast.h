@@ -48,6 +48,9 @@ public:
     bool operator!=(const LLType& other) const { return !operator==(other); }
     virtual LLType* get_underlying_type() const = 0;
     virtual std::unique_ptr<LLType> clone() const = 0;
+    virtual LLType* get_return_type() const {
+        return nullptr;
+    }
 };
 
 class LLTVoid : public LLType {
@@ -106,7 +109,7 @@ public:
     LLTPtr(std::unique_ptr<LLType> _ty) : ty(std::move(_ty)) {}
     void print_ll_type(std::ostream& os) const override;
     bool operator==(const LLType& other) const override;
-    LLType* get_underlying_type() const override { return nullptr; }
+    LLType* get_underlying_type() const override { return ty.get(); }
     std::unique_ptr<LLType> clone() const override {
         return std::make_unique<LLTPtr>(ty->clone());
     }
@@ -178,6 +181,9 @@ public:
 
         return std::make_unique<LLTFunc>(clone_arg_ty_list, ret_ty->clone());
     }
+    LLType* get_return_type() const override {
+        return ret_ty.get();
+    }
 };
 
 class LLTNamed : public LLType {
@@ -200,11 +206,15 @@ public:
     LLOperand() = default;
     virtual ~LLOperand() = default;
     virtual void print_ll_op(std::ostream& os) const = 0;
+    virtual std::unique_ptr<LLOperand> clone() const = 0;
 };
 
 class LLONull : public LLOperand {
 public:
     void print_ll_op(std::ostream& os) const override { os << "null"; }
+    std::unique_ptr<LLOperand> clone() const override {
+        return std::make_unique<LLONull>();
+    }
 };
 
 class LLOConst : public LLOperand {
@@ -216,6 +226,9 @@ public:
     void print_ll_op(std::ostream& os) const override {
         os << val;
     }
+    std::unique_ptr<LLOperand> clone() const override {
+        return std::make_unique<LLOConst>(this->val);
+    }
 };
 
 class LLOGid : public LLOperand {
@@ -225,6 +238,9 @@ private:
 public:
     LLOGid(const std::string& _id) : id(_id) {}
     void print_ll_op(std::ostream& os) const override { os << id; }
+    std::unique_ptr<LLOperand> clone() const override {
+        return std::make_unique<LLOGid>(this->id);
+    }
 };
 
 class LLOId : public LLOperand {
@@ -234,6 +250,9 @@ private:
 public:
     LLOId(const std::string& _uid) : uid(_uid) {}
     void print_ll_op(std::ostream& os) const override { os << uid; }
+    std::unique_ptr<LLOperand> clone() const override {
+        return std::make_unique<LLOId>(this->uid);
+    }
 };
 
 ///===-------------------------------------------------------------------===///
@@ -264,15 +283,18 @@ public:
 class LLIAlloca : public LLInsn {
 private:
     std::unique_ptr<LLType> ty;
+    std::string size_uid; // Check size, if this is empty, then don't use.
 
 public:
-    LLIAlloca(std::unique_ptr<LLType> _ty) : ty(std::move(_ty)) {}
+    LLIAlloca(std::unique_ptr<LLType> _ty,
+              const std::string& _size_uid)
+        : ty(std::move(_ty)), size_uid(_size_uid) {}
     void print_ll_insn(std::ostream& os) const override;
 };
 
 class LLILoad : public LLInsn {
 private:
-    std::unique_ptr<LLType> ty;
+    std::unique_ptr<LLType> ty; // Add pointer to the ty for 2nd op.
     std::unique_ptr<LLOperand> op;
 
 public:
@@ -283,7 +305,7 @@ public:
 
 class LLIStore : public LLInsn {
 private:
-    std::unique_ptr<LLType> ty;
+    std::unique_ptr<LLType> ty; // Add pointer to the ty for op_to.
     std::unique_ptr<LLOperand> op_from;
     std::unique_ptr<LLOperand> op_to;
 

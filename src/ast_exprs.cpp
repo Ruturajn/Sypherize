@@ -249,7 +249,8 @@ Type* IdExpNode::typecheck(Environment& env,
 
 bool IdExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
                         bool is_lhs) const{
-    (void)ctxt;
+
+    // TODO: Complile IdExpNode as LHS for supporting structs.
 
     if (ctxt.find(this->val) == ctxt.end()) {
         diag->print_error(sr, "[ICE] Encountered unknown identifier "
@@ -259,14 +260,13 @@ bool IdExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
 
     out.first.first = ctxt[this->val].first;
 
-    auto id_op_uid = gentemp_ll(this->val);
-    out.first.second = std::make_unique<LLOId>(id_op_uid);
+    out.first.second = std::move(ctxt[this->val].second->clone());
 
     auto res_uid = gentemp_ll("id_exp");
 
     std::unique_ptr<LLType> load_ty(new LLTPtr(ctxt[this->val].first->clone()));
     auto load_insn = std::make_unique<LLILoad>(std::move(load_ty),
-        std::make_unique<LLOId>(id_op_uid));
+        std::move(ctxt[this->val].second->clone()));
 
     out.second->stream.push_back(new LLEInsn(res_uid, std::move(load_insn)));
 
@@ -310,6 +310,12 @@ Type* CArrExpNode::typecheck(Environment& env,
         return nullptr;
     }
 
+    if (exp_list.size() == 0) {
+        diag->print_error(sr, "Expected initialization elements for array initializer"
+                " expression");
+        return nullptr;
+    }
+
     for (auto& exp: exp_list) {
         exp_ty = exp->typecheck(env, fname, fenv, diag);
 
@@ -326,8 +332,93 @@ Type* CArrExpNode::typecheck(Environment& env,
 
 bool CArrExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
                           bool is_lhs) const{
-    (void)ctxt;
 
+    if (is_lhs) {
+        diag->print_error(sr, "[ICE] Can't compile CArrExpNode as LHS");
+        return false;
+    }
+
+    // Refer to llvm/array.ll
+    // Add 1 to account for storing the array size.
+    ssize_t arr_size = this->exp_list.size();
+
+    // Emit alloca
+    std::unique_ptr<LLType> ll_ty(this->ty->compile_type());
+    auto alloca_uid = gentemp_ll("alloca_carr");
+    auto alloca_insn = std::make_unique<LLIAlloca>(
+        std::make_unique<LLTArray>(arr_size, std::move(ll_ty)),
+        ""
+    );
+
+    out.second->stream.push_back(
+        new LLEInsn(alloca_uid, std::move(alloca_insn))
+    );
+
+    // Store size
+    auto gep_uid_sz = gentemp_ll("alloca_gep");
+    std::unique_ptr<LLType> gep_ty_sz(this->ty->get_underlying_type()->compile_type());
+
+    auto gep_insn_sz = new LLIGep(
+        std::move(gep_ty_sz),
+        std::make_unique<LLOId>(gep_uid_sz),
+        {new LLOConst(0), new LLOConst(0)}
+    );
+
+    std::unique_ptr<LLInsn> gep_insn_ptr_sz(gep_insn_sz);
+    out.second->stream.push_back(
+        new LLEInsn(gep_uid_sz, std::move(gep_insn_ptr_sz))
+    );
+
+    auto store_uid_sz = gentemp_ll("store");
+    auto store_ty_sz = std::make_unique<LLTi64>();
+    auto store_insn_sz = std::make_unique<LLIStore>(
+        std::move(store_ty_sz),
+        std::make_unique<LLOConst>(arr_size),
+        std::make_unique<LLOId>(gep_uid_sz)
+    );
+    out.second->stream.push_back(
+        new LLEInsn(store_uid_sz, std::move(store_insn_sz))
+    );
+
+    // Then repeat gep and store until arr_size
+    LLType* res_ty = nullptr;
+    std::string& res_op = store_uid_sz;
+
+    for (int i = 0; i < (int)arr_size; i++) {
+        auto gep_uid = gentemp_ll("alloca_gep");
+        std::unique_ptr<LLType> gep_ty(this->ty->get_underlying_type()->compile_type());
+
+        auto gep_insn = new LLIGep(
+            std::move(gep_ty),
+            std::make_unique<LLOId>(gep_uid),
+            {new LLOConst(0), new LLOConst(1), new LLOConst(i)}
+        );
+        std::unique_ptr<LLInsn> gep_insn_ptr(gep_insn);
+        out.second->stream.push_back(
+            new LLEInsn(gep_uid, std::move(gep_insn_ptr))
+        );
+
+        auto store_uid = gentemp_ll("store");
+        if (this->exp_list[i]->compile(ctxt, out, diag, false)) {
+            diag->print_error(exp_list[i]->sr, "[ICE] Unable to compile expression");
+            return false;
+        }
+        auto store_ty = out.first.first->clone();
+        auto store_insn = std::make_unique<LLIStore>(
+            std::move(store_ty),
+            std::move(out.first.second->clone()),
+            std::make_unique<LLOId>(gep_uid)
+        );
+        out.second->stream.push_back(
+            new LLEInsn(store_uid, std::move(store_insn))
+        );
+
+        res_ty = store_ty.get();
+        res_op = store_uid;
+    }
+
+    out.first.first = res_ty;
+    out.first.second = std::make_unique<LLOId>(res_op);
 
     return true;
 }
@@ -368,7 +459,7 @@ Type* NewExpNode::typecheck(Environment& env,
                             Diagnostics* diag) const {
 
     if (exp_list.size() != 0) {
-            for (auto&x : exp_list) {
+        for (auto&x : exp_list) {
             auto exp_ty = x->typecheck(env, fname, fenv, diag);
             if (exp_ty == nullptr || exp_ty->is_index == false) {
                 diag->print_error(x->sr, "Expected `int` type for the size"
@@ -379,6 +470,28 @@ Type* NewExpNode::typecheck(Environment& env,
     }
 
     return ty.get();
+}
+
+bool NewExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
+                         bool is_lhs) const{
+
+    (void)ctxt;
+    (void)out;
+
+    if (is_lhs) {
+        diag->print_error(sr, "[ICE] Can't compile NewExpNode as LHS");
+        return false;
+    }
+
+    // TODO: Develop runtime to allocate memory on the heap.
+
+    /* ssize_t size_list = this->exp_list.size(); */
+
+    // Emit instructions to allocate the right amount of memory on the heap.
+    /* if (size_list == 0) */
+
+    diag->print_error(sr, "[ICE] NewExpNode unimplemented");
+    return false;
 }
 
 ///===-------------------------------------------------------------------===///
@@ -421,6 +534,73 @@ Type* IndexExpNode::typecheck(Environment& env,
     }
 
     return exp_type->get_underlying_type();
+}
+
+bool IndexExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
+                           bool is_lhs) const{
+
+    // TODO: Develop runtime to check for array index out of range.
+    // TODO: Implement indexing into multi-dimensional arrays.
+
+    if (this->exp->compile(ctxt, out, diag, false) == false) {
+        diag->print_error(exp->sr, "[ICE] Unable to compile expression");
+        return false;
+    }
+
+    ssize_t idx_list_size = this->idx_list.size();
+
+    if (idx_list_size > 1) {
+        diag->print_error(sr, "[ICE] Multi-dimensional array indexing unimplemented");
+        return false;
+    }
+
+    // Gep to get a pointer for a particular index.
+    auto gep_ty = out.first.first->clone();
+    auto gep_op = out.first.second->clone();
+
+    if (this->idx_list[0]->compile(ctxt, out, diag, false) == false) {
+        diag->print_error(idx_list[0]->sr, "[ICE] Unable to compile expression");
+        return false;
+    }
+
+    auto idx_op = out.first.second->clone();
+
+    auto gep_insn = new LLIGep(
+        std::move(gep_ty),
+        std::move(gep_op),
+        {new LLOConst(0), new LLOConst(1), idx_op.get()}
+    );
+    std::unique_ptr<LLInsn> gep_insn_ptr(gep_insn);
+    auto gep_uid = gentemp_ll("index_gep");
+    out.second->stream.push_back(
+        new LLEInsn(gep_uid, std::move(gep_insn_ptr))
+    );
+
+    // If `is_lhs` is set, then return without the load instruction.
+    if (is_lhs) {
+        out.first.first = gep_ty.get();
+        out.first.second = gep_op->clone();
+        return true;
+    }
+
+    auto res_uid = gentemp_ll("index_load");
+
+    if (gep_ty->get_underlying_type() == nullptr) {
+        diag->print_error(sr, "[ICE] Unable to index into expression, due to"
+                              " base type not being indexable");
+        return false;
+    }
+
+    auto load_ty = gep_ty->get_underlying_type()->clone();
+
+    auto load_insn = std::make_unique<LLILoad>(std::move(load_ty),
+        std::move(gep_op->clone()));
+
+    out.second->stream.push_back(new LLEInsn(res_uid, std::move(load_insn)));
+    out.first.first = load_ty.get();
+    out.first.second = std::make_unique<LLOId>(res_uid);
+
+    return true;
 }
 
 ///===-------------------------------------------------------------------===///
@@ -542,6 +722,180 @@ Type* BinopExpNode::typecheck(Environment& env,
     return left_type;
 }
 
+std::unique_ptr<LLType> BinopExpNode::ll_return_bop_type() const {
+    switch (this->binop) {
+        case BinopType::BINOP_PLUS:
+        case BinopType::BINOP_MINUS:
+        case BinopType::BINOP_MULT:
+        case BinopType::BINOP_DIVIDE:
+        case BinopType::BINOP_MODULUS:
+        case BinopType::BINOP_LSHIFT:
+        case BinopType::BINOP_RSHIFT:
+        case BinopType::BINOP_BITAND:
+        case BinopType::BINOP_BITOR:
+        case BinopType::BINOP_BITXOR:
+            return std::make_unique<LLTi64>();
+
+        case BinopType::BINOP_LT:
+        case BinopType::BINOP_LTE:
+        case BinopType::BINOP_GT:
+        case BinopType::BINOP_GTE:
+        case BinopType::BINOP_EQEQUAL:
+        case BinopType::BINOP_NEQUAL:
+        case BinopType::BINOP_LOGAND:
+        case BinopType::BINOP_LOGOR:
+            return std::make_unique<LLTi1>();
+
+        default:
+            return nullptr;
+    }
+}
+
+bool BinopExpNode::ll_is_cond() const {
+    switch (this->binop) {
+        case BinopType::BINOP_PLUS:
+        case BinopType::BINOP_MINUS:
+        case BinopType::BINOP_MULT:
+        case BinopType::BINOP_DIVIDE:
+        case BinopType::BINOP_MODULUS:
+        case BinopType::BINOP_LSHIFT:
+        case BinopType::BINOP_RSHIFT:
+        case BinopType::BINOP_BITAND:
+        case BinopType::BINOP_BITOR:
+        case BinopType::BINOP_BITXOR:
+        case BinopType::BINOP_LOGAND:
+        case BinopType::BINOP_LOGOR:
+            return false;
+
+        case BinopType::BINOP_LT:
+        case BinopType::BINOP_LTE:
+        case BinopType::BINOP_GT:
+        case BinopType::BINOP_GTE:
+        case BinopType::BINOP_EQEQUAL:
+        case BinopType::BINOP_NEQUAL:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+bool BinopExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
+                           bool is_lhs) const {
+    if (is_lhs) {
+        diag->print_error(sr, "[ICE] Unable to compile BinopExpNode as LHS");
+        return false;
+    }
+
+    if (this->left->compile(ctxt, out, diag, false) == false) {
+        diag->print_error(this->left->sr, "[ICE] Unable to compile expression");
+        return false;
+    }
+
+    auto lhs_ty = out.first.first->clone();
+    auto lhs_op = out.first.second->clone();
+
+    if (this->right->compile(ctxt, out, diag, false) == false) {
+        diag->print_error(this->right->sr, "[ICE] Unable to compile expression");
+        return false;
+    }
+
+    auto rhs_ty = out.first.first->clone();
+    auto rhs_op = out.first.second->clone();
+    auto bop_ty = this->ll_return_bop_type();
+
+    if (!this->ll_is_cond()) {
+        LLBinopType ll_bop = LLBinopType::LLBINOP_ADD;
+
+        switch (this->binop) {
+            case BinopType::BINOP_PLUS:
+                ll_bop = LLBinopType::LLBINOP_ADD;
+                break;
+            case BinopType::BINOP_MINUS:
+                ll_bop = LLBinopType::LLBINOP_SUB;
+                break;
+            case BinopType::BINOP_MULT:
+                ll_bop = LLBinopType::LLBINOP_MULT;
+                break;
+            case BinopType::BINOP_DIVIDE:
+                ll_bop = LLBinopType::LLBINOP_DIVIDE;
+                break;
+            case BinopType::BINOP_MODULUS:
+                ll_bop = LLBinopType::LLBINOP_REM;
+                break;
+            case BinopType::BINOP_LSHIFT:
+                ll_bop = LLBinopType::LLBINOP_LSHIFT;
+                break;
+            case BinopType::BINOP_RSHIFT:
+                ll_bop = LLBinopType::LLBINOP_RSHIFT;
+                break;
+            case BinopType::BINOP_BITAND:
+                ll_bop = LLBinopType::LLBINOP_BITAND;
+                break;
+            case BinopType::BINOP_BITOR:
+                ll_bop = LLBinopType::LLBINOP_BITOR;
+                break;
+            case BinopType::BINOP_BITXOR:
+                ll_bop = LLBinopType::LLBINOP_BITXOR;
+                break;
+            case BinopType::BINOP_LOGAND:
+                ll_bop = LLBinopType::LLBINOP_BITAND;
+                break;
+            case BinopType::BINOP_LOGOR:
+                ll_bop = LLBinopType::LLBINOP_BITOR;
+                break;
+            default:
+                break;
+        }
+
+        auto res_uid = gentemp_ll("bop");
+        out.first.first = bop_ty.get();
+        out.first.second = std::make_unique<LLOId>(res_uid);
+
+        auto binop_insn = std::make_unique<LLIBinop>(ll_bop, std::move(bop_ty),
+            std::move(lhs_op), std::move(rhs_op));
+
+        out.second->stream.push_back(new LLEInsn(res_uid, std::move(binop_insn)));
+
+    } else {
+        LLCondType ll_cond = LLCondType::LLCOND_EQUAL;
+
+        switch (this->binop) {
+            case BinopType::BINOP_LT:
+                ll_cond = LLCondType::LLCOND_LT;
+                break;
+            case BinopType::BINOP_LTE:
+                ll_cond = LLCondType::LLCOND_LTE;
+                break;
+            case BinopType::BINOP_GT:
+                ll_cond = LLCondType::LLCOND_GT;
+                break;
+            case BinopType::BINOP_GTE:
+                ll_cond = LLCondType::LLCOND_GTE;
+                break;
+            case BinopType::BINOP_EQEQUAL:
+                ll_cond = LLCondType::LLCOND_EQUAL;
+                break;
+            case BinopType::BINOP_NEQUAL:
+                ll_cond = LLCondType::LLCOND_NEQUAL;
+                break;
+            default:
+                break;
+        }
+
+        auto res_uid = gentemp_ll("icmp");
+        out.first.first = bop_ty.get();
+        out.first.second = std::make_unique<LLOId>(res_uid);
+
+        auto icmp_insn = std::make_unique<LLIIcmp>(ll_cond, std::move(bop_ty),
+            std::move(lhs_op), std::move(rhs_op));
+
+        out.second->stream.push_back(new LLEInsn(res_uid, std::move(icmp_insn)));
+    }
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// UnopExpNode
 ///===-------------------------------------------------------------------===///
@@ -625,6 +979,86 @@ Type* UnopExpNode::typecheck(Environment& env,
     }
 }
 
+bool UnopExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
+                           bool is_lhs) const {
+    if (is_lhs) {
+        diag->print_error(sr, "[ICE] Unable to compile UnopExpNode as LHS");
+        return false;
+    }
+
+    if (this->exp->compile(ctxt, out, diag, false) == false) {
+        diag->print_error(this->exp->sr, "[ICE] Unable to compile expression");
+        return false;
+    }
+
+    auto exp_ty = out.first.first->clone();
+    auto exp_op = out.first.second->clone();
+
+    auto res_uid = gentemp_ll("unop");
+    LLInsn* insn = nullptr;
+
+    switch (this->uop) {
+        case UnopType::UNOP_NEG: {
+            auto insn_ty = std::make_unique<LLTi64>();
+            out.first.first = insn_ty.get();
+            insn = new LLIBinop(LLBinopType::LLBINOP_BITXOR,
+                                std::move(insn_ty),
+                                std::move(exp_op),
+                                std::make_unique<LLOConst>(-1));
+        }
+
+        case UnopType::UNOP_NOT: {
+            auto insn_ty = std::make_unique<LLTi1>();
+            out.first.first = insn_ty.get();
+            insn = new LLIIcmp(LLCondType::LLCOND_EQUAL,
+                                std::move(insn_ty),
+                                std::move(exp_op),
+                                std::make_unique<LLOConst>(1));
+
+        }
+
+        case UnopType::UNOP_DEREF: {
+            auto insn_ty = exp_ty->get_underlying_type()->clone();
+            out.first.first = insn_ty.get();
+
+            auto load_ty = insn_ty->clone();
+            insn = new LLILoad(
+                std::move(load_ty),
+                std::move(exp_op->clone())
+            );
+
+            break;
+        }
+
+        case UnopType::UNOP_ADDROF: {
+            auto insn_ty = std::make_unique<LLTPtr>(std::move(exp_ty->clone()));
+            out.first.first = insn_ty.get();
+
+            auto alloca_uid = gentemp_ll("alloca_unop");
+            auto alloca_insn = std::make_unique<LLIAlloca>(
+                std::move(insn_ty->clone()), ""
+            );
+            out.second->stream.push_back(new LLEInsn(alloca_uid, std::move(alloca_insn)));
+
+            auto store_uid = gentemp_ll("store");
+            insn = new LLIStore(
+                std::move(exp_ty->clone()),
+                std::move(exp_op->clone()),
+                std::make_unique<LLOId>(alloca_uid)
+            );
+
+            break;
+        }
+    }
+
+    out.first.second = std::make_unique<LLOId>(res_uid);
+
+    std::unique_ptr<LLInsn> insn_ptr(insn);
+    out.second->stream.push_back(new LLEInsn(res_uid, std::move(insn_ptr)));
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// FunCallExpNode
 ///===-------------------------------------------------------------------===///
@@ -688,4 +1122,54 @@ Type* FunCallExpNode::typecheck(Environment& env,
     }
 
     return ret_type;
+}
+
+bool FunCallExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
+                             bool is_lhs) const {
+
+    if (is_lhs) {
+        diag->print_error(sr, "[ICE] Unable to compile FunCallExpNode as LHS");
+        return false;
+    }
+
+    std::vector<std::pair<LLType*, LLOperand*>> ty_arg_list {};
+
+    for (auto arg: this->func_args) {
+        if (arg->compile(ctxt, out, diag, false) == false) {
+            diag->print_error(arg->sr, "[ICE] Unable to compile expression");
+            return false;
+        }
+        ty_arg_list.push_back({out.first.first->clone().release(),
+                out.first.second->clone().release()});
+    }
+
+    if (ctxt.find(this->func_name) ==  ctxt.end()) {
+        diag->print_error(sr, "[ICE] Call to unknown function during compilation");
+        return false;
+    }
+
+    if (ctxt[this->func_name].first->get_underlying_type() == nullptr) {
+        diag->print_error(sr, "[ICE] Expected pointer type during"
+                            " compiling a FunCallExpNode");
+        return false;
+    }
+
+    auto call_ty_raw = ctxt[this->func_name].first->get_underlying_type()->get_return_type();
+
+    if (call_ty_raw == nullptr) {
+        diag->print_error(sr, "[ICE] Expected pointer to a function type during"
+                            " compiling a FunCallExpNode");
+        return false;
+    }
+
+    auto call_ty = call_ty_raw->clone();
+
+    auto call_uid = gentemp_ll("funcall");
+    auto call_insn = std::make_unique<LLICall>(
+        std::move(call_ty),
+        std::make_unique<LLOGid>(this->func_name),
+        ty_arg_list
+    );
+
+    return true;
 }

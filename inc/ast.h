@@ -288,8 +288,8 @@ public:
 class NewExpNode : public ExpNode {
 private:
     std::unique_ptr<Type> ty;
-    std::vector<ExpNode*> exp_list; // If nullptr then just one elem of primitive
-                                  // type.
+    std::vector<ExpNode*> exp_list; // If empty then just one elem of primitive
+                                    // type.
 
 public:
     NewExpNode(std::unique_ptr<Type> _ty,
@@ -346,6 +346,8 @@ public:
     void print_node(int indent) const override;
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
+    std::unique_ptr<LLType> ll_return_bop_type() const;
+    bool ll_is_cond() const;
     bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, bool is_lhs) const override;
 };
 
