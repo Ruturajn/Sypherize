@@ -38,7 +38,7 @@ bool NumberExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
 
     out.first.first = ctxt["int"].first;
 
-    auto num_op = std::make_unique<LLOId>(gentemp_ll("num_exp"));
+    auto num_op = std::make_unique<LLOConst>(this->val);
     out.first.second = std::move(num_op);
     return true;
 }
@@ -206,7 +206,7 @@ bool NullExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
 
     auto null_ty = this->ty->compile_type();
     out.first.first = null_ty;
-    out.first.second = nullptr;
+    out.first.second = std::make_unique<LLONull>();
 
     return true;
 }
@@ -261,15 +261,16 @@ bool IdExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
 
     out.first.first = ctxt[this->val].first;
 
-    out.first.second = std::move(ctxt[this->val].second->clone());
 
     auto res_uid = gentemp_ll("id_exp");
+    out.first.second = std::make_unique<LLOId>(res_uid);
 
     std::unique_ptr<LLType> load_ty(new LLTPtr(ctxt[this->val].first->clone()));
     auto load_insn = std::make_unique<LLILoad>(std::move(load_ty),
         std::move(ctxt[this->val].second->clone()));
 
-    out.second->stream.push_back(new LLEInsn(res_uid, std::move(load_insn)));
+    auto elem = new LLEInsn(res_uid, std::move(load_insn));
+    out.second->stream.push_back(elem);
 
     return true;
 }

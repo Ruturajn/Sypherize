@@ -95,7 +95,10 @@ bool FunDecl::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
         }
     }
 
-    ctxt[this->fname] = {new LLTPtr(std::move(func_ty->clone())), new LLOGid(this->fname)};
+    ctxt[this->fname] = {
+        new LLTPtr(std::move(fun_ctxt[this->fname].first->clone())),
+        new LLOGid(this->fname)
+    };
 
     return true;
 }

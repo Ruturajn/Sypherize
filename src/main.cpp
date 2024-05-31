@@ -1,9 +1,10 @@
 #include <fstream>
 #include <iostream>
+#include "../inc/cmdops.h"
 #include "../inc/lexer.h"
 #include "../inc/parser.h"
 #include "../inc/typechecker.h"
-#include "../inc/cmdops.h"
+#include "../inc/frontend.h"
 
 int main(int argc, char* argv[]) {
 
@@ -98,6 +99,11 @@ int main(int argc, char* argv[]) {
         return 0;
 
     /// Compile to LLVM
+    Frontend front(&diag, &parser.prog);
+    if (!front.compile())
+        return -1;
+
+    front.out.second->print_ll_stream(std::cout);
 
     return 0;
 }

@@ -20,7 +20,8 @@ SET(SYPHER_SRCS
     src/cmdops.cpp
     src/diagnostics.cpp
     src/lexer.cpp
-    src/llast.cpp
+    src/llast_insns_term.cpp
+    src/llast_types.cpp
     src/main.cpp
     src/parser.cpp)
 

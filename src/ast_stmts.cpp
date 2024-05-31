@@ -187,7 +187,7 @@ bool DeclStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
     auto alloca_ty = ctxt[this->id].first->clone();
     auto alloca_insn = std::make_unique<LLIAlloca>(std::move(alloca_ty), "");
 
-    auto alloca_uid = gentemp_ll("decl_alloca");
+    auto alloca_uid = gentemp_ll(this->id);
 
     out.second->stream.push_back(new LLEInsn(alloca_uid, std::move(alloca_insn)));
 

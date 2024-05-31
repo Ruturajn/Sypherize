@@ -107,7 +107,10 @@ private:
 
 public:
     LLTPtr(std::unique_ptr<LLType> _ty) : ty(std::move(_ty)) {}
-    void print_ll_type(std::ostream& os) const override;
+    void print_ll_type(std::ostream& os) const override {
+        ty->print_ll_type(os);
+        os << "*";
+    }
     bool operator==(const LLType& other) const override;
     LLType* get_underlying_type() const override { return ty.get(); }
     std::unique_ptr<LLType> clone() const override {
@@ -130,14 +133,7 @@ public:
     void print_ll_type(std::ostream& os) const override;
     bool operator==(const LLType& other) const override;
     LLType* get_underlying_type() const override { return nullptr; }
-    std::unique_ptr<LLType> clone() const override {
-        std::vector<LLType*> clone_ty_list {};
-
-        for (auto elem: ty_list)
-            clone_ty_list.push_back(elem->clone().release());
-
-        return std::make_unique<LLTStruct>(clone_ty_list);
-    }
+    std::unique_ptr<LLType> clone() const override;
 };
 
 class LLTArray : public LLType {
@@ -186,6 +182,7 @@ public:
     }
 };
 
+/*
 class LLTNamed : public LLType {
 private:
     std::string ty_name;
@@ -196,6 +193,7 @@ public:
     bool operator==(const LLType& other) const override;
     LLType* get_underlying_type() const override { return nullptr; }
 };
+*/
 
 ///===-------------------------------------------------------------------===///
 /// LLVM IR Operands
@@ -237,7 +235,7 @@ private:
 
 public:
     LLOGid(const std::string& _id) : id(_id) {}
-    void print_ll_op(std::ostream& os) const override { os << id; }
+    void print_ll_op(std::ostream& os) const override { os << "@" << id; }
     std::unique_ptr<LLOperand> clone() const override {
         return std::make_unique<LLOGid>(this->id);
     }
@@ -249,7 +247,7 @@ private:
 
 public:
     LLOId(const std::string& _uid) : uid(_uid) {}
-    void print_ll_op(std::ostream& os) const override { os << uid; }
+    void print_ll_op(std::ostream& os) const override { os << "%" << uid; }
     std::unique_ptr<LLOperand> clone() const override {
         return std::make_unique<LLOId>(this->uid);
     }
@@ -457,7 +455,7 @@ public:
         delete term.second;
     }
 
-    void print_ll_block(std::ostream& os) const;
+    /* void print_ll_block(std::ostream& os) const; */
 };
 
 ///===-------------------------------------------------------------------===///
@@ -479,7 +477,7 @@ public:
             delete elem.second;
     }
 
-    void print_ll_cfg(std::ostream& os) const;
+    /* void print_ll_cfg(std::ostream& os) const; */
 };
 
 ///===-------------------------------------------------------------------===///
@@ -517,12 +515,12 @@ class LLGInit {
 public:
     LLGInit() = default;
     virtual ~LLGInit() = default;
-    virtual void print_ll_ginit(std::ostream& os) const = 0;
+    /* virtual void print_ll_ginit(std::ostream& os) const = 0; */
 };
 
 class LLGNull : public LLGInit {
 public:
-    void print_ll_ginit(std::ostream& os) const override;
+    /* void print_ll_ginit(std::ostream& os) const override; */
 };
 
 class LLGGid : public LLGInit {
@@ -531,7 +529,7 @@ private:
 
 public:
     LLGGid(const std::string& _gid) : gid(_gid) {}
-    void print_ll_ginit(std::ostream& os) const override;
+    /* void print_ll_ginit(std::ostream& os) const override; */
 };
 
 class LLGInt : public LLGInit {
@@ -540,7 +538,7 @@ private:
 
 public:
     LLGInt(ssize_t _val) : val(_val) {}
-    void print_ll_ginit(std::ostream& os) const override;
+    /* void print_ll_ginit(std::ostream& os) const override; */
 };
 
 class LLGString : public LLGInit {
@@ -549,7 +547,7 @@ private:
 
 public:
     LLGString(const std::string& _val) : val(_val) {}
-    void print_ll_ginit(std::ostream& os) const override;
+    /* void print_ll_ginit(std::ostream& os) const override; */
 };
 
 class LLGArray : public LLGInit {
@@ -567,7 +565,7 @@ public:
         }
     }
 
-    void print_ll_ginit(std::ostream& os) const override;
+    /* void print_ll_ginit(std::ostream& os) const override; */
 };
 
 class LLGStruct : public LLGInit {
@@ -585,7 +583,7 @@ public:
         }
     }
 
-    void print_ll_ginit(std::ostream& os) const override;
+    /* void print_ll_ginit(std::ostream& os) const override; */
 };
 
 class LLGBitcast : public LLGInit {
@@ -600,7 +598,7 @@ public:
                std::unique_ptr<LLType> _to_ty)
         : from_ty(std::move(_from_ty)), ginit(std::move(_ginit)),
             to_ty(std::move(_to_ty)) {}
-    void print_ll_ginit(std::ostream& os) const override;
+    /* void print_ll_ginit(std::ostream& os) const override; */
 };
 
 ///===-------------------------------------------------------------------===///
@@ -615,7 +613,7 @@ private:
 public:
     LLGDecl(std::unique_ptr<LLType> _ty, std::unique_ptr<LLGInit> _ginit)
         : ty(std::move(_ty)), ginit(std::move(_ginit)) {}
-    void print_ll_gdecl(std::ostream& os) const;
+    /* void print_ll_gdecl(std::ostream& os) const; */
 };
 
 ///===-------------------------------------------------------------------===///
@@ -640,7 +638,7 @@ public:
             delete elem.second;
     }
 
-    void print_ll_prog(std::ostream& os) const;
+    /* void print_ll_prog(std::ostream& os) const; */
 };
 
 ///===-------------------------------------------------------------------===///
@@ -651,7 +649,7 @@ class LLElt {
 public:
     LLElt() = default;
     virtual ~LLElt() = default;
-    virtual void print_ll_elt(std::ostream& os) const;
+    virtual void print_ll_elt(std::ostream& os) const = 0;
 };
 
 class LLELables : public LLElt {
@@ -694,17 +692,6 @@ public:
     void print_ll_elt(std::ostream& os) const override;
 };
 
-class LLEEntry : public LLElt {
-private:
-    std::string id;
-    std::unique_ptr<LLInsn> insn;
-
-public:
-    LLEEntry(const std::string& _uid, std::unique_ptr<LLInsn> _insn)
-        : id(_uid), insn(std::move(_insn)) {}
-    void print_ll_elt(std::ostream& os) const override;
-};
-
 ///===-------------------------------------------------------------------===///
 /// LLVM IR Instruction Stream
 ///===-------------------------------------------------------------------===///
@@ -719,7 +706,10 @@ public:
             delete elem;
     }
 
-    void print_ll_stream() const;
+    void print_ll_stream(std::ostream& os) const {
+        for (auto elem: stream)
+            elem->print_ll_elt(os);
+    }
 };
 
 #endif // __LLAST_H__

@@ -16,7 +16,6 @@ public:
 
     Frontend(Diagnostics* _diag, AST::Program* _prog)
         : ctxt({}), out({}), diag(_diag), prog(_prog) {
-        const char* global_env = "__global__";
         ctxt["int"] = {new LLTi64, nullptr};
         ctxt["string"] = {new LLTPtr(std::make_unique<LLTi8>()), nullptr};
         ctxt["bool"] = {new LLTi1, nullptr};
@@ -27,9 +26,12 @@ public:
         delete ctxt["int"].first;
         delete ctxt["string"].first;
         delete ctxt["bool"].first;
+
+        delete out.second;
     }
 
     bool compile() {
+        out.second = new LLStream();
         return prog->compile(ctxt, out, diag);
     }
 };
