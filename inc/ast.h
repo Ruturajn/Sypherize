@@ -633,7 +633,7 @@ public:
     void print_prog() const;
     bool typecheck(Environment& env, FuncEnvironment& fenv,
                    Diagnostics *diag) const;
-    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag);
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const;
 };
 
 } // namespace AST

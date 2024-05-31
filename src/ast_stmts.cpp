@@ -51,6 +51,40 @@ bool AssnStmtNode::typecheck(Environment& env, const std::string& fname,
     return true;
 }
 
+bool AssnStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
+
+    if (this->lhs->compile(ctxt, out, diag, true) == false) {
+        diag->print_error(this->lhs->sr, "[ICE] Unable to compile expression"
+                            " as LHS during AssnStmtNode");
+        return false;
+    }
+
+    auto lhs_op = out.first.second->clone();
+
+    if (this->rhs->compile(ctxt, out, diag, true) == false) {
+        diag->print_error(this->rhs->sr, "[ICE] Unable to compile expression"
+                            " during AssnStmtNode");
+        return false;
+    }
+
+    auto rhs_ty = out.first.first->clone();
+    auto rhs_op = out.first.second->clone();
+
+    // Emit store
+    auto store_ty = std::move(rhs_ty);
+    auto store_insn = std::make_unique<LLIStore>(
+        std::move(store_ty),
+        std::move(rhs_op),
+        std::move(lhs_op)
+    );
+
+    auto res_uid = gentemp_ll("assn_stmt");
+
+    out.second->stream.push_back(new LLEInsn(res_uid, std::move(store_insn)));
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// DeclStmtNode
 ///===-------------------------------------------------------------------===///
@@ -143,6 +177,41 @@ bool DeclStmtNode::typecheck(Environment& env, const std::string& fname,
     return true;
 }
 
+bool DeclStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
+
+    auto id_uid = gentemp_ll(this->id);
+
+    ctxt[this->id].first = this->ty->compile_type();
+    ctxt[this->id].second = new LLOId(id_uid);
+
+    auto alloca_ty = ctxt[this->id].first->clone();
+    auto alloca_insn = std::make_unique<LLIAlloca>(std::move(alloca_ty), "");
+
+    auto alloca_uid = gentemp_ll("decl_alloca");
+
+    out.second->stream.push_back(new LLEInsn(alloca_uid, std::move(alloca_insn)));
+
+    if (this->exp->compile(ctxt, out, diag, false) == false) {
+        diag->print_error(this->exp->sr, "[ICE] Unable to compile expression");
+        return false;
+    }
+
+    auto store_ty = out.first.first->clone();
+    auto store_op = out.first.second->clone();
+
+    auto store_insn = std::make_unique<LLIStore>(
+        std::move(store_ty),
+        std::move(store_op),
+        std::make_unique<LLOId>(alloca_uid)
+    );
+
+    auto res_uid = gentemp_ll("decl_res");
+
+    out.second->stream.push_back(new LLEInsn(res_uid, std::move(store_insn)));
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// SCallStmtNode
 ///===-------------------------------------------------------------------===///
@@ -204,6 +273,50 @@ bool SCallStmtNode::typecheck(Environment& env, const std::string& fname,
     return true;
 }
 
+bool SCallStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
+
+    std::vector<std::pair<LLType*, LLOperand*>> ty_arg_list {};
+
+    for (auto arg: this->fargs) {
+        if (arg->compile(ctxt, out, diag, false) == false) {
+            diag->print_error(arg->sr, "[ICE] Unable to compile expression");
+            return false;
+        }
+        ty_arg_list.push_back({out.first.first->clone().release(),
+                out.first.second->clone().release()});
+    }
+
+    if (ctxt.find(this->fname) ==  ctxt.end()) {
+        diag->print_error(sr, "[ICE] Call to unknown function during compilation");
+        return false;
+    }
+
+    if (ctxt[this->fname].first->get_underlying_type() == nullptr) {
+        diag->print_error(sr, "[ICE] Expected pointer type during"
+                            " compiling a FunCallExpNode");
+        return false;
+    }
+
+    auto call_ty_raw = ctxt[this->fname].first->get_underlying_type()->get_return_type();
+
+    if (call_ty_raw == nullptr) {
+        diag->print_error(sr, "[ICE] Expected pointer to a function type during"
+                            " compiling a FunCallExpNode");
+        return false;
+    }
+
+    auto call_ty = call_ty_raw->clone();
+
+    auto call_uid = gentemp_ll("funcall");
+    auto call_insn = std::make_unique<LLICall>(
+        std::move(call_ty),
+        std::make_unique<LLOGid>(this->fname),
+        ty_arg_list
+    );
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// RetStmtNode
 ///===-------------------------------------------------------------------===///
@@ -261,6 +374,31 @@ bool RetStmtNode::typecheck(Environment& env, const std::string& fname,
     return true;
 }
 
+bool RetStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
+
+    if (exp == nullptr) {
+        auto ret_ty = std::make_unique<LLTVoid>();
+        out.second->stream.push_back(new LLETerm(
+            std::make_unique<LLTermRet>(std::move(ret_ty), nullptr))
+        );
+        return true;
+    }
+
+    if (this->exp->compile(ctxt, out, diag, false) == false) {
+        diag->print_error(this->exp->sr, "[ICE] Unable to compile expression");
+        return false;
+    }
+
+    auto ret_op = out.first.second->clone();
+    auto ret_ty = out.first.first->clone();
+
+    out.second->stream.push_back(new LLETerm(
+        std::make_unique<LLTermRet>(std::move(ret_ty), std::move(ret_op)))
+    );
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// IfStmtNode
 ///===-------------------------------------------------------------------===///
@@ -313,6 +451,59 @@ bool IfStmtNode::typecheck(Environment& env, const std::string& fname,
         if (s->typecheck(env_else, fname, fenv, diag) == false)
             return false;
     }
+
+    return true;
+}
+
+bool IfStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
+
+    // If Condition
+    LLCtxt if_ctxt = ctxt;
+
+    if (this->cond->compile(if_ctxt, out, diag, false) == false) {
+        diag->print_error(this->cond->sr, "[ICE] Unable to compile expression");
+        return false;
+    }
+
+    auto cond_ty = out.first.first->clone();
+    auto cond_op = out.first.second->clone();
+
+    auto true_lbl = gentemp_ll("if_then");
+    auto else_lbl = gentemp_ll("if_else");
+    auto merge_lbl = gentemp_ll("if_merge");
+
+    auto cbr_term = std::make_unique<LLTermCbr>(
+        std::move(cond_op),
+        true_lbl,
+        else_lbl
+    );
+    out.second->stream.push_back(new LLETerm(std::move(cbr_term)));
+
+    // If Then body
+    out.second->stream.push_back(new LLELables(true_lbl));
+    for (auto s : this->then_body) {
+        if (s->compile(if_ctxt, out, diag) == false) {
+            diag->print_error(s->sr, "[ICE] Unable to compile stmt");
+            return false;
+        }
+    }
+    auto br_term = std::make_unique<LLTermBr>(merge_lbl);
+    out.second->stream.push_back(new LLETerm(std::move(br_term)));
+
+    // Else body
+    out.second->stream.push_back(new LLELables(else_lbl));
+    LLCtxt else_ctxt = ctxt;
+    for (auto s : this->else_body) {
+        if (s->compile(else_ctxt, out, diag) == false) {
+            diag->print_error(s->sr, "[ICE] Unable to compile stmt");
+            return false;
+        }
+    }
+    auto else_br_term = std::make_unique<LLTermBr>(merge_lbl);
+    out.second->stream.push_back(new LLETerm(std::move(else_br_term)));
+
+    // Merge Lbl
+    out.second->stream.push_back(new LLELables(merge_lbl));
 
     return true;
 }
@@ -380,6 +571,61 @@ bool ForStmtNode::typecheck(Environment& env, const std::string& fname,
     return true;
 }
 
+bool ForStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
+
+    // For decls
+    LLCtxt for_ctxt = ctxt;
+    for (auto s : decl_list) {
+        if (s->compile(for_ctxt, out, diag) == false) {
+            diag->print_error(s->sr, "[ICE] Unable to compile stmt");
+            return false;
+        }
+    }
+    auto for_cond_lbl = gentemp_ll("for_cond");
+    out.second->stream.push_back(
+        new LLETerm(std::make_unique<LLTermBr>(for_cond_lbl))
+    );
+
+    // For Condition
+    if (this->cond->compile(for_ctxt, out, diag, false) == false) {
+        diag->print_error(this->cond->sr, "[ICE] Unable to compile expression");
+        return false;
+    }
+    auto cond_op = out.first.second->clone();
+
+    auto for_body_lbl = gentemp_ll("for_body");
+    auto for_exit_lbl = gentemp_ll("for_exit");
+
+    auto cbr_term = std::make_unique<LLTermCbr>(
+        std::move(cond_op),
+        for_body_lbl,
+        for_exit_lbl
+    );
+    out.second->stream.push_back(new LLETerm(std::move(cbr_term)));
+
+    // For Body
+    out.second->stream.push_back(new LLELables(for_body_lbl));
+    for (auto s : this->body) {
+        if (s->compile(for_ctxt, out, diag) == false) {
+            diag->print_error(s->sr, "[ICE] Unable to compile stmt");
+            return false;
+        }
+    }
+
+    if (iter->compile(for_ctxt, out, diag) == false) {
+        diag->print_error(iter->sr, "[ICE] Unable to compile stmt");
+        return false;
+    }
+
+    auto br_term = std::make_unique<LLTermBr>(for_cond_lbl);
+    out.second->stream.push_back(new LLETerm(std::move(br_term)));
+
+    // For Exit
+    out.second->stream.push_back(new LLELables(for_exit_lbl));
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// WhileStmtNode
 ///===-------------------------------------------------------------------===///
@@ -419,5 +665,48 @@ bool WhileStmtNode::typecheck(Environment& env, const std::string& fname,
             return false;
     }
 
+    return true;
+}
+
+bool WhileStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
+
+    LLCtxt while_ctxt = ctxt;
+
+    auto while_cond_lbl = gentemp_ll("while_cond");
+    out.second->stream.push_back(
+        new LLETerm(std::make_unique<LLTermBr>(while_cond_lbl))
+    );
+
+    // While Condition
+    if (this->cond->compile(while_ctxt, out, diag, false) == false) {
+        diag->print_error(this->cond->sr, "[ICE] Unable to compile expression");
+        return false;
+    }
+    auto cond_op = out.first.second->clone();
+
+    auto while_body_lbl = gentemp_ll("while_body");
+    auto while_exit_lbl = gentemp_ll("while_exit");
+
+    auto cbr_term = std::make_unique<LLTermCbr>(
+        std::move(cond_op),
+        while_body_lbl,
+        while_exit_lbl
+    );
+    out.second->stream.push_back(new LLETerm(std::move(cbr_term)));
+
+    // While Body
+    out.second->stream.push_back(new LLELables(while_body_lbl));
+    for (auto s : this->body) {
+        if (s->compile(while_ctxt, out, diag) == false) {
+            diag->print_error(s->sr, "[ICE] Unable to compile stmt");
+            return false;
+        }
+    }
+
+    auto br_term = std::make_unique<LLTermBr>(while_cond_lbl);
+    out.second->stream.push_back(new LLETerm(std::move(br_term)));
+
+    // While Exit
+    out.second->stream.push_back(new LLELables(while_exit_lbl));
     return true;
 }

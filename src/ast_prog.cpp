@@ -22,3 +22,14 @@ bool Program::typecheck(Environment& env, FuncEnvironment& fenv,
 
     return true;
 }
+
+bool Program::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
+    for (auto d : decl_list) {
+        if (d->compile(ctxt, out, diag) == false) {
+            diag->print_error(d->sr, "[ICE] Unable to compile top-level declaration");
+            return false;
+        }
+    }
+
+    return true;
+}

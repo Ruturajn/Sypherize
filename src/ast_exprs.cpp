@@ -251,6 +251,7 @@ bool IdExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
                         bool is_lhs) const{
 
     // TODO: Complile IdExpNode as LHS for supporting structs.
+    (void)is_lhs;
 
     if (ctxt.find(this->val) == ctxt.end()) {
         diag->print_error(sr, "[ICE] Encountered unknown identifier "
@@ -1005,6 +1006,7 @@ bool UnopExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
                                 std::move(insn_ty),
                                 std::move(exp_op),
                                 std::make_unique<LLOConst>(-1));
+            break;
         }
 
         case UnopType::UNOP_NOT: {
@@ -1014,7 +1016,7 @@ bool UnopExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
                                 std::move(insn_ty),
                                 std::move(exp_op),
                                 std::make_unique<LLOConst>(1));
-
+            break;
         }
 
         case UnopType::UNOP_DEREF: {
@@ -1164,12 +1166,17 @@ bool FunCallExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
 
     auto call_ty = call_ty_raw->clone();
 
+    out.first.first = call_ty.get();
+
     auto call_uid = gentemp_ll("funcall");
     auto call_insn = std::make_unique<LLICall>(
         std::move(call_ty),
         std::make_unique<LLOGid>(this->func_name),
         ty_arg_list
     );
+
+    out.first.second = std::make_unique<LLOId>(call_uid);
+    out.second->stream.push_back(new LLEInsn(call_uid, std::move(call_insn)));
 
     return true;
 }

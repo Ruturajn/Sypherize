@@ -72,6 +72,34 @@ bool FunDecl::typecheck(Environment& env, FuncEnvironment& fenv,
     return true;
 }
 
+bool FunDecl::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
+    LLCtxt fun_ctxt = ctxt;
+
+    std::unique_ptr<LLType> fun_ret_ty(this->frtype->compile_type());
+    std::vector<LLType*> arg_ty_list;
+
+    for (auto& arg: this->args) {
+        auto arg_uid = gentemp_ll(arg.second);
+        fun_ctxt[arg.second] = {arg.first->compile_type(), new LLOId(arg_uid)};
+        arg_ty_list.push_back(arg.first->compile_type());
+    }
+
+    std::unique_ptr<LLType> func_ty(new LLTFunc(arg_ty_list, std::move(fun_ret_ty)));
+
+    fun_ctxt[this->fname] = {new LLTPtr(std::move(func_ty)), new LLOGid(this->fname)};
+
+    for (auto s : block) {
+        if (s->compile(fun_ctxt, out, diag) == false) {
+            diag->print_error(s->sr, "[ICE] Unable to compile stmt");
+            return false;
+        }
+    }
+
+    ctxt[this->fname] = {new LLTPtr(std::move(func_ty->clone())), new LLOGid(this->fname)};
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// GlobalDecl
 ///===-------------------------------------------------------------------===///
@@ -132,6 +160,14 @@ bool GlobalDecl::typecheck(Environment& env, FuncEnvironment& fenv,
     }
 
     env[global_env][id] = ty.get();
+
+    return true;
+}
+
+bool GlobalDecl::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
+    (void)ctxt;
+    (void)out;
+    (void)diag;
 
     return true;
 }
