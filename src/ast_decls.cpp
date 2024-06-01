@@ -92,10 +92,13 @@ bool FunDecl::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llpro
         );
         out.second->stream.push_back(alloca_insn);
 
-        fun_ctxt[arg.second] = {arg.first->compile_type(), new LLOId(alloca_uid)};
+        std::unique_ptr<LLType> id_base_ty(arg.first->compile_type());
+        auto id_ty = std::make_unique<LLTPtr>(std::move(id_base_ty));
+
+        fun_ctxt[arg.second] = {id_ty.release(), new LLOId(alloca_uid)};
 
         // Store from the argument into the allocated space
-        auto store_ty = fun_ctxt[arg.second].first->clone();
+        auto store_ty = fun_ctxt[arg.second].first->get_underlying_type()->clone();
         auto store_insn = std::make_unique<LLIStore>(
             std::move(store_ty),
             std::make_unique<LLOId>(arg_uid),

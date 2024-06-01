@@ -78,7 +78,7 @@ bool AssnStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
         std::move(lhs_op)
     );
 
-    auto res_uid = gentemp_ll("assn_stmt");
+    auto res_uid = gentemp_ll("store");
 
     out.second->stream.push_back(new LLEInsn(res_uid, std::move(store_insn)));
 
@@ -179,8 +179,11 @@ bool DeclStmtNode::typecheck(Environment& env, const std::string& fname,
 
 bool DeclStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
 
-    ctxt[this->id].first = this->ty->compile_type();
-    auto alloca_ty = ctxt[this->id].first->clone();
+    std::unique_ptr<LLType> id_base_ty(this->ty->compile_type());
+    auto id_ty = std::make_unique<LLTPtr>(std::move(id_base_ty));
+    ctxt[this->id].first = id_ty.release();
+
+    auto alloca_ty = ctxt[this->id].first->get_underlying_type()->clone();
     auto alloca_insn = std::make_unique<LLIAlloca>(std::move(alloca_ty), "");
 
     auto alloca_uid = gentemp_ll(this->id);
@@ -202,7 +205,7 @@ bool DeclStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
         std::make_unique<LLOId>(alloca_uid)
     );
 
-    auto res_uid = gentemp_ll("decl_res");
+    auto res_uid = gentemp_ll("store");
 
 
     out.second->stream.push_back(new LLEInsn(res_uid, std::move(store_insn)));

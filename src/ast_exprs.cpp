@@ -266,7 +266,7 @@ bool IdExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     out.first.first = ctxt[this->val].first->get_underlying_type();
     out.first.second = std::make_unique<LLOId>(res_uid);
 
-    std::unique_ptr<LLType> load_ty(ctxt[this->val].first->clone());
+    std::unique_ptr<LLType> load_ty(ctxt[this->val].first->get_underlying_type()->clone());
     auto load_insn = std::make_unique<LLILoad>(std::move(load_ty),
         std::move(ctxt[this->val].second->clone()));
 
@@ -570,12 +570,12 @@ bool IndexExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     }
 
     // Gep to get a pointer for a particular index.
-    auto gep_ty = out.first.first->clone();
+    auto gep_ty = out.first.first->get_underlying_type()->clone();
     auto gep_op = out.first.second->clone();
 
     auto exp_ty = gep_ty.get();
 
-    out.first.first = gep_ty->get_underlying_type();
+    out.first.first = gep_ty.get();
 
     if (this->idx_list[0]->compile(ctxt, out, diag, false) == false) {
         diag->print_error(idx_list[0]->sr, "[ICE] Unable to compile expression");
