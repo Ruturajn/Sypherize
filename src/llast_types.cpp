@@ -46,6 +46,18 @@ bool LLTStruct::operator==(const LLType& other) const {
     return false;
 }
 
+LLType* LLTStruct::get_underlying_type() const {
+    if (ty_list.size() == 2) {
+        const LLTArray lt(0, nullptr);
+        auto type = (ty_list[1]);
+        if (typeid(*type) == typeid(lt)) {
+            const LLTArray& llarr = static_cast<const LLTArray&>(*type);
+            return llarr.get_underlying_type();
+        }
+    }
+    return nullptr;
+}
+
 std::unique_ptr<LLType> LLTStruct::clone() const {
     std::vector<LLType*> clone_ty_list {};
 

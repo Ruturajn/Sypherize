@@ -121,24 +121,6 @@ public:
     }
 };
 
-class LLTStruct : public LLType {
-private:
-    std::vector<LLType*> ty_list;
-
-public:
-    LLTStruct(std::vector<LLType*>& _ty_list) : ty_list(_ty_list) {}
-
-    ~LLTStruct() {
-        for (auto& elem: ty_list)
-            delete elem;
-    }
-
-    void print_ll_type(std::ostream& os) const override;
-    bool operator==(const LLType& other) const override;
-    LLType* get_underlying_type() const override { return nullptr; }
-    std::unique_ptr<LLType> clone() const override;
-};
-
 class LLTArray : public LLType {
 private:
     ssize_t arr_len;
@@ -156,6 +138,24 @@ public:
     void set_arr_len(ssize_t sz) override {
         arr_len = sz;
     }
+};
+
+class LLTStruct : public LLType {
+private:
+    std::vector<LLType*> ty_list;
+
+public:
+    LLTStruct(std::vector<LLType*>& _ty_list) : ty_list(_ty_list) {}
+
+    ~LLTStruct() {
+        for (auto& elem: ty_list)
+            delete elem;
+    }
+
+    void print_ll_type(std::ostream& os) const override;
+    bool operator==(const LLType& other) const override;
+    LLType* get_underlying_type() const override;
+    std::unique_ptr<LLType> clone() const override;
 };
 
 class LLTFunc : public LLType {
