@@ -5,7 +5,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.1)
 SET(GXX_FLAGS "-ggdb -Wall -Werror -Wextra -pedantic")
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GXX_FLAGS}")
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
+# set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # Set the name of the project.
 PROJECT(sypherc)
@@ -20,6 +20,7 @@ SET(SYPHER_SRCS
     src/cmdops.cpp
     src/diagnostics.cpp
     src/lexer.cpp
+    src/llast_others.cpp
     src/llast_insns_term.cpp
     src/llast_types.cpp
     src/main.cpp

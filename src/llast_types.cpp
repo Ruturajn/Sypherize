@@ -60,15 +60,15 @@ std::unique_ptr<LLType> LLTStruct::clone() const {
 ///===-------------------------------------------------------------------===///
 
 void LLTArray::print_ll_type(std::ostream& os) const {
-    os << "{ ";
+    /* os << "{ "; */
 
-    os << "i64, ";
+    /* os << "i64, "; */
 
     os << "[ " << arr_len << " x ";
 
     arr_ty->print_ll_type(os);
 
-    os << " ] }";
+    os << " ] ";// } ";
 }
 
 bool LLTArray::operator==(const LLType& other) const {
@@ -90,7 +90,17 @@ bool LLTArray::operator==(const LLType& other) const {
 ///===-------------------------------------------------------------------===///
 
 void LLTFunc::print_ll_type(std::ostream& os) const {
-    (void)os;
+    os << "(";
+
+    int arg_sz = (int)arg_ty_list.size();
+    for (int i = 0; i < arg_sz; i++) {
+        arg_ty_list[i]->print_ll_type(os);
+        if (i < arg_sz - 1)
+            os << ", ";
+    }
+
+    os << ") -> ";
+    ret_ty->print_ll_type(os);
 }
 
 bool LLTFunc::operator==(const LLType& other) const {

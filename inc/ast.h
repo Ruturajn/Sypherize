@@ -65,7 +65,7 @@ public:
     virtual Type* get_underlying_type() const = 0;
     virtual bool is_valid_binop(BinopType b) const = 0;
     virtual bool is_valid_unop(UnopType u) const = 0;
-    virtual LLType* compile_type() const = 0;
+    virtual LLType* compile_type(ssize_t arr_len = 0) const = 0;
 };
 
 class TInt : public Type {
@@ -82,7 +82,10 @@ public:
         return true;
     }
     bool is_valid_unop(UnopType u) const override;
-    LLType* compile_type() const override { return new LLTi64; }
+    LLType* compile_type(ssize_t arr_len = 0) const override {
+        (void)arr_len;
+        return new LLTi64;
+    }
 };
 
 class TBool : public Type {
@@ -95,7 +98,10 @@ public:
     Type* get_underlying_type() const override { return nullptr; }
     bool is_valid_binop(BinopType b) const override;
     bool is_valid_unop(UnopType u) const override;
-    LLType* compile_type() const override { return new LLTi1; }
+    LLType* compile_type(ssize_t arr_len = 0) const override {
+        (void)arr_len;
+        return new LLTi1;
+    }
 };
 
 class TString : public Type {
@@ -111,7 +117,8 @@ public:
         (void)u;
         return false;
     }
-    LLType* compile_type() const override {
+    LLType* compile_type(ssize_t arr_len = 0) const override {
+        (void)arr_len;
         return new LLTPtr(std::make_unique<LLTi8>());
     }
 };
@@ -133,7 +140,10 @@ public:
         (void)u;
         return false;
     }
-    LLType* compile_type() const override { return new LLTVoid; }
+    LLType* compile_type(ssize_t arr_len = 0) const override {
+        (void)arr_len;
+        return new LLTVoid;
+    }
 };
 
 class TRef : public Type {
@@ -152,7 +162,8 @@ public:
     Type* get_underlying_type() const override { return type; }
     bool is_valid_binop(BinopType b) const override;
     bool is_valid_unop(UnopType u) const override;
-    LLType* compile_type() const override {
+    LLType* compile_type(ssize_t arr_len = 0) const override {
+        (void)arr_len;
         std::unique_ptr<LLType> ty_ptr(type->compile_type());
         return new LLTPtr(std::move(ty_ptr));
     }
@@ -177,9 +188,9 @@ public:
         return false;
     }
     bool is_valid_unop(UnopType u) const override;
-    LLType* compile_type() const override {
+    LLType* compile_type(ssize_t arr_len = 0) const override {
         std::unique_ptr<LLType> arr_ty(type->compile_type());
-        std::vector<LLType*> tys {new LLTi64, new LLTArray(0, std::move(arr_ty))};
+        std::vector<LLType*> tys {new LLTi64, new LLTArray(arr_len, std::move(arr_ty))};
         return new LLTPtr(std::make_unique<LLTStruct>(tys));
     }
 };
@@ -566,16 +577,17 @@ public:
     virtual void print_decl(int indent) const = 0;
     virtual bool typecheck(Environment& env, FuncEnvironment& fenv,
                            Diagnostics* diag) const = 0;
-    virtual bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const = 0;
+    virtual bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llprog) const = 0;
 };
 
 class FunDecl : public Decls {
-public:
+private:
     std::unique_ptr<Type> frtype;
     std::string fname;
     std::vector<std::pair<Type*, std::string>> args;
     std::vector<StmtNode*> block;
 
+public:
     FunDecl(std::unique_ptr<Type> _frtype,
             const std::string& _fname,
             std::vector<std::pair<Type*, std::string>>& _args,
@@ -595,15 +607,16 @@ public:
     void print_decl(int indent) const override;
     bool typecheck(Environment& env, FuncEnvironment& fenv,
                    Diagnostics* diag) const override;
-    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llprog) const override;
 };
 
 class GlobalDecl : public Decls {
-public:
+private:
     std::unique_ptr<Type> ty;
     std::string id;
     std::unique_ptr<ExpNode> exp;
 
+public:
     GlobalDecl(std::unique_ptr<Type> _ty,
                const std::string& _id,
                std::unique_ptr<ExpNode> _exp,
@@ -613,7 +626,7 @@ public:
     void print_decl(int indent) const override;
     bool typecheck(Environment& env, FuncEnvironment& fenv,
                    Diagnostics* diag) const override;
-    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llprog) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -633,7 +646,7 @@ public:
     void print_prog() const;
     bool typecheck(Environment& env, FuncEnvironment& fenv,
                    Diagnostics *diag) const;
-    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const;
+    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llprog) const;
 };
 
 } // namespace AST

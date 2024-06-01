@@ -61,7 +61,7 @@ bool AssnStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
 
     auto lhs_op = out.first.second->clone();
 
-    if (this->rhs->compile(ctxt, out, diag, true) == false) {
+    if (this->rhs->compile(ctxt, out, diag, false) == false) {
         diag->print_error(this->rhs->sr, "[ICE] Unable to compile expression"
                             " during AssnStmtNode");
         return false;
@@ -179,16 +179,13 @@ bool DeclStmtNode::typecheck(Environment& env, const std::string& fname,
 
 bool DeclStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
 
-    auto id_uid = gentemp_ll(this->id);
-
     ctxt[this->id].first = this->ty->compile_type();
-    ctxt[this->id].second = new LLOId(id_uid);
-
     auto alloca_ty = ctxt[this->id].first->clone();
     auto alloca_insn = std::make_unique<LLIAlloca>(std::move(alloca_ty), "");
 
     auto alloca_uid = gentemp_ll(this->id);
 
+    ctxt[this->id].second = new LLOId(alloca_uid);
     out.second->stream.push_back(new LLEInsn(alloca_uid, std::move(alloca_insn)));
 
     if (this->exp->compile(ctxt, out, diag, false) == false) {
@@ -206,6 +203,7 @@ bool DeclStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
     );
 
     auto res_uid = gentemp_ll("decl_res");
+
 
     out.second->stream.push_back(new LLEInsn(res_uid, std::move(store_insn)));
 
@@ -587,6 +585,7 @@ bool ForStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
     );
 
     // For Condition
+    out.second->stream.push_back(new LLELables(for_cond_lbl));
     if (this->cond->compile(for_ctxt, out, diag, false) == false) {
         diag->print_error(this->cond->sr, "[ICE] Unable to compile expression");
         return false;

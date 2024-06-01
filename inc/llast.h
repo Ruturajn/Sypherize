@@ -51,6 +51,9 @@ public:
     virtual LLType* get_return_type() const {
         return nullptr;
     }
+    virtual void set_arr_len(ssize_t sz) {
+        (void)sz;
+    }
 };
 
 class LLTVoid : public LLType {
@@ -149,6 +152,9 @@ public:
     LLType* get_underlying_type() const override { return arr_ty.get(); }
     std::unique_ptr<LLType> clone() const override {
         return std::make_unique<LLTArray>(arr_len, arr_ty->clone());
+    }
+    void set_arr_len(ssize_t sz) override {
+        arr_len = sz;
     }
 };
 
@@ -261,7 +267,7 @@ class LLInsn {
 public:
     LLInsn() = default;
     virtual ~LLInsn() = default;
-    virtual void print_ll_insn(std::ostream& os) const = 0;
+    virtual void print_ll_insn(std::ostream& os, const std::string& uid) const = 0;
 };
 
 class LLIBinop : public LLInsn {
@@ -275,7 +281,7 @@ public:
     LLIBinop(LLBinopType _bop, std::unique_ptr<LLType> _ty,
              std::unique_ptr<LLOperand> _op1, std::unique_ptr<LLOperand> _op2)
         : bop(_bop), ty(std::move(_ty)), op1(std::move(_op1)), op2(std::move(_op2)) {}
-    void print_ll_insn(std::ostream& os) const override;
+    void print_ll_insn(std::ostream& os, const std::string& uid) const override;
 };
 
 class LLIAlloca : public LLInsn {
@@ -287,7 +293,7 @@ public:
     LLIAlloca(std::unique_ptr<LLType> _ty,
               const std::string& _size_uid)
         : ty(std::move(_ty)), size_uid(_size_uid) {}
-    void print_ll_insn(std::ostream& os) const override;
+    void print_ll_insn(std::ostream& os, const std::string& uid) const override;
 };
 
 class LLILoad : public LLInsn {
@@ -298,7 +304,7 @@ private:
 public:
     LLILoad(std::unique_ptr<LLType> _ty, std::unique_ptr<LLOperand> _op)
         : ty(std::move(_ty)), op(std::move(_op)) {}
-    void print_ll_insn(std::ostream& os) const override;
+    void print_ll_insn(std::ostream& os, const std::string& uid) const override;
 };
 
 class LLIStore : public LLInsn {
@@ -313,7 +319,7 @@ public:
              std::unique_ptr<LLOperand> _op_to)
         : ty(std::move(_ty)), op_from(std::move(_op_from)),
                 op_to(std::move(_op_to)) {}
-    void print_ll_insn(std::ostream& os) const override;
+    void print_ll_insn(std::ostream& os, const std::string& uid) const override;
 };
 
 class LLIIcmp : public LLInsn {
@@ -330,7 +336,7 @@ public:
              std::unique_ptr<LLOperand> _op2)
         : cond(_cond), ty(std::move(_ty)), op1(std::move(_op1)),
                 op2(std::move(_op2)) {}
-    void print_ll_insn(std::ostream& os) const override;
+    void print_ll_insn(std::ostream& os, const std::string& uid) const override;
 };
 
 class LLICall : public LLInsn {
@@ -344,7 +350,7 @@ public:
             std::unique_ptr<LLOperand> _op,
             std::vector<std::pair<LLType*, LLOperand*>>& _ty_arg_list)
         : ty(std::move(_ty)), op(std::move(_op)), ty_arg_list(_ty_arg_list) {}
-    void print_ll_insn(std::ostream& os) const override;
+    void print_ll_insn(std::ostream& os, const std::string& uid) const override;
 };
 
 class LLIBitcast : public LLInsn {
@@ -359,7 +365,7 @@ public:
                std::unique_ptr<LLType> _to_ty)
         : from_ty(std::move(_from_ty)),
             op(std::move(_op)), to_ty(std::move(_to_ty)) {}
-    void print_ll_insn(std::ostream& os) const override;
+    void print_ll_insn(std::ostream& os, const std::string& uid) const override;
 };
 
 class LLIGep : public LLInsn {
@@ -384,7 +390,7 @@ public:
             delete elem;
     }
 
-    void print_ll_insn(std::ostream& os) const override;
+    void print_ll_insn(std::ostream& os, const std::string& uid) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -443,19 +449,27 @@ private:
     std::pair<std::string, LLTerm*> term;
 
 public:
-    LLBlock(std::vector<std::pair<std::string, LLInsn*>>& _insn_list,
-            std::pair<std::string, LLTerm*>& _term)
-        : insn_list(_insn_list), term(_term) {}
+    LLBlock() : insn_list({}), term({}) {}
 
     ~LLBlock() {
-        for (auto &elem: insn_list) {
-            delete elem.second;
-        }
+        /* for (auto &elem: insn_list) { */
+        /*     delete elem.second; */
+        /* } */
 
-        delete term.second;
+        /* delete term.second; */
+    }
+    void add_insn(std::pair<std::string, LLInsn*>& insn) {
+        insn_list.push_back({insn.first, insn.second});
+    }
+    void add_term(std::pair<std::string, LLTerm*>& _term) {
+        if (term.second == nullptr)
+            term = _term;
+    }
+    bool is_block_empty() {
+        return insn_list.empty();
     }
 
-    /* void print_ll_block(std::ostream& os) const; */
+    void print_ll_block(std::ostream& os) const;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -463,12 +477,13 @@ public:
 ///===-------------------------------------------------------------------===///
 
 class LLCFG {
-private:
-    std::pair<LLBlock*, std::vector<std::pair<std::string, LLBlock*>>> cfg;
-
 public:
-    LLCFG(std::pair<LLBlock*, std::vector<std::pair<std::string, LLBlock*>>>& _cfg)
-        : cfg(_cfg) {}
+    std::pair<LLBlock*, std::vector<std::pair<std::string, LLBlock*>>> cfg;
+    LLBlock* curr_block;
+
+    LLCFG() : cfg({}), curr_block(new LLBlock()) {
+        cfg.first = curr_block;
+    }
 
     ~LLCFG() {
         delete cfg.first;
@@ -477,7 +492,7 @@ public:
             delete elem.second;
     }
 
-    /* void print_ll_cfg(std::ostream& os) const; */
+    void print_ll_cfg(std::ostream& os) const;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -493,9 +508,9 @@ private:
 
 public:
     LLFDecl(std::vector<LLType*>& _func_params_ty,
-            std::unique_ptr<LLType>& _func_ret_ty,
+            std::unique_ptr<LLType> _func_ret_ty,
             std::vector<std::string>& _func_params,
-            std::unique_ptr<LLCFG>& _func_cfg)
+            std::unique_ptr<LLCFG> _func_cfg)
         : func_params_ty(_func_params_ty), func_ret_ty(std::move(_func_ret_ty)),
             func_params(_func_params), func_cfg(std::move(_func_cfg)) {}
 
@@ -504,7 +519,7 @@ public:
             delete elem;
     }
 
-    void print_ll_fdecl(std::ostream& os) const;
+    void print_ll_fdecl(std::ostream& os, const std::string& gid) const;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -621,14 +636,11 @@ public:
 ///===-------------------------------------------------------------------===///
 
 class LLProg {
-private:
+public:
     std::vector<std::pair<std::string, LLGDecl*>> gdecls;
     std::vector<std::pair<std::string, LLFDecl*>> fdecls;
 
-public:
-    LLProg(std::vector<std::pair<std::string, LLGDecl*>>& _gdecls,
-           std::vector<std::pair<std::string, LLFDecl*>>& _fdecls)
-        : gdecls(_gdecls), fdecls(_fdecls) {}
+    LLProg() : gdecls({}), fdecls({}) {}
 
     ~LLProg() {
         for (auto& elem: gdecls)
@@ -638,7 +650,7 @@ public:
             delete elem.second;
     }
 
-    /* void print_ll_prog(std::ostream& os) const; */
+    void print_ll_prog(std::ostream& os) const;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -650,6 +662,7 @@ public:
     LLElt() = default;
     virtual ~LLElt() = default;
     virtual void print_ll_elt(std::ostream& os) const = 0;
+    virtual void add_to_block(LLCFG& cfg) const = 0;
 };
 
 class LLELables : public LLElt {
@@ -659,6 +672,10 @@ private:
 public:
     LLELables(const std::string& _lbl) : lbl(_lbl) {}
     void print_ll_elt(std::ostream& os) const override;
+    void add_to_block(LLCFG& cfg) const override {
+        cfg.curr_block = new LLBlock;
+        cfg.cfg.second.push_back({lbl, cfg.curr_block});
+    }
 };
 
 class LLEInsn : public LLElt {
@@ -670,6 +687,10 @@ public:
     LLEInsn(const std::string& _uid, std::unique_ptr<LLInsn> _insn)
         : uid(_uid), insn(std::move(_insn)) {}
     void print_ll_elt(std::ostream& os) const override;
+    void add_to_block(LLCFG& cfg) const override {
+        std::pair<std::string, LLInsn*> insn = {uid, this->insn.get()};
+        cfg.curr_block->add_insn(insn);
+    }
 };
 
 class LLETerm : public LLElt {
@@ -679,6 +700,11 @@ private:
 public:
     LLETerm(std::unique_ptr<LLTerm> _term) : term(std::move(_term)) {}
     void print_ll_elt(std::ostream& os) const override;
+    void add_to_block(LLCFG& cfg) const override {
+        std::pair<std::string, LLTerm*> term = {
+            gentemp_ll("tmn"), this->term.get()};
+        cfg.curr_block->add_term(term);
+    }
 };
 
 class LLEGlbl : public LLElt {
@@ -690,6 +716,9 @@ public:
     LLEGlbl(const std::string& _gid, std::unique_ptr<LLGDecl> _gdecl)
         : id(_gid), gdecl(std::move(_gdecl)) {}
     void print_ll_elt(std::ostream& os) const override;
+    void add_to_block(LLCFG& cfg) const override {
+        (void)cfg;
+    }
 };
 
 ///===-------------------------------------------------------------------===///
@@ -704,6 +733,17 @@ public:
     ~LLStream() {
         for (auto& elem: stream)
             delete elem;
+    }
+
+    void create_cfg(LLCFG& cfg) {
+        for (auto elem: stream)
+            elem->add_to_block(cfg);
+
+        if (cfg.cfg.second.empty())
+            return;
+
+        if (cfg.cfg.second[cfg.cfg.second.size() - 1].second->is_block_empty())
+            cfg.cfg.second.pop_back();
     }
 
     void print_ll_stream(std::ostream& os) const {

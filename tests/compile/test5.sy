@@ -1,0 +1,8 @@
+fun main(int: argc, string[]: argv) -> int {
+
+    int[]: g {0, 1, 2, 3, 4};
+
+    g[3] = 96;
+
+    return g[3];
+}

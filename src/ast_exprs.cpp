@@ -250,13 +250,18 @@ Type* IdExpNode::typecheck(Environment& env,
 bool IdExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
                         bool is_lhs) const{
 
-    // TODO: Complile IdExpNode as LHS for supporting structs.
-    (void)is_lhs;
-
     if (ctxt.find(this->val) == ctxt.end()) {
         diag->print_error(sr, "[ICE] Encountered unknown identifier "
                 "during compilation");
         return false;
+    }
+
+    // TODO: Complile IdExpNode as LHS for supporting structs.
+    (void)is_lhs;
+    if (is_lhs) {
+        out.first.first = ctxt[this->val].first;
+        out.first.second = ctxt[this->val].second->clone();
+        return true;
     }
 
     out.first.first = ctxt[this->val].first;
@@ -265,7 +270,7 @@ bool IdExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     auto res_uid = gentemp_ll("id_exp");
     out.first.second = std::make_unique<LLOId>(res_uid);
 
-    std::unique_ptr<LLType> load_ty(new LLTPtr(ctxt[this->val].first->clone()));
+    std::unique_ptr<LLType> load_ty(ctxt[this->val].first->clone());
     auto load_insn = std::make_unique<LLILoad>(std::move(load_ty),
         std::move(ctxt[this->val].second->clone()));
 
@@ -341,14 +346,13 @@ bool CArrExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     }
 
     // Refer to llvm/array.ll
-    // Add 1 to account for storing the array size.
     ssize_t arr_size = this->exp_list.size();
 
     // Emit alloca
-    std::unique_ptr<LLType> ll_ty(this->ty->compile_type());
+    std::unique_ptr<LLType> ll_ty(this->ty->compile_type(arr_size));
     auto alloca_uid = gentemp_ll("alloca_carr");
     auto alloca_insn = std::make_unique<LLIAlloca>(
-        std::make_unique<LLTArray>(arr_size, std::move(ll_ty)),
+        std::move(ll_ty),
         ""
     );
 
@@ -358,11 +362,11 @@ bool CArrExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
 
     // Store size
     auto gep_uid_sz = gentemp_ll("alloca_gep");
-    std::unique_ptr<LLType> gep_ty_sz(this->ty->get_underlying_type()->compile_type());
+    std::unique_ptr<LLType> gep_ty_sz(this->ty->compile_type(arr_size));
 
     auto gep_insn_sz = new LLIGep(
         std::move(gep_ty_sz),
-        std::make_unique<LLOId>(gep_uid_sz),
+        std::make_unique<LLOId>(alloca_uid),
         {new LLOConst(0), new LLOConst(0)}
     );
 
@@ -383,16 +387,16 @@ bool CArrExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     );
 
     // Then repeat gep and store until arr_size
-    LLType* res_ty = nullptr;
+    /* LLType* res_ty = nullptr; */
     std::string& res_op = store_uid_sz;
 
     for (int i = 0; i < (int)arr_size; i++) {
         auto gep_uid = gentemp_ll("alloca_gep");
-        std::unique_ptr<LLType> gep_ty(this->ty->get_underlying_type()->compile_type());
+        std::unique_ptr<LLType> gep_ty(this->ty->compile_type(arr_size));
 
         auto gep_insn = new LLIGep(
             std::move(gep_ty),
-            std::make_unique<LLOId>(gep_uid),
+            std::make_unique<LLOId>(alloca_uid),
             {new LLOConst(0), new LLOConst(1), new LLOConst(i)}
         );
         std::unique_ptr<LLInsn> gep_insn_ptr(gep_insn);
@@ -401,11 +405,12 @@ bool CArrExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
         );
 
         auto store_uid = gentemp_ll("store");
-        if (this->exp_list[i]->compile(ctxt, out, diag, false)) {
+        if (this->exp_list[i]->compile(ctxt, out, diag, false) == false) {
             diag->print_error(exp_list[i]->sr, "[ICE] Unable to compile expression");
             return false;
         }
         auto store_ty = out.first.first->clone();
+        /* res_ty = store_ty.get(); */
         auto store_insn = std::make_unique<LLIStore>(
             std::move(store_ty),
             std::move(out.first.second->clone()),
@@ -415,12 +420,11 @@ bool CArrExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
             new LLEInsn(store_uid, std::move(store_insn))
         );
 
-        res_ty = store_ty.get();
         res_op = store_uid;
     }
 
-    out.first.first = res_ty;
-    out.first.second = std::make_unique<LLOId>(res_op);
+    out.first.first = this->ty->compile_type(arr_size);
+    out.first.second = std::make_unique<LLOId>(alloca_uid);
 
     return true;
 }
@@ -544,7 +548,7 @@ bool IndexExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     // TODO: Develop runtime to check for array index out of range.
     // TODO: Implement indexing into multi-dimensional arrays.
 
-    if (this->exp->compile(ctxt, out, diag, false) == false) {
+    if (this->exp->compile(ctxt, out, diag, true) == false) {
         diag->print_error(exp->sr, "[ICE] Unable to compile expression");
         return false;
     }
@@ -560,6 +564,12 @@ bool IndexExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     auto gep_ty = out.first.first->clone();
     auto gep_op = out.first.second->clone();
 
+    auto exp_ty = gep_ty.get();
+    auto exp_op = gep_op->clone();
+
+    out.first.first = gep_ty.get();
+    out.first.second = gep_op->clone();
+
     if (this->idx_list[0]->compile(ctxt, out, diag, false) == false) {
         diag->print_error(idx_list[0]->sr, "[ICE] Unable to compile expression");
         return false;
@@ -570,7 +580,7 @@ bool IndexExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     auto gep_insn = new LLIGep(
         std::move(gep_ty),
         std::move(gep_op),
-        {new LLOConst(0), new LLOConst(1), idx_op.get()}
+        {new LLOConst(0), new LLOConst(1), idx_op.get()->clone().release()}
     );
     std::unique_ptr<LLInsn> gep_insn_ptr(gep_insn);
     auto gep_uid = gentemp_ll("index_gep");
@@ -580,26 +590,24 @@ bool IndexExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
 
     // If `is_lhs` is set, then return without the load instruction.
     if (is_lhs) {
-        out.first.first = gep_ty.get();
-        out.first.second = gep_op->clone();
         return true;
     }
 
     auto res_uid = gentemp_ll("index_load");
 
-    if (gep_ty->get_underlying_type() == nullptr) {
+    if (exp_ty->get_underlying_type() == nullptr) {
         diag->print_error(sr, "[ICE] Unable to index into expression, due to"
                               " base type not being indexable");
         return false;
     }
 
-    auto load_ty = gep_ty->get_underlying_type()->clone();
+    auto load_ty = exp_ty->get_underlying_type()->clone();
 
+    out.first.first = load_ty.get();
     auto load_insn = std::make_unique<LLILoad>(std::move(load_ty),
-        std::move(gep_op->clone()));
+        std::move(exp_op));
 
     out.second->stream.push_back(new LLEInsn(res_uid, std::move(load_insn)));
-    out.first.first = load_ty.get();
     out.first.second = std::make_unique<LLOId>(res_uid);
 
     return true;
@@ -886,10 +894,10 @@ bool BinopExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
         }
 
         auto res_uid = gentemp_ll("icmp");
-        out.first.first = bop_ty.get();
+        out.first.first = ctxt["bool"].first;
         out.first.second = std::make_unique<LLOId>(res_uid);
 
-        auto icmp_insn = std::make_unique<LLIIcmp>(ll_cond, std::move(bop_ty),
+        auto icmp_insn = std::make_unique<LLIIcmp>(ll_cond, std::move(lhs_ty),
             std::move(lhs_op), std::move(rhs_op));
 
         out.second->stream.push_back(new LLEInsn(res_uid, std::move(icmp_insn)));
@@ -1157,7 +1165,8 @@ bool FunCallExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
         return false;
     }
 
-    auto call_ty_raw = ctxt[this->func_name].first->get_underlying_type()->get_return_type();
+    auto call_ty_raw = ctxt[this->func_name].first->get_underlying_type();
+    call_ty_raw = call_ty_raw->get_return_type();
 
     if (call_ty_raw == nullptr) {
         diag->print_error(sr, "[ICE] Expected pointer to a function type during"

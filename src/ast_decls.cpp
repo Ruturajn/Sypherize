@@ -1,4 +1,5 @@
 #include "../inc/ast.h"
+#include <memory>
 
 using namespace AST;
 
@@ -72,21 +73,45 @@ bool FunDecl::typecheck(Environment& env, FuncEnvironment& fenv,
     return true;
 }
 
-bool FunDecl::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
+bool FunDecl::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llprog) const {
+
     LLCtxt fun_ctxt = ctxt;
 
     std::unique_ptr<LLType> fun_ret_ty(this->frtype->compile_type());
     std::vector<LLType*> arg_ty_list;
+    std::vector<std::string> arg_uid_list;
 
     for (auto& arg: this->args) {
         auto arg_uid = gentemp_ll(arg.second);
-        fun_ctxt[arg.second] = {arg.first->compile_type(), new LLOId(arg_uid)};
+
+        // Alloca the argument
+        auto alloca_uid = gentemp_ll("alloca_arg");
+        std::unique_ptr<LLType> alloca_type_ptr(arg.first->compile_type());
+        auto alloca_insn = new LLEInsn(alloca_uid,
+            std::make_unique<LLIAlloca>(std::move(alloca_type_ptr), "")
+        );
+        out.second->stream.push_back(alloca_insn);
+
+        fun_ctxt[arg.second] = {arg.first->compile_type(), new LLOId(alloca_uid)};
+
+        // Store from the argument into the allocated space
+        auto store_ty = fun_ctxt[arg.second].first->clone();
+        auto store_insn = std::make_unique<LLIStore>(
+            std::move(store_ty),
+            std::make_unique<LLOId>(arg_uid),
+            std::make_unique<LLOId>(alloca_uid)
+        );
+        out.second->stream.push_back(new LLEInsn(gentemp_ll("store"), std::move(store_insn)));
+
+
         arg_ty_list.push_back(arg.first->compile_type());
+        arg_uid_list.push_back(arg_uid);
     }
 
     std::unique_ptr<LLType> func_ty(new LLTFunc(arg_ty_list, std::move(fun_ret_ty)));
 
     fun_ctxt[this->fname] = {new LLTPtr(std::move(func_ty)), new LLOGid(this->fname)};
+
 
     for (auto s : block) {
         if (s->compile(fun_ctxt, out, diag) == false) {
@@ -96,9 +121,35 @@ bool FunDecl::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
     }
 
     ctxt[this->fname] = {
-        new LLTPtr(std::move(fun_ctxt[this->fname].first->clone())),
+        fun_ctxt[this->fname].first->clone().release(),
         new LLOGid(this->fname)
     };
+
+    /// CFG
+    auto cfg = new LLCFG;
+    out.second->create_cfg(*cfg);
+
+    std::vector<LLType*> arg_type_list;
+
+    for (auto& arg: this->args)
+        arg_type_list.push_back(arg.first->compile_type());
+
+    std::unique_ptr<LLType> fun_ret_ty_ptr(this->frtype->compile_type());
+
+    std::unique_ptr<LLCFG> cfg_ptr(cfg);
+
+    llprog.fdecls.push_back({
+        this->fname,
+        new LLFDecl(arg_type_list, std::move(fun_ret_ty_ptr), arg_uid_list,
+                    std::move(cfg_ptr))
+    });
+
+    /* std::cout << "\n\n"; */
+    /* out.second->print_ll_stream(std::cout); */
+    /* std::cout << "\n\n"; */
+
+    // Delete instruction stream for decl
+    out.second->stream.clear();
 
     return true;
 }
@@ -167,10 +218,11 @@ bool GlobalDecl::typecheck(Environment& env, FuncEnvironment& fenv,
     return true;
 }
 
-bool GlobalDecl::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
+bool GlobalDecl::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llprog) const {
     (void)ctxt;
     (void)out;
     (void)diag;
+    (void)llprog;
 
     return true;
 }

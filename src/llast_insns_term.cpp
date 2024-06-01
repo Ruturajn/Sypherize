@@ -4,7 +4,8 @@
 /// LLVM IR Instructions
 ///===-------------------------------------------------------------------===///
 
-void LLIBinop::print_ll_insn(std::ostream& os) const {
+void LLIBinop::print_ll_insn(std::ostream& os, const std::string& uid) const {
+    os << "\t%" << uid << " = ";
     switch (bop) {
         case LLBinopType::LLBINOP_ADD:
             os << "add";
@@ -19,11 +20,11 @@ void LLIBinop::print_ll_insn(std::ostream& os) const {
             break;
 
         case LLBinopType::LLBINOP_DIVIDE:
-            os << "udiv";
+            os << "sdiv";
             break;
 
         case LLBinopType::LLBINOP_REM:
-            os << "urem";
+            os << "srem";
             break;
 
         case LLBinopType::LLBINOP_LSHIFT:
@@ -55,7 +56,8 @@ void LLIBinop::print_ll_insn(std::ostream& os) const {
     op2->print_ll_op(os);
 }
 
-void LLIAlloca::print_ll_insn(std::ostream& os) const {
+void LLIAlloca::print_ll_insn(std::ostream& os, const std::string& uid) const {
+    os << "\t%" << uid << " = ";
     os << "alloca ";
     ty->print_ll_type(os);
 
@@ -65,7 +67,8 @@ void LLIAlloca::print_ll_insn(std::ostream& os) const {
     }
 }
 
-void LLILoad::print_ll_insn(std::ostream& os) const {
+void LLILoad::print_ll_insn(std::ostream& os, const std::string& uid) const {
+    os << "\t%" << uid << " = ";
     os << "load ";
     ty->print_ll_type(os);
     os << ", ";
@@ -75,8 +78,9 @@ void LLILoad::print_ll_insn(std::ostream& os) const {
     op->print_ll_op(os);
 }
 
-void LLIStore::print_ll_insn(std::ostream& os) const {
-    os << "store ";
+void LLIStore::print_ll_insn(std::ostream& os, const std::string& uid) const {
+    (void)uid;
+    os << "\tstore ";
     ty->print_ll_type(os);
     os << " ";
     op_from->print_ll_op(os);
@@ -87,7 +91,8 @@ void LLIStore::print_ll_insn(std::ostream& os) const {
     op_to->print_ll_op(os);
 }
 
-void LLIIcmp::print_ll_insn(std::ostream& os) const {
+void LLIIcmp::print_ll_insn(std::ostream& os, const std::string& uid) const {
+    os << "\t%" << uid << " = ";
     os << "icmp ";
 
     switch (cond) {
@@ -124,7 +129,8 @@ void LLIIcmp::print_ll_insn(std::ostream& os) const {
     op2->print_ll_op(os);
 }
 
-void LLICall::print_ll_insn(std::ostream& os) const {
+void LLICall::print_ll_insn(std::ostream& os, const std::string& uid) const {
+    os << "\t%" << uid << " = ";
     os << "call ";
     ty->print_ll_type(os);
     os << " ";
@@ -146,7 +152,8 @@ void LLICall::print_ll_insn(std::ostream& os) const {
     os << ")";
 }
 
-void LLIBitcast::print_ll_insn(std::ostream& os) const {
+void LLIBitcast::print_ll_insn(std::ostream& os, const std::string& uid) const {
+    os << "\t%" << uid << " = ";
     os << "bitcast ";
     from_ty->print_ll_type(os);
     os << " ";
@@ -155,14 +162,17 @@ void LLIBitcast::print_ll_insn(std::ostream& os) const {
     to_ty->print_ll_type(os);
 }
 
-void LLIGep::print_ll_insn(std::ostream& os) const {
+void LLIGep::print_ll_insn(std::ostream& os, const std::string& uid) const {
+    os << "\t%" << uid << " = ";
     os << "getelementptr ";
-    ty->get_underlying_type()->print_ll_type(os);
+    ty->print_ll_type(os);
     os << ", ";
     ty->print_ll_type(os);
+    os << "* ";
 
     os << " ";
     op->print_ll_op(os);
+    os << ", ";
 
     int opsz = (int)op_list.size();
     for (int i = 0; i < opsz; i++) {
@@ -192,14 +202,14 @@ void LLTermRet::print_ll_term(std::ostream& os) const {
 }
 
 void LLTermBr::print_ll_term(std::ostream& os) const {
-    os << "\tbr label " << lbl;
+    os << "\tbr label %" << lbl;
 }
 
 void LLTermCbr::print_ll_term(std::ostream& os) const {
     os << "\tbr i1 ";
     op->print_ll_op(os);
 
-    os << ", label " << true_lbl << ", label " << false_lbl;
+    os << ", label %" << true_lbl << ", label %" << false_lbl;
 }
 
 ///===-------------------------------------------------------------------===///
@@ -211,8 +221,7 @@ void LLELables::print_ll_elt(std::ostream& os) const {
 }
 
 void LLEInsn::print_ll_elt(std::ostream& os) const {
-    os << "\t%" << uid << " = ";
-    insn->print_ll_insn(os);
+    insn->print_ll_insn(os, uid);
     os << "\n";
 }
 
