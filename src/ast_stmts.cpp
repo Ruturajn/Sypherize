@@ -680,6 +680,7 @@ bool WhileStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
     );
 
     // While Condition
+    out.second->stream.push_back(new LLELables(while_cond_lbl));
     if (this->cond->compile(while_ctxt, out, diag, false) == false) {
         diag->print_error(this->cond->sr, "[ICE] Unable to compile expression");
         return false;

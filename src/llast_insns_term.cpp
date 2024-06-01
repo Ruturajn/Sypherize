@@ -174,9 +174,15 @@ void LLIGep::print_ll_insn(std::ostream& os, const std::string& uid) const {
     op->print_ll_op(os);
     os << ", ";
 
+    const LLOId lid("");
+
     int opsz = (int)op_list.size();
     for (int i = 0; i < opsz; i++) {
-        os << "i32 ";
+        auto op = op_list[i];
+        if (typeid(*op) == typeid(lid))
+            os << "i64 ";
+        else
+            os << "i32 ";
         op_list[i]->print_ll_op(os);
 
         if (i < opsz - 1)

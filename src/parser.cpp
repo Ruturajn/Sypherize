@@ -485,7 +485,14 @@ std::unique_ptr<ExpNode> Parser::parse_expr(int prev_prec) {
                             indices, make_srange(beg_pos));
                 }
 
-                return funcall;
+                if (is_next_binop()) {
+
+                    advance();
+
+                    return parse_binop(prev_prec, std::move(funcall));
+                }
+                else
+                    return funcall;
             }
 
             // Index expression

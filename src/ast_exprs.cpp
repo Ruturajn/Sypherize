@@ -499,11 +499,7 @@ bool NewExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     }
 
     // TODO: Develop runtime to allocate memory on the heap.
-
-    /* ssize_t size_list = this->exp_list.size(); */
-
     // Emit instructions to allocate the right amount of memory on the heap.
-    /* if (size_list == 0) */
 
     diag->print_error(sr, "[ICE] NewExpNode unimplemented");
     return false;

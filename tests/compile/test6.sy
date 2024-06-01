@@ -1,0 +1,17 @@
+fun main(int: argc, string[]: argv) -> int {
+
+    int[]: g {0, 1, 2, 3, 4};
+
+    int: i = 0;
+
+    int: sum = 0;
+
+    while (i < 5) {
+        sum = sum + g[i];
+        i = i + 1;
+    }
+
+    g[4] = sum;
+
+    return g[4];
+}

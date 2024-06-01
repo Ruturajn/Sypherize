@@ -1,0 +1,33 @@
+fun fib(int: n) -> int {
+    if (n < 1) {
+        return 1;
+    }
+
+    int: sum = 0;
+    int: prev = 0;
+    int: curr = 1;
+
+    for (int: i = 0; i < n; i = i + 1;) {
+        sum = prev + curr;
+        prev = curr;
+        curr = sum;
+    }
+
+    return sum;
+}
+
+fun fib_recurse(int: n) -> int {
+    if (n < 1) {
+        return 1;
+    }
+
+    return fib(n - 1) + fib(n - 2);
+}
+
+fun main(int: argc, string[]: argv) -> int {
+
+    int: fib_ans1 = fib(5);
+    int: fib_ans2 = fib_recurse(5);
+
+    return fib_ans2;
+}
