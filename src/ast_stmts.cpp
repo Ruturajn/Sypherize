@@ -367,7 +367,7 @@ bool RetStmtNode::typecheck(Environment& env, const std::string& fname,
 
     if ((*exp_ty) != (*fret)) {
         std::string err = "Expected type: " + fret->get_source_type() +
-            "for function return value";
+            " for function return value";
         diag->print_error(exp->sr, err.c_str());
         return false;
     }

@@ -1,3 +1,4 @@
+$ Iterative Fibonacci
 fun fib(int: n) -> int {
     if (n < 1) {
         return 1;
@@ -16,6 +17,7 @@ fun fib(int: n) -> int {
     return sum;
 }
 
+$ Recursive Fibonacci
 fun fib_recurse(int: n) -> int {
     if (n < 1) {
         return 1;

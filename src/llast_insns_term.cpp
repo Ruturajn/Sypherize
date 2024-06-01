@@ -135,7 +135,7 @@ void LLICall::print_ll_insn(std::ostream& os, const std::string& uid) const {
     ty->print_ll_type(os);
     os << " ";
     op->print_ll_op(os);
-    os << " (";
+    os << "(";
 
     int arg_sz = (int)ty_arg_list.size();
 

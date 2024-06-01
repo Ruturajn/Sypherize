@@ -57,10 +57,10 @@ _if_else48:
 _if_merge49:
 	%_id_exp50 = load i64, i64* %_alloca_arg43
 	%_bop51 = sub i64 %_id_exp50, 1
-	%_funcall52 = call i64 @fib (i64 %_bop51)
+	%_funcall52 = call i64 @fib(i64 %_bop51)
 	%_id_exp53 = load i64, i64* %_alloca_arg43
 	%_bop54 = sub i64 %_id_exp53, 2
-	%_funcall55 = call i64 @fib (i64 %_bop54)
+	%_funcall55 = call i64 @fib(i64 %_bop54)
 	%_bop56 = add i64 %_funcall52, %_funcall55
 	ret i64 %_bop56
 }
@@ -71,10 +71,10 @@ define i64 @main(i64 %_argc62, { i64, [ 0 x i8* ] }* %_argv65) {
 	%_alloca_arg66 = alloca { i64, [ 0 x i8* ] }*
 	store { i64, [ 0 x i8* ] }* %_argv65, { i64, [ 0 x i8* ] }** %_alloca_arg66
 	%_fib_ans168 = alloca i64
-	%_funcall69 = call i64 @fib (i64 5)
+	%_funcall69 = call i64 @fib(i64 5)
 	store i64 %_funcall69, i64* %_fib_ans168
 	%_fib_ans271 = alloca i64
-	%_funcall72 = call i64 @fib_recurse (i64 5)
+	%_funcall72 = call i64 @fib_recurse(i64 5)
 	store i64 %_funcall72, i64* %_fib_ans271
 	%_id_exp74 = load i64, i64* %_fib_ans271
 	ret i64 %_id_exp74
