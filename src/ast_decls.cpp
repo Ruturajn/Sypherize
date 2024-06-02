@@ -252,5 +252,7 @@ bool GlobalDecl::compile_global(LLCtxt& ctxt, LLGout& gout,
     for (auto& elem: gout.second)
         llprog.gdecls.push_back(elem);
 
+    gout.second.clear();
+
     return true;
 }

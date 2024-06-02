@@ -33,7 +33,7 @@ void LLGArray::print_ll_ginit(std::ostream& os) const {
             os << ", ";
     }
 
-    os << "]";
+    os << " ]";
 }
 
 void LLGStruct::print_ll_ginit(std::ostream& os) const {
@@ -50,7 +50,7 @@ void LLGStruct::print_ll_ginit(std::ostream& os) const {
             os << ", ";
     }
 
-    os << "}";
+    os << " }";
 }
 
 void LLGBitcast::print_ll_ginit(std::ostream& os) const {
@@ -123,7 +123,7 @@ void LLProg::print_ll_prog(std::ostream& os) const {
     for (int i = 0; i < gdecls_sz; i++) {
         gdecls[i].second->print_ll_gdecl(os, gdecls[i].first);
         if (i < gdecls_sz - 1)
-            os << "\n\n";
+            os << "\n";
     }
 
     int decls_sz = fdecls.size();

@@ -621,11 +621,9 @@ public:
 ///===-------------------------------------------------------------------===///
 
 class LLGDecl {
-private:
+public:
     std::unique_ptr<LLType> ty;
     std::unique_ptr<LLGInit> ginit;
-
-public:
     LLGDecl(std::unique_ptr<LLType> _ty, std::unique_ptr<LLGInit> _ginit)
         : ty(std::move(_ty)), ginit(std::move(_ginit)) {}
     void print_ll_gdecl(std::ostream& os, const std::string& gid) const;

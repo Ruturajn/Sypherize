@@ -531,6 +531,55 @@ bool CArrExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     return true;
 }
 
+bool CArrExpNode::compile_global(LLCtxt& ctxt, LLGout& gout,
+                                 Diagnostics* diag) const{
+
+    std::vector<std::pair<LLType*, LLGInit*>> ty_ginit;
+
+    for (auto& gexp: this->exp_list) {
+        if (gexp->compile_global(ctxt, gout, diag) == false) {
+            diag->print_error(gexp->sr, "[ICE] Unable to compile global expression");
+            return false;
+        }
+        ty_ginit.push_back({
+            gout.first->ty.get(),
+            gout.first->ginit.get()
+        });
+    }
+
+    ssize_t carr_len = this->exp_list.size();
+    auto carr_gid = gentemp_ll("gexp_carr");
+    auto exp_ty = this->ty->get_underlying_type()->compile_type();
+
+    std::unique_ptr<LLType> arr_ty(this->ty->compile_type(carr_len));
+    std::unique_ptr<LLType> arr_ty_wo_ptr = arr_ty->get_underlying_type()->clone();
+
+    std::vector<std::pair<LLType*, LLGInit*>> ty_ginit_list {
+        {new LLTi64, new LLGInt(carr_len)},
+        {
+            new LLTArray(carr_len, exp_ty->clone()),
+            new LLGArray(ty_ginit)
+        }
+    };
+
+    auto arr_ginit = std::make_unique<LLGStruct>(ty_ginit_list);
+
+    std::unique_ptr<LLType> struct_ty(this->ty->compile_type());
+
+    auto bitcast_init = std::make_unique<LLGBitcast>(
+        std::move(arr_ty),
+        std::make_unique<LLGGid>(carr_gid),
+        std::move(struct_ty->clone())
+    );
+
+
+    gout.first = new LLGDecl(std::move(struct_ty), std::move(bitcast_init));
+    gout.second.push_back({
+        carr_gid, new LLGDecl(std::move(arr_ty_wo_ptr), std::move(arr_ginit))});
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// NewExpNode
 ///===-------------------------------------------------------------------===///
