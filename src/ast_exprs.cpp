@@ -43,6 +43,18 @@ bool NumberExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     return true;
 }
 
+bool NumberExpNode::compile_global(LLCtxt& ctxt, LLGout& gout,
+                                   Diagnostics* diag)const {
+    (void)diag;
+    (void)ctxt;
+
+    gout.first = new LLGDecl(
+            std::make_unique<LLTi64>(),
+            std::make_unique<LLGInt>(this->val));
+
+    return true;
+}
+
 ///===-------------------------------------------------------------------===///
 /// StringExpNode
 ///===-------------------------------------------------------------------===///
@@ -68,8 +80,6 @@ Type* StringExpNode::typecheck(Environment& env,
 
 bool StringExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
                             bool is_lhs) const {
-
-    (void)ctxt;
 
     if (is_lhs) {
         diag->print_error(sr, "[ICE] Can't compile StringExpNode as LHS");
@@ -105,6 +115,41 @@ bool StringExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
 
     std::unique_ptr<LLIGep> gep_insn_ptr(gep_insn);
     out.second->stream.push_back(new LLEInsn(op_uid, std::move(gep_insn_ptr)));
+
+    return true;
+}
+
+bool StringExpNode::compile_global(LLCtxt& ctxt, LLGout& gout,
+                                   Diagnostics* diag) const {
+
+    (void)ctxt;
+    (void)diag;
+
+    auto gid = gentemp_ll("str");
+    auto str_ty = std::make_unique<LLTArray>(this->val.size() - 1,
+                                   std::make_unique<LLTi8>());
+
+    auto cast_insn = std::make_unique<LLGBitcast> (
+            std::make_unique<LLTPtr>(std::move(str_ty)),
+            std::make_unique<LLGGid>(gid),
+            std::make_unique<LLTPtr>(std::make_unique<LLTi8>())
+    );
+
+
+    auto gdecl = std::make_unique<LLGDecl>(
+        std::make_unique<LLTArray>(this->val.size() - 1,
+                                   std::make_unique<LLTi8>()),
+        std::make_unique<LLGString>(
+            this->val.substr(0, this->val.size() - 1) + "\\00\""
+        )
+    );
+
+    gout.first = new LLGDecl(
+        std::make_unique<LLTPtr>(std::make_unique<LLTi8>()),
+        std::move(cast_insn)
+    );
+
+    gout.second.push_back({gid, gdecl.release()});
 
     return true;
 }
@@ -151,6 +196,26 @@ bool BoolExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
 
     std::unique_ptr<LLOConst> bool_op_ptr(bool_op);
     out.first.second = std::move(bool_op_ptr);
+
+    return true;
+}
+
+bool BoolExpNode::compile_global(LLCtxt& ctxt, LLGout& gout,
+                                 Diagnostics* diag) const{
+    (void)diag;
+    (void)ctxt;
+
+    LLGInt* bool_op = nullptr;
+    if (this->val)
+        bool_op = new LLGInt(1);
+    else
+        bool_op = new LLGInt(0);
+
+    std::unique_ptr<LLGInt> bool_op_ptr(bool_op);
+    gout.first = new LLGDecl(
+        std::make_unique<LLTi1>(),
+        std::move(bool_op_ptr)
+    );
 
     return true;
 }
@@ -207,6 +272,21 @@ bool NullExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     auto null_ty = this->ty->compile_type();
     out.first.first = null_ty;
     out.first.second = std::make_unique<LLONull>();
+
+    return true;
+}
+
+bool NullExpNode::compile_global(LLCtxt& ctxt, LLGout& gout,
+                                 Diagnostics* diag) const{
+    (void)diag;
+    (void)ctxt;
+
+    std::unique_ptr<LLType> null_ty (this->ty->compile_type());
+
+    gout.first = new LLGDecl(
+        std::move(null_ty),
+        std::make_unique<LLGNull>()
+    );
 
     return true;
 }
@@ -274,6 +354,19 @@ bool IdExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     out.second->stream.push_back(elem);
 
     return true;
+}
+
+bool IdExpNode::compile_global(LLCtxt& ctxt, LLGout& gout,
+                               Diagnostics* diag) const{
+
+    (void)diag;
+
+    gout.first = new LLGDecl(
+        std::move(ctxt[this->val].first->clone()),
+        std::make_unique<LLGGid>(this->val)
+    );
+    return true;
+
 }
 
 ///===-------------------------------------------------------------------===///

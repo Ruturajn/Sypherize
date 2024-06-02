@@ -530,12 +530,12 @@ class LLGInit {
 public:
     LLGInit() = default;
     virtual ~LLGInit() = default;
-    /* virtual void print_ll_ginit(std::ostream& os) const = 0; */
+    virtual void print_ll_ginit(std::ostream& os) const = 0;
 };
 
 class LLGNull : public LLGInit {
 public:
-    /* void print_ll_ginit(std::ostream& os) const override; */
+    void print_ll_ginit(std::ostream& os) const override;
 };
 
 class LLGGid : public LLGInit {
@@ -544,7 +544,7 @@ private:
 
 public:
     LLGGid(const std::string& _gid) : gid(_gid) {}
-    /* void print_ll_ginit(std::ostream& os) const override; */
+    void print_ll_ginit(std::ostream& os) const override;
 };
 
 class LLGInt : public LLGInit {
@@ -553,7 +553,7 @@ private:
 
 public:
     LLGInt(ssize_t _val) : val(_val) {}
-    /* void print_ll_ginit(std::ostream& os) const override; */
+    void print_ll_ginit(std::ostream& os) const override;
 };
 
 class LLGString : public LLGInit {
@@ -562,7 +562,7 @@ private:
 
 public:
     LLGString(const std::string& _val) : val(_val) {}
-    /* void print_ll_ginit(std::ostream& os) const override; */
+    void print_ll_ginit(std::ostream& os) const override;
 };
 
 class LLGArray : public LLGInit {
@@ -580,7 +580,7 @@ public:
         }
     }
 
-    /* void print_ll_ginit(std::ostream& os) const override; */
+    void print_ll_ginit(std::ostream& os) const override;
 };
 
 class LLGStruct : public LLGInit {
@@ -598,7 +598,7 @@ public:
         }
     }
 
-    /* void print_ll_ginit(std::ostream& os) const override; */
+    void print_ll_ginit(std::ostream& os) const override;
 };
 
 class LLGBitcast : public LLGInit {
@@ -613,7 +613,7 @@ public:
                std::unique_ptr<LLType> _to_ty)
         : from_ty(std::move(_from_ty)), ginit(std::move(_ginit)),
             to_ty(std::move(_to_ty)) {}
-    /* void print_ll_ginit(std::ostream& os) const override; */
+    void print_ll_ginit(std::ostream& os) const override;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -628,7 +628,7 @@ private:
 public:
     LLGDecl(std::unique_ptr<LLType> _ty, std::unique_ptr<LLGInit> _ginit)
         : ty(std::move(_ty)), ginit(std::move(_ginit)) {}
-    /* void print_ll_gdecl(std::ostream& os) const; */
+    void print_ll_gdecl(std::ostream& os, const std::string& gid) const;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -663,6 +663,7 @@ public:
     virtual ~LLElt() = default;
     virtual void print_ll_elt(std::ostream& os) const = 0;
     virtual void add_to_block(LLCFG& cfg) const = 0;
+    virtual LLGDecl* add_global() const { return nullptr; }
 };
 
 class LLELables : public LLElt {
@@ -718,6 +719,9 @@ public:
     void print_ll_elt(std::ostream& os) const override;
     void add_to_block(LLCFG& cfg) const override {
         (void)cfg;
+    }
+    LLGDecl* add_global() const override {
+        return gdecl.get();
     }
 };
 

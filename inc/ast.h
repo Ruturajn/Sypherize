@@ -13,6 +13,7 @@ namespace AST {
 
 using LLCtxt = std::unordered_map<std::string, std::pair<LLType*, LLOperand*>>;
 using LLOut = std::pair<std::pair<LLType*, std::unique_ptr<LLOperand>>, LLStream*>;
+using LLGout = std::pair<LLGDecl*, std::vector<std::pair<std::string, LLGDecl*>>>;
 
 class Type;
 using Environment =
@@ -209,6 +210,12 @@ public:
     virtual Type* typecheck(Environment& env, const std::string& fname,
                             FuncEnvironment& fenv, Diagnostics* diag) const = 0;
     virtual bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, bool is_lhs) const = 0;
+    virtual bool compile_global(LLCtxt& ctxt, LLGout& gout, Diagnostics* diag) const {
+        (void)ctxt;
+        (void)gout;
+        (void)diag;
+        return true;
+    }
 };
 
 class NumberExpNode : public ExpNode {
@@ -221,6 +228,8 @@ public:
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
     bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, bool is_lhs) const override;
+    virtual bool compile_global(LLCtxt& ctxt, LLGout& gout, Diagnostics* diag
+                                ) const override;
 };
 
 class StringExpNode : public ExpNode {
@@ -234,6 +243,8 @@ public:
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
     bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, bool is_lhs) const override;
+    virtual bool compile_global(LLCtxt& ctxt, LLGout& gout, Diagnostics* diag
+                                ) const override;
 };
 
 class BoolExpNode : public ExpNode {
@@ -247,6 +258,8 @@ public:
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
     bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, bool is_lhs) const override;
+    virtual bool compile_global(LLCtxt& ctxt, LLGout& gout, Diagnostics* diag
+                                ) const override;
 };
 
 class NullExpNode : public ExpNode {
@@ -260,6 +273,8 @@ public:
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
     bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, bool is_lhs) const override;
+    virtual bool compile_global(LLCtxt& ctxt, LLGout& gout, Diagnostics* diag
+                                ) const override;
 };
 
 class IdExpNode : public ExpNode {
@@ -273,6 +288,8 @@ public:
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
     bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, bool is_lhs) const override;
+    virtual bool compile_global(LLCtxt& ctxt, LLGout& gout, Diagnostics* diag
+                                ) const override;
 };
 
 class CArrExpNode : public ExpNode {
@@ -294,6 +311,8 @@ public:
     Type* typecheck(Environment& env, const std::string& fname,
                     FuncEnvironment& fenv, Diagnostics* diag) const override;
     bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, bool is_lhs) const override;
+    /* virtual bool compile_global(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, */
+    /*                             bool is_lhs) const override; */
 };
 
 class NewExpNode : public ExpNode {
@@ -577,7 +596,8 @@ public:
     virtual void print_decl(int indent) const = 0;
     virtual bool typecheck(Environment& env, FuncEnvironment& fenv,
                            Diagnostics* diag) const = 0;
-    virtual bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llprog) const = 0;
+    virtual bool compile(LLCtxt& ctxt, LLOut& out, LLGout& gout,
+                         Diagnostics* diag, LLProg& llprog) const = 0;
 };
 
 class FunDecl : public Decls {
@@ -607,7 +627,8 @@ public:
     void print_decl(int indent) const override;
     bool typecheck(Environment& env, FuncEnvironment& fenv,
                    Diagnostics* diag) const override;
-    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llprog) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, LLGout& gout,
+                         Diagnostics* diag, LLProg& llprog) const override;
 };
 
 class GlobalDecl : public Decls {
@@ -626,7 +647,10 @@ public:
     void print_decl(int indent) const override;
     bool typecheck(Environment& env, FuncEnvironment& fenv,
                    Diagnostics* diag) const override;
-    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llprog) const override;
+    bool compile(LLCtxt& ctxt, LLOut& out, LLGout& gout,
+                 Diagnostics* diag, LLProg& llprog) const override;
+    bool compile_global(LLCtxt& ctxt, LLGout& gout,
+                        Diagnostics* diag, LLProg& llprog) const;
 };
 
 ///===-------------------------------------------------------------------===///
@@ -646,7 +670,7 @@ public:
     void print_prog() const;
     bool typecheck(Environment& env, FuncEnvironment& fenv,
                    Diagnostics *diag) const;
-    bool compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llprog) const;
+    bool compile(LLCtxt& ctxt, LLOut& out, LLGout& gout, Diagnostics* diag, LLProg& llprog) const;
 };
 
 } // namespace AST

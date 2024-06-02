@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
     if (!front.compile())
         return -1;
 
-    front.print_llvm(std::cout);
+    front.emit_llvm(std::cout);
 
     return 0;
 }

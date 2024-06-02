@@ -73,7 +73,10 @@ bool FunDecl::typecheck(Environment& env, FuncEnvironment& fenv,
     return true;
 }
 
-bool FunDecl::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llprog) const {
+bool FunDecl::compile(LLCtxt& ctxt, LLOut& out, LLGout& gout,
+                      Diagnostics* diag, LLProg& llprog) const {
+
+    (void)gout;
 
     LLCtxt fun_ctxt = ctxt;
 
@@ -221,11 +224,33 @@ bool GlobalDecl::typecheck(Environment& env, FuncEnvironment& fenv,
     return true;
 }
 
-bool GlobalDecl::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag, LLProg& llprog) const {
-    (void)ctxt;
+bool GlobalDecl::compile(LLCtxt& ctxt, LLOut& out, LLGout& gout,
+                         Diagnostics* diag, LLProg& llprog) const {
+
     (void)out;
-    (void)diag;
-    (void)llprog;
+    return compile_global(ctxt, gout, diag, llprog);
+
+}
+
+bool GlobalDecl::compile_global(LLCtxt& ctxt, LLGout& gout,
+                                Diagnostics* diag, LLProg& llprog) const {
+
+    auto id_op = gentemp_ll(this->id);
+
+    std::unique_ptr<LLType> id_base_ty(this->ty->compile_type());
+    auto id_ty = std::make_unique<LLTPtr>(std::move(id_base_ty));
+
+    ctxt[this->id] = {id_ty.release(), new LLOGid(id_op)};
+
+    if (this->exp->compile_global(ctxt, gout, diag) == false) {
+        diag->print_error(this->exp->sr, "[ICE] Unable to compile global decl");
+        return false;
+    }
+
+    llprog.gdecls.push_back({id_op, gout.first});
+
+    for (auto& elem: gout.second)
+        llprog.gdecls.push_back(elem);
 
     return true;
 }

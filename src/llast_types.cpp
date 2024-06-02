@@ -31,7 +31,7 @@ void LLTStruct::print_ll_type(std::ostream& os) const {
             os << ", ";
     }
 
-    os << "}";
+    os << " }";
 }
 
 bool LLTStruct::operator==(const LLType& other) const {
@@ -72,15 +72,9 @@ std::unique_ptr<LLType> LLTStruct::clone() const {
 ///===-------------------------------------------------------------------===///
 
 void LLTArray::print_ll_type(std::ostream& os) const {
-    /* os << "{ "; */
-
-    /* os << "i64, "; */
-
     os << "[ " << arr_len << " x ";
-
     arr_ty->print_ll_type(os);
-
-    os << " ] ";// } ";
+    os << " ]";
 }
 
 bool LLTArray::operator==(const LLType& other) const {
