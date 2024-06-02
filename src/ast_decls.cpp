@@ -118,6 +118,7 @@ bool FunDecl::compile(LLCtxt& ctxt, LLOut& out, LLGout& gout,
 
     fun_ctxt[this->fname] = {new LLTPtr(std::move(func_ty)), new LLOGid(this->fname)};
 
+    auto func_ret_ty = fun_ctxt[this->fname].first->clone().release();
 
     for (auto s : block) {
         if (s->compile(fun_ctxt, out, diag) == false) {
@@ -126,10 +127,19 @@ bool FunDecl::compile(LLCtxt& ctxt, LLOut& out, LLGout& gout,
         }
     }
 
+    // Free up memory used by fun_ctxt
+    for (auto& elem: fun_ctxt) {
+        if (ctxt.find(elem.first) == ctxt.end()) {
+            delete elem.second.first;
+            delete elem.second.second;
+        }
+    }
+
     ctxt[this->fname] = {
-        fun_ctxt[this->fname].first->clone().release(),
+        func_ret_ty,
         new LLOGid(this->fname)
     };
+
 
     /// CFG
     auto cfg = new LLCFG;
@@ -155,6 +165,9 @@ bool FunDecl::compile(LLCtxt& ctxt, LLOut& out, LLGout& gout,
     /* std::cout << "\n\n"; */
 
     // Delete instruction stream for decl
+    /* for (auto& elem: out.second->stream) */
+    /*     delete elem; */
+
     out.second->stream.clear();
 
     return true;

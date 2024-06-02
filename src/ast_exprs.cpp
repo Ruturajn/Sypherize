@@ -478,7 +478,6 @@ bool CArrExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     );
 
     // Then repeat gep and store until arr_size
-    /* LLType* res_ty = nullptr; */
     std::string& res_op = store_uid_sz;
 
     for (int i = 0; i < (int)arr_size; i++) {
@@ -502,7 +501,6 @@ bool CArrExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
             return false;
         }
         auto store_ty = out.first.first->clone();
-        /* res_ty = store_ty.get(); */
         auto store_insn = std::make_unique<LLIStore>(
             std::move(store_ty),
             std::move(out.first.second->clone()),
@@ -518,6 +516,7 @@ bool CArrExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
     auto bitcast_uid = gentemp_ll("bitcast_carr");
     std::unique_ptr<LLType> bitcast_from_ty(this->ty->compile_type(arr_size));
     std::unique_ptr<LLType> bitcast_to_ty(this->ty->compile_type());
+    auto ans_ty = bitcast_to_ty.get();
     auto bitcast_insn = std::make_unique<LLIBitcast>(std::move(bitcast_from_ty),
             std::make_unique<LLOId>(alloca_uid),
             std::move(bitcast_to_ty)
@@ -525,7 +524,7 @@ bool CArrExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
 
     out.second->stream.push_back(new LLEInsn(bitcast_uid, std::move(bitcast_insn)));
 
-    out.first.first = this->ty->compile_type();
+    out.first.first = ans_ty;
     out.first.second = std::make_unique<LLOId>(bitcast_uid);
 
     return true;
@@ -542,14 +541,15 @@ bool CArrExpNode::compile_global(LLCtxt& ctxt, LLGout& gout,
             return false;
         }
         ty_ginit.push_back({
-            gout.first->ty.get(),
-            gout.first->ginit.get()
+            gout.first->ty.release(),
+            gout.first->ginit.release()
         });
+        delete gout.first;
     }
 
     ssize_t carr_len = this->exp_list.size();
     auto carr_gid = gentemp_ll("gexp_carr");
-    auto exp_ty = this->ty->get_underlying_type()->compile_type();
+    std::unique_ptr<LLType> exp_ty(this->ty->get_underlying_type()->compile_type());
 
     std::unique_ptr<LLType> arr_ty(this->ty->compile_type(carr_len));
     std::unique_ptr<LLType> arr_ty_wo_ptr = arr_ty->get_underlying_type()->clone();
@@ -557,7 +557,7 @@ bool CArrExpNode::compile_global(LLCtxt& ctxt, LLGout& gout,
     std::vector<std::pair<LLType*, LLGInit*>> ty_ginit_list {
         {new LLTi64, new LLGInt(carr_len)},
         {
-            new LLTArray(carr_len, exp_ty->clone()),
+            new LLTArray(carr_len, std::move(exp_ty)),
             new LLGArray(ty_ginit)
         }
     };

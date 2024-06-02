@@ -491,6 +491,14 @@ bool IfStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
     auto br_term = std::make_unique<LLTermBr>(merge_lbl);
     out.second->stream.push_back(new LLETerm(std::move(br_term)));
 
+    // Free up memory used by if_ctxt
+    for (auto& elem: if_ctxt) {
+        if (ctxt.find(elem.first) == ctxt.end()) {
+            delete elem.second.first;
+            delete elem.second.second;
+        }
+    }
+
     // Else body
     out.second->stream.push_back(new LLELables(else_lbl));
     LLCtxt else_ctxt = ctxt;
@@ -505,6 +513,14 @@ bool IfStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
 
     // Merge Lbl
     out.second->stream.push_back(new LLELables(merge_lbl));
+
+    // Free up memory used by else_ctxt
+    for (auto& elem: else_ctxt) {
+        if (ctxt.find(elem.first) == ctxt.end()) {
+            delete elem.second.first;
+            delete elem.second.second;
+        }
+    }
 
     return true;
 }
@@ -625,6 +641,14 @@ bool ForStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
     // For Exit
     out.second->stream.push_back(new LLELables(for_exit_lbl));
 
+    // Free up memory used by for_ctxt
+    for (auto& elem: for_ctxt) {
+        if (ctxt.find(elem.first) == ctxt.end()) {
+            delete elem.second.first;
+            delete elem.second.second;
+        }
+    }
+
     return true;
 }
 
@@ -711,5 +735,13 @@ bool WhileStmtNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag) const {
 
     // While Exit
     out.second->stream.push_back(new LLELables(while_exit_lbl));
+
+    // Free up memory used by if_ctxt
+    for (auto& elem: while_ctxt) {
+        if (ctxt.find(elem.first) == ctxt.end()) {
+            delete elem.second.first;
+            delete elem.second.second;
+        }
+    }
     return true;
 }

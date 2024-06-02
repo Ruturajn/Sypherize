@@ -350,6 +350,12 @@ public:
             std::unique_ptr<LLOperand> _op,
             std::vector<std::pair<LLType*, LLOperand*>>& _ty_arg_list)
         : ty(std::move(_ty)), op(std::move(_op)), ty_arg_list(_ty_arg_list) {}
+    ~LLICall() {
+        for (auto& elem: ty_arg_list) {
+            delete elem.first;
+            delete elem.second;
+        }
+    }
     void print_ll_insn(std::ostream& os, const std::string& uid) const override;
 };
 
@@ -452,18 +458,22 @@ public:
     LLBlock() : insn_list({}), term({}) {}
 
     ~LLBlock() {
-        /* for (auto &elem: insn_list) { */
-        /*     delete elem.second; */
-        /* } */
+        for (auto &elem: insn_list) {
+            delete elem.second;
+        }
 
-        /* delete term.second; */
+        delete term.second;
     }
     void add_insn(std::pair<std::string, LLInsn*>& insn) {
         insn_list.push_back({insn.first, insn.second});
     }
-    void add_term(std::pair<std::string, LLTerm*>& _term) {
-        if (term.second == nullptr)
+    bool add_term(std::pair<std::string, LLTerm*>& _term) {
+        if (term.second == nullptr) {
             term = _term;
+            return true;
+        }
+        else
+            return false;
     }
     bool is_block_empty() {
         return insn_list.empty();
@@ -660,8 +670,8 @@ public:
     LLElt() = default;
     virtual ~LLElt() = default;
     virtual void print_ll_elt(std::ostream& os) const = 0;
-    virtual void add_to_block(LLCFG& cfg) const = 0;
-    virtual LLGDecl* add_global() const { return nullptr; }
+    virtual void add_to_block(LLCFG& cfg) = 0;
+    virtual LLGDecl* add_global() { return nullptr; }
 };
 
 class LLELables : public LLElt {
@@ -671,7 +681,7 @@ private:
 public:
     LLELables(const std::string& _lbl) : lbl(_lbl) {}
     void print_ll_elt(std::ostream& os) const override;
-    void add_to_block(LLCFG& cfg) const override {
+    void add_to_block(LLCFG& cfg) override {
         cfg.curr_block = new LLBlock;
         cfg.cfg.second.push_back({lbl, cfg.curr_block});
     }
@@ -686,8 +696,8 @@ public:
     LLEInsn(const std::string& _uid, std::unique_ptr<LLInsn> _insn)
         : uid(_uid), insn(std::move(_insn)) {}
     void print_ll_elt(std::ostream& os) const override;
-    void add_to_block(LLCFG& cfg) const override {
-        std::pair<std::string, LLInsn*> insn = {uid, this->insn.get()};
+    void add_to_block(LLCFG& cfg) override {
+        std::pair<std::string, LLInsn*> insn = {uid, this->insn.release()};
         cfg.curr_block->add_insn(insn);
     }
 };
@@ -699,10 +709,11 @@ private:
 public:
     LLETerm(std::unique_ptr<LLTerm> _term) : term(std::move(_term)) {}
     void print_ll_elt(std::ostream& os) const override;
-    void add_to_block(LLCFG& cfg) const override {
+    void add_to_block(LLCFG& cfg) override {
         std::pair<std::string, LLTerm*> term = {
-            gentemp_ll("tmn"), this->term.get()};
-        cfg.curr_block->add_term(term);
+            gentemp_ll("tmn"), this->term.release()};
+        if (!cfg.curr_block->add_term(term))
+            delete term.second;
     }
 };
 
@@ -715,11 +726,11 @@ public:
     LLEGlbl(const std::string& _gid, std::unique_ptr<LLGDecl> _gdecl)
         : id(_gid), gdecl(std::move(_gdecl)) {}
     void print_ll_elt(std::ostream& os) const override;
-    void add_to_block(LLCFG& cfg) const override {
+    void add_to_block(LLCFG& cfg) override {
         (void)cfg;
     }
-    LLGDecl* add_global() const override {
-        return gdecl.get();
+    LLGDecl* add_global() override {
+        return gdecl.release();
     }
 };
 
@@ -738,14 +749,18 @@ public:
     }
 
     void create_cfg(LLCFG& cfg) {
-        for (auto elem: stream)
+        for (auto elem: stream) {
             elem->add_to_block(cfg);
+            delete elem;
+        }
 
         if (cfg.cfg.second.empty())
             return;
 
-        if (cfg.cfg.second[cfg.cfg.second.size() - 1].second->is_block_empty())
+        if (cfg.cfg.second[cfg.cfg.second.size() - 1].second->is_block_empty()) {
+            delete cfg.cfg.second[cfg.cfg.second.size() - 1].second;
             cfg.cfg.second.pop_back();
+        }
     }
 
     void print_ll_stream(std::ostream& os) const {

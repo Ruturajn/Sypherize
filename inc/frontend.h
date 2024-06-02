@@ -30,6 +30,15 @@ public:
         delete ctxt["bool"].first;
 
         delete out.second;
+
+        for (auto& elem: ctxt) {
+            if (elem.first == "int" || elem.first == "string" ||
+                elem.first == "bool")
+                continue;
+
+            delete elem.second.first;
+            delete elem.second.second;
+        }
     }
 
     bool compile() {
