@@ -63,11 +63,34 @@ void LLGBitcast::print_ll_ginit(std::ostream& os) const {
     os << ")";
 }
 
+///===-------------------------------------------------------------------===///
+/// LLVM IR Decls
+///===-------------------------------------------------------------------===///
+
 void LLGDecl::print_ll_gdecl(std::ostream& os, const std::string& gid) const {
     os << "@" << gid << " = global ";
     ty->print_ll_type(os);
     os << " ";
     ginit->print_ll_ginit(os);
+}
+
+void LLCFG::print_ll_cfg(std::ostream& os) const {
+    this->cfg.first->print_ll_block(os);
+
+    for (auto b : cfg.second) {
+        os << b.first << ":\n";
+        b.second->print_ll_block(os);
+    }
+}
+
+void LLBlock::print_ll_block(std::ostream& os) const {
+    for (auto& insn : insn_list) {
+        insn.second->print_ll_insn(os, insn.first);
+        os << "\n";
+    }
+
+    term.second->print_ll_term(os);
+    os << "\n";
 }
 
 void LLFDecl::print_ll_fdecl(std::ostream& os, const std::string& gid) const {
@@ -91,6 +114,10 @@ void LLFDecl::print_ll_fdecl(std::ostream& os, const std::string& gid) const {
     os << "}";
 }
 
+///===-------------------------------------------------------------------===///
+/// LLVM IR Program
+///===-------------------------------------------------------------------===///
+
 void LLProg::print_ll_prog(std::ostream& os) const {
     int gdecls_sz = gdecls.size();
     for (int i = 0; i < gdecls_sz; i++) {
@@ -111,24 +138,5 @@ void LLProg::print_ll_prog(std::ostream& os) const {
         if (i < decls_sz - 1)
             os << "\n\n";
     }
-    os << "\n";
-}
-
-void LLCFG::print_ll_cfg(std::ostream& os) const {
-    this->cfg.first->print_ll_block(os);
-
-    for (auto b : cfg.second) {
-        os << b.first << ":\n";
-        b.second->print_ll_block(os);
-    }
-}
-
-void LLBlock::print_ll_block(std::ostream& os) const {
-    for (auto& insn : insn_list) {
-        insn.second->print_ll_insn(os, insn.first);
-        os << "\n";
-    }
-
-    term.second->print_ll_term(os);
     os << "\n";
 }
