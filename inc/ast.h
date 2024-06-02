@@ -67,6 +67,7 @@ public:
     virtual bool is_valid_binop(BinopType b) const = 0;
     virtual bool is_valid_unop(UnopType u) const = 0;
     virtual LLType* compile_type(ssize_t arr_len = 0) const = 0;
+    virtual Type* clone() const = 0;
 };
 
 class TInt : public Type {
@@ -87,6 +88,7 @@ public:
         (void)arr_len;
         return new LLTi64;
     }
+    Type* clone() const override { return new TInt; }
 };
 
 class TBool : public Type {
@@ -103,6 +105,7 @@ public:
         (void)arr_len;
         return new LLTi1;
     }
+    Type* clone() const override { return new TBool; }
 };
 
 class TString : public Type {
@@ -122,6 +125,7 @@ public:
         (void)arr_len;
         return new LLTPtr(std::make_unique<LLTi8>());
     }
+    Type* clone() const override { return new TString; }
 };
 
 class TVoid : public Type {
@@ -145,6 +149,7 @@ public:
         (void)arr_len;
         return new LLTVoid;
     }
+    Type* clone() const override { return new TVoid; }
 };
 
 class TRef : public Type {
@@ -168,6 +173,7 @@ public:
         std::unique_ptr<LLType> ty_ptr(type->compile_type());
         return new LLTPtr(std::move(ty_ptr));
     }
+    Type* clone() const override { return new TRef(type->clone()); }
 };
 
 class TArray : public Type {
@@ -196,6 +202,7 @@ public:
         };
         return new LLTPtr(std::make_unique<LLTStruct>(tys));
     }
+    Type* clone() const override { return new TArray(type->clone()); }
 };
 
 ///===-------------------------------------------------------------------===///

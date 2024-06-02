@@ -1132,7 +1132,12 @@ Type* UnopExpNode::typecheck(Environment& env,
                 return nullptr;
             }
 
-            return new TRef(exp_type);
+            if (env["__global__"].find("__addrof__") != env["__global__"].end())
+                delete env["__global__"]["__addrof__"];
+
+            env["__global__"]["__addrof__"] = new TRef(exp_type->clone());
+
+            return env["__global__"]["__addrof__"];
 
         default:
             diag->print_error(exp->sr, "[ICE] Unreachable case - during "

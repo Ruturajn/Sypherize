@@ -75,7 +75,6 @@ Token Lexer::create_token(ssize_t tok_sz, enum Token::TokType t_ty) {
     else if (lexeme == "bool")
         return Token(Token::TOK_TYPE_BOOL, col_num, l_num, lexeme);
 
-    // TODO: Parse and typecheck this.
     else if (lexeme == "void")
         return Token(Token::TOK_TYPE_VOID, col_num, l_num, lexeme);
 

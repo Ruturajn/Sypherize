@@ -128,9 +128,9 @@ void LLProg::print_ll_prog(std::ostream& os) const {
 
     int decls_sz = fdecls.size();
 
-    if (decls_sz == 0)
+    if (decls_sz == 0 || gdecls_sz == 0)
         os << "\n";
-    else
+    else if (gdecls_sz != 0)
         os << "\n\n";
 
     for (int i = 0; i < decls_sz; i++) {

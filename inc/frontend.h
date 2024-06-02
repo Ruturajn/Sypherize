@@ -24,7 +24,6 @@ public:
     }
 
     ~Frontend() {
-        // TODO: Make sure that the memory allocated for null type is freed.
         delete ctxt["int"].first;
         delete ctxt["string"].first;
         delete ctxt["bool"].first;

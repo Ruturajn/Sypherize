@@ -28,6 +28,9 @@ public:
         delete env["__global__"]["int"];
         delete env["__global__"]["string"];
         delete env["__global__"]["bool"];
+
+        if (env["__global__"].find("__addrof__") != env["__global__"].end())
+            delete env["__global__"]["__addrof__"];
     }
 
     bool typecheck(Diagnostics* diag) {
