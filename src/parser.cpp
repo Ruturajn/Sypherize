@@ -362,6 +362,15 @@ std::unique_ptr<ExpNode> Parser::parse_lhs() {
             break;
         }
 
+        case Token::TOK_DEREF: {
+            auto unop = conv_unop(tok_list[curr_pos]);
+            advance();
+            return std::make_unique<UnopExpNode>(
+                unop, parse_expr(0),
+                make_srange(beg_pos)
+            );
+        }
+
         default:
             expect(Token::TOK_EOF, "valid syntax");
             advance();
@@ -807,6 +816,23 @@ StmtNode* Parser::parse_stmt() {
                 return ret_node;
             }
             break;
+
+        case Token::TOK_DEREF: {
+
+            auto left = parse_lhs();
+            advance();
+
+            expect(Token::TOK_EQUAL, "`=` operator for assign statement");
+
+            advance();
+
+            auto right = parse_expr(0);
+
+            advance();
+            expect(Token::TOK_SEMIC, "terminating `;` operator");
+            return new AssnStmtNode(std::move(left), std::move(right),
+                make_srange(beg_pos));
+        }
 
         case Token::TOK_IDENT: {
 

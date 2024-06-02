@@ -269,7 +269,12 @@ bool NullExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
         return false;
     }
 
+    if (ctxt.find("null") != ctxt.end()) {
+        delete ctxt["null"].first;
+    }
+
     auto null_ty = this->ty->compile_type();
+    ctxt["null"].first = null_ty;
     out.first.first = null_ty;
     out.first.second = std::make_unique<LLONull>();
 
@@ -1138,12 +1143,8 @@ Type* UnopExpNode::typecheck(Environment& env,
 
 bool UnopExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
                            bool is_lhs) const {
-    if (is_lhs) {
-        diag->print_error(sr, "[ICE] Unable to compile UnopExpNode as LHS");
-        return false;
-    }
 
-    if (this->exp->compile(ctxt, out, diag, false) == false) {
+    if (this->exp->compile(ctxt, out, diag, true) == false) {
         diag->print_error(this->exp->sr, "[ICE] Unable to compile expression");
         return false;
     }
@@ -1156,22 +1157,40 @@ bool UnopExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
 
     switch (this->uop) {
         case UnopType::UNOP_NEG: {
+            if (is_lhs) {
+                diag->print_error(sr, "[ICE] Unable to compile UnopExpNode as LHS");
+                return false;
+            }
+
             auto insn_ty = std::make_unique<LLTi64>();
             out.first.first = insn_ty.get();
             insn = new LLIBinop(LLBinopType::LLBINOP_BITXOR,
                                 std::move(insn_ty),
                                 std::move(exp_op),
                                 std::make_unique<LLOConst>(-1));
+            out.first.second = std::make_unique<LLOId>(res_uid);
+
+            std::unique_ptr<LLInsn> insn_ptr(insn);
+            out.second->stream.push_back(new LLEInsn(res_uid, std::move(insn_ptr)));
             break;
         }
 
         case UnopType::UNOP_NOT: {
+            if (is_lhs) {
+                diag->print_error(sr, "[ICE] Unable to compile UnopExpNode as LHS");
+                return false;
+            }
+
             auto insn_ty = std::make_unique<LLTi1>();
             out.first.first = insn_ty.get();
             insn = new LLIIcmp(LLCondType::LLCOND_EQUAL,
                                 std::move(insn_ty),
                                 std::move(exp_op),
                                 std::make_unique<LLOConst>(1));
+            out.first.second = std::make_unique<LLOId>(res_uid);
+
+            std::unique_ptr<LLInsn> insn_ptr(insn);
+            out.second->stream.push_back(new LLEInsn(res_uid, std::move(insn_ptr)));
             break;
         }
 
@@ -1179,40 +1198,28 @@ bool UnopExpNode::compile(LLCtxt& ctxt, LLOut& out, Diagnostics* diag,
             auto insn_ty = exp_ty->get_underlying_type()->clone();
             out.first.first = insn_ty.get();
 
-            auto load_ty = insn_ty->clone();
             insn = new LLILoad(
-                std::move(load_ty),
-                std::move(exp_op->clone())
+                std::move(insn_ty),
+                std::move(exp_op)
             );
+            out.first.second = std::make_unique<LLOId>(res_uid);
+
+            std::unique_ptr<LLInsn> insn_ptr(insn);
+            out.second->stream.push_back(new LLEInsn(res_uid, std::move(insn_ptr)));
 
             break;
         }
 
         case UnopType::UNOP_ADDROF: {
-            auto insn_ty = std::make_unique<LLTPtr>(std::move(exp_ty->clone()));
-            out.first.first = insn_ty.get();
-
-            auto alloca_uid = gentemp_ll("alloca_unop");
-            auto alloca_insn = std::make_unique<LLIAlloca>(
-                std::move(insn_ty->clone()), ""
-            );
-            out.second->stream.push_back(new LLEInsn(alloca_uid, std::move(alloca_insn)));
-
-            auto store_uid = gentemp_ll("store");
-            insn = new LLIStore(
-                std::move(exp_ty->clone()),
-                std::move(exp_op->clone()),
-                std::make_unique<LLOId>(alloca_uid)
-            );
+            if (is_lhs) {
+                diag->print_error(sr, "[ICE] Unable to compile UnopExpNode as LHS");
+                return false;
+            }
 
             break;
         }
     }
 
-    out.first.second = std::make_unique<LLOId>(res_uid);
-
-    std::unique_ptr<LLInsn> insn_ptr(insn);
-    out.second->stream.push_back(new LLEInsn(res_uid, std::move(insn_ptr)));
 
     return true;
 }

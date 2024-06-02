@@ -29,6 +29,9 @@ public:
         delete ctxt["string"].first;
         delete ctxt["bool"].first;
 
+        if (ctxt.find("null") != ctxt.end())
+            delete ctxt["null"].first;
+
         delete out.second;
 
         for (auto& elem: ctxt) {

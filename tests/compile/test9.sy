@@ -1,0 +1,14 @@
+fun main(int: argc, string[]: argv) -> int {
+
+    int@: h = null;
+    int@@: g = null;
+    int: a = 10;
+
+    h = #a;
+
+    g = #h;
+
+    @@g = 20;
+
+    return a;
+}
