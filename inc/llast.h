@@ -488,17 +488,16 @@ public:
 
 class LLCFG {
 public:
-    std::pair<LLBlock*, std::vector<std::pair<std::string, LLBlock*>>> cfg;
+    std::vector<std::pair<std::string, LLBlock*>> cfg;
     LLBlock* curr_block;
 
-    LLCFG() : cfg({}), curr_block(new LLBlock()) {
-        cfg.first = curr_block;
+    LLCFG() : cfg({}), curr_block(nullptr) {
+        cfg.push_back({"_entry", new LLBlock()});
+        curr_block = cfg[0].second;
     }
 
     ~LLCFG() {
-        delete cfg.first;
-
-        for (auto& elem: cfg.second)
+        for (auto& elem: cfg)
             delete elem.second;
     }
 
@@ -683,7 +682,7 @@ public:
     void print_ll_elt(std::ostream& os) const override;
     void add_to_block(LLCFG& cfg) override {
         cfg.curr_block = new LLBlock;
-        cfg.cfg.second.push_back({lbl, cfg.curr_block});
+        cfg.cfg.push_back({lbl, cfg.curr_block});
     }
 };
 
@@ -754,12 +753,12 @@ public:
             delete elem;
         }
 
-        if (cfg.cfg.second.empty())
+        if (cfg.cfg.empty())
             return;
 
-        if (cfg.cfg.second[cfg.cfg.second.size() - 1].second->is_block_empty()) {
-            delete cfg.cfg.second[cfg.cfg.second.size() - 1].second;
-            cfg.cfg.second.pop_back();
+        if (cfg.cfg[cfg.cfg.size() - 1].second->is_block_empty()) {
+            delete cfg.cfg[cfg.cfg.size() - 1].second;
+            cfg.cfg.pop_back();
         }
     }
 

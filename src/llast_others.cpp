@@ -75,9 +75,7 @@ void LLGDecl::print_ll_gdecl(std::ostream& os, const std::string& gid) const {
 }
 
 void LLCFG::print_ll_cfg(std::ostream& os) const {
-    this->cfg.first->print_ll_block(os);
-
-    for (auto b : cfg.second) {
+    for (auto b : cfg) {
         os << b.first << ":\n";
         b.second->print_ll_block(os);
     }
