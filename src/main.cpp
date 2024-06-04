@@ -124,6 +124,7 @@ int main(int argc, char* argv[]) {
         } else
             output_file.open(cmd_flags.output_file);
         front.emit_llvm(output_file);
+        output_file.close();
     }
 
     /// Optimize LLVM
