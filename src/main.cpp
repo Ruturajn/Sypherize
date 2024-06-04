@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 #include "../inc/cmdops.h"
 #include "../inc/lexer.h"
 #include "../inc/parser.h"
@@ -32,8 +33,8 @@ int main(int argc, char* argv[]) {
         Option("--print-ast", "-print-ast", "Display the AST", {},
                 false, OptionType::OPTION_PRINT_AST),
 
-        Option("--llvm", "-l", "Compile to LLVM IR", {},
-                false, OptionType::OPTION_LLVM),
+        Option("--print-llvm", "-l", "Display the compiled LLVM IR", {},
+                false, OptionType::OPTION_PRINT_LLVM),
 
         Option("--asm-dialect", "-asm-dialect",
                 "Compile to specific assembly dialect", {"intel", "att"},
@@ -53,6 +54,11 @@ int main(int argc, char* argv[]) {
         Option("--run-typechecker", "-run-typechecker",
                 "Run the compiler upto the typechecker stage", {},
                 false, OptionType::OPTION_RUN_TYPECHECKER),
+
+        Option("--run-compile-to-llvm", "-run-compile-to-llvm",
+                "Run upto the stage that compiles sypher to LLVM IR", {},
+                false, OptionType::OPTION_RUN_COMPILE_TO_LLVM)
+
     };
 
     CmdOps cmd(options, std::cout);
@@ -103,7 +109,24 @@ int main(int argc, char* argv[]) {
     if (!front.compile())
         return -1;
 
-    front.emit_llvm(std::cout);
+    if (cmd_flags.print_llvm)
+        front.emit_llvm(std::cout);
+
+    else {
+        std::ofstream output_file;
+        if (cmd_flags.output_file.empty()) {
+            std::filesystem::path input_path{cmd_flags.input_files[0]};
+            input_path = input_path.stem();
+            std::filesystem::path ext{".ll"};
+            input_path.replace_extension(ext);
+
+            output_file.open(input_path.string());
+        } else
+            output_file.open(cmd_flags.output_file);
+        front.emit_llvm(output_file);
+    }
+
+    /// Optimize LLVM
 
     return 0;
 }

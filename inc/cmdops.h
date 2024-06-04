@@ -13,12 +13,13 @@ enum class OptionType {
     OPTION_OUTPUT,
     OPTION_PRINT_TOKENS,
     OPTION_PRINT_AST,
-    OPTION_LLVM,
+    OPTION_PRINT_LLVM,
     OPTION_ASM_DIALECT,
     OPTION_ASM,
     OPTION_RUN_LEXER,
     OPTION_RUN_PARSER,
-    OPTION_RUN_TYPECHECKER
+    OPTION_RUN_TYPECHECKER,
+    OPTION_RUN_COMPILE_TO_LLVM
 };
 
 struct CmdFlags {
@@ -29,7 +30,7 @@ struct CmdFlags {
     std::string output_file;
     bool print_tokens;
     bool print_ast;
-    bool emit_llvm;
+    bool print_llvm;
     enum AsmDialect {
         ASM_INTEL,
         ASM_ATT
@@ -39,11 +40,13 @@ struct CmdFlags {
     bool run_lexer;
     bool run_parser;
     bool run_typechecker;
+    bool run_compile_to_llvm;
 
     CmdFlags() : version(false), help(false), verbose(false),
         input_files({}), output_file({}), print_tokens(false),
-        print_ast(false), emit_llvm(false), asm_d(ASM_ATT), emit_asm(false),
-        run_lexer(false), run_parser(false), run_typechecker(false){}
+        print_ast(false), print_llvm(false), asm_d(ASM_ATT), emit_asm(false),
+        run_lexer(false), run_parser(false), run_typechecker(false),
+        run_compile_to_llvm(false) {}
 };
 
 class Option {

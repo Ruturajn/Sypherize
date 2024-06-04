@@ -45,6 +45,16 @@ bool CmdOps::parse_cmd(int argc, char* argv[], int min_ops_required) {
         auto op_ptr = defined_op_map[op];
         auto& acc_vals = op_ptr->accepted_vals;
 
+        if (op_ptr->op_ty == OptionType::OPTION_OUTPUT) {
+            val = *argv++;
+
+            if (passed_op_map.find(op_ptr->op_ty) == passed_op_map.end())
+                passed_op_map[op_ptr->op_ty] = {};
+
+            passed_op_map[op_ptr->op_ty].push_back(val);
+            continue;
+        }
+
         if (acc_vals.size() == 0) {
             passed_op_map[op_ptr->op_ty] = {};
             continue;
@@ -118,8 +128,8 @@ void CmdOps::populate_cmd_flags(CmdFlags& cmd_flags) {
                 cmd_flags.print_ast = true;
                 break;
 
-            case OptionType::OPTION_LLVM:
-                cmd_flags.emit_llvm = true;
+            case OptionType::OPTION_PRINT_LLVM:
+                cmd_flags.print_llvm = true;
                 break;
 
             case OptionType::OPTION_ASM_DIALECT: {
@@ -148,6 +158,10 @@ void CmdOps::populate_cmd_flags(CmdFlags& cmd_flags) {
 
             case OptionType::OPTION_RUN_TYPECHECKER:
                 cmd_flags.run_typechecker = true;
+                break;
+
+            case OptionType::OPTION_RUN_COMPILE_TO_LLVM:
+                cmd_flags.run_compile_to_llvm = true;
                 break;
         }
     }

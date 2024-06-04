@@ -2,7 +2,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.1)
 
 # Add flags that need to be passed to the compiler
-SET(GXX_FLAGS "-ggdb -Wall -Werror -Wextra -pedantic")
+SET(GXX_FLAGS "-ggdb -Wall -Werror -Wextra -pedantic -std=c++2a")
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GXX_FLAGS}")
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
