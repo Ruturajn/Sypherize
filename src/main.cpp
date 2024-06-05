@@ -6,6 +6,7 @@
 #include "../inc/parser.h"
 #include "../inc/typechecker.h"
 #include "../inc/frontend.h"
+#include "../inc/optimize.h"
 
 int main(int argc, char* argv[]) {
 
@@ -128,6 +129,7 @@ int main(int argc, char* argv[]) {
     }
 
     /// Optimize LLVM
+    Optimize opt(front.llprog);
 
     return 0;
 }

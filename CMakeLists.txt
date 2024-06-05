@@ -24,6 +24,7 @@ SET(SYPHER_SRCS
     src/llast_insns_term.cpp
     src/llast_types.cpp
     src/main.cpp
+    src/optimize.cpp
     src/parser.cpp)
 
 # Set the output directory for the binary, and create it if it doesn't exist.

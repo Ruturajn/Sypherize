@@ -6,6 +6,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <set>
 
 enum class LLBinopType {
     LLBINOP_ADD,
@@ -408,6 +409,7 @@ public:
     LLTerm() = default;
     virtual ~LLTerm() = default;
     virtual void print_ll_term(std::ostream& os) const = 0;
+    virtual void succs(std::set<std::string>& lbl_set) const = 0;
 };
 
 class LLTermRet : public LLTerm {
@@ -419,6 +421,9 @@ public:
     LLTermRet(std::unique_ptr<LLType> _ty, std::unique_ptr<LLOperand> _op)
         : ty(std::move(_ty)), op(std::move(_op)) {}
     void print_ll_term(std::ostream& os) const override;
+    void succs(std::set<std::string>& lbl_set) const override {
+        (void)lbl_set;
+    }
 };
 
 class LLTermBr : public LLTerm {
@@ -428,6 +433,9 @@ private:
 public:
     LLTermBr(const std::string& _lbl) : lbl(_lbl) {}
     void print_ll_term(std::ostream& os) const override;
+    void succs(std::set<std::string>& lbl_set) const override {
+        lbl_set.insert(lbl);
+    }
 };
 
 class LLTermCbr : public LLTerm {
@@ -443,6 +451,10 @@ public:
         : op(std::move(_op)), true_lbl(_true_lbl),
             false_lbl(_false_lbl) {}
     void print_ll_term(std::ostream& os) const override;
+    void succs(std::set<std::string>& lbl_set) const override {
+        lbl_set.insert(true_lbl);
+        lbl_set.insert(false_lbl);
+    }
 };
 
 ///===-------------------------------------------------------------------===///
@@ -450,11 +462,10 @@ public:
 ///===-------------------------------------------------------------------===///
 
 class LLBlock {
-private:
+public:
     std::vector<std::pair<std::string, LLInsn*>> insn_list;
     std::pair<std::string, LLTerm*> term;
 
-public:
     LLBlock() : insn_list({}), term({}) {}
 
     ~LLBlock() {
@@ -509,13 +520,12 @@ public:
 ///===-------------------------------------------------------------------===///
 
 class LLFDecl {
-private:
+public:
     std::vector<LLType*> func_params_ty;
     std::unique_ptr<LLType> func_ret_ty;
     std::vector<std::string> func_params;
     std::unique_ptr<LLCFG> func_cfg;
 
-public:
     LLFDecl(std::vector<LLType*>& _func_params_ty,
             std::unique_ptr<LLType> _func_ret_ty,
             std::vector<std::string>& _func_params,
